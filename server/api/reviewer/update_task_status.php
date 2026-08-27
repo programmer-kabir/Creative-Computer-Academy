@@ -1,0 +1,261 @@
+<?php
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+require_once '../../config/database.php';
+
+$database = new Database();
+$db = $database->getConnection();
+
+if (isset($_SERVER["CONTENT_TYPE"]) && strpos($_SERVER["CONTENT_TYPE"], "application/json") !== false) {
+    $data = json_decode(file_get_contents("php://input"));
+} else {
+    $data = (object) $_POST;
+}
+
+if(!isset($data->task_id) || !isset($data->status) || !isset($data->changed_by)) {
+    echo json_encode(["status" => "error", "message" => "Task ID, Status, and Reviewer ID are required."]);
+    exit;
+}
+
+try {
+    $db->beginTransaction();
+
+    // Get old status
+    $old_stmt = $db->prepare("SELECT status FROM tasks WHERE id = :id");
+    $old_stmt->execute([':id' => $data->task_id]);
+    $old_status = $old_stmt->fetchColumn();
+
+    if (!$old_status) {
+        echo json_encode(["status" => "error", "message" => "Task not found."]);
+        exit;
+    }
+
+    // Update status and tracking info in tasks table
+    $status = $data->status;
+    $reviewer_id = $data->changed_by;
+
+    if ($status === 'Completed') {
+        $query = "UPDATE tasks 
+                  SET status = :status, 
+                      reviewed_by = :reviewer_id, 
+                      reviewed_at = NOW(), 
+                      rejected_by = NULL, 
+                      rejected_at = NULL, 
+                      rejection_reason = NULL 
+                  WHERE id = :id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':reviewer_id', $reviewer_id);
+        $stmt->bindParam(':id', $data->task_id);
+        $stmt->execute();
+    } else if ($status === 'Rejected') {
+        $rejection_reason = isset($data->rejection_reason) ? $data->rejection_reason : null;
+        
+        $rejection_image = null;
+        if (isset($_FILES['rejection_image']) && $_FILES['rejection_image']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = '../../uploads/rejection_screenshots/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            
+            $sourcePath = $_FILES['rejection_image']['tmp_name'];
+            $file_extension = pathinfo($_FILES['rejection_image']['name'], PATHINFO_EXTENSION);
+            
+            $info = getimagesize($sourcePath);
+            $image_saved = false;
+            
+            if ($info !== false && function_exists('imagewebp')) {
+                if ($info['mime'] == 'image/jpeg') {
+                    $image = @imagecreatefromjpeg($sourcePath);
+                } elseif ($info['mime'] == 'image/png') {
+                    $image = @imagecreatefrompng($sourcePath);
+                    if ($image !== false) {
+                        imagepalettetotruecolor($image);
+                        imagealphablending($image, true);
+                        imagesavealpha($image, true);
+                    }
+                } elseif ($info['mime'] == 'image/webp') {
+                    $image = @imagecreatefromwebp($sourcePath);
+                }
+                
+                if (isset($image) && $image !== false) {
+                    $new_filename = 'reject_' . time() . '_' . uniqid() . '.webp';
+                    imagewebp($image, $upload_dir . $new_filename, 80);
+                    imagedestroy($image);
+                    $image_saved = true;
+                    $rejection_image = '/uploads/rejection_screenshots/' . $new_filename;
+                }
+            }
+            
+            // Fallback if GD is not available or conversion fails
+            if (!$image_saved) {
+                $new_filename = 'reject_' . time() . '_' . uniqid() . '.' . $file_extension;
+                if (move_uploaded_file($sourcePath, $upload_dir . $new_filename)) {
+                    $rejection_image = '/uploads/rejection_screenshots/' . $new_filename;
+                }
+            }
+        }
+
+        $query = "UPDATE tasks 
+                  SET status = :status, 
+                      rejection_reason = :rejection_reason, 
+                      rejection_image = :rejection_image,
+                      rejected_by = :reviewer_id, 
+                      rejected_at = NOW(), 
+                      reviewed_by = NULL, 
+                      reviewed_at = NULL 
+                  WHERE id = :id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':rejection_reason', $rejection_reason);
+        $stmt->bindParam(':rejection_image', $rejection_image);
+        $stmt->bindParam(':reviewer_id', $reviewer_id);
+        $stmt->bindParam(':id', $data->task_id);
+        $stmt->execute();
+    } else {
+        $query = "UPDATE tasks SET status = :status WHERE id = :id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':status', $status);
+        $stmt->bindParam(':id', $data->task_id);
+        $stmt->execute();
+    }
+
+    // Log the change to task_logs table
+    $log_query = "INSERT INTO task_logs (task_id, status_from, status_to, changed_by) VALUES (:task_id, :status_from, :status_to, :changed_by)";
+    $log_stmt = $db->prepare($log_query);
+    $log_stmt->execute([
+        ':task_id'     => $data->task_id,
+        ':status_from' => $old_status,
+        ':status_to'   => $status,
+        ':changed_by'  => $data->changed_by,
+    ]);
+
+
+
+    // Fetch task info to notify assigned staff
+    $info_stmt = $db->prepare("SELECT t.title, e.user_id, u.email, u.name FROM tasks t JOIN employees e ON t.assigned_to = e.id JOIN users u ON e.user_id = u.id WHERE t.id = :id");
+    $info_stmt->execute([':id' => $data->task_id]);
+    $task_info = $info_stmt->fetch(PDO::FETCH_ASSOC);
+
+    $debug_log = [];
+    $debug_log['task_info'] = $task_info;
+
+    if ($task_info && !empty($task_info['user_id'])) {
+        require_once '../notifications/notification_helper.php';
+        require_once '../emails/EmailHelper.php';
+        
+        if ($status === 'Completed') {
+            try {
+                NotificationHelper::sendToUser(
+                    $db,
+                    $task_info['user_id'],
+                    $reviewer_id,
+                    "Task Approved: " . $task_info['title'],
+                    "Great job! Your task '{$task_info['title']}' has been reviewed and approved.",
+                    "task_approved",
+                    "staff",
+                    "/tasks",
+                    "normal",
+                    ["task_id" => $data->task_id]
+                );
+            } catch (Exception $e) {
+                $debug_log['notif_error'] = $e->getMessage();
+            }
+
+            // Send approval email
+            if (!empty($task_info['email'])) {
+                try {
+                    $stmt_tpl = $db->prepare("SELECT subject, body FROM email_templates WHERE event_name = 'task_approved'");
+                    $stmt_tpl->execute();
+                    if ($tpl = $stmt_tpl->fetch(PDO::FETCH_ASSOC)) {
+                        $subject = str_replace('{{task_title}}', $task_info['title'] ?? 'Task', $tpl['subject']);
+                        $body = $tpl['body'];
+                        $body = str_replace('{{staff_name}}', $task_info['name'], $body);
+                        $body = str_replace('{{task_title}}', $task_info['title'] ?? 'Task', $body);
+                        
+                        $actionUrl = 'https://staff.creativecomputeracademy.com/tasks?taskId=' . $data->task_id;
+                        $htmlBody = EmailHelper::getHtmlTemplate($subject, $body, $actionUrl, 'View Task');
+                        
+                        $debug_log['mail_result'] = EmailHelper::sendEmail($task_info['email'], $task_info['name'], $subject, $htmlBody, false);
+                    } else {
+                        $debug_log['mail_error'] = 'Template task_approved not found';
+                    }
+                } catch (Exception $e) {
+                    $debug_log['mail_error'] = $e->getMessage();
+                }
+            } else {
+                $debug_log['mail_error'] = 'User email is empty';
+            }
+
+        } else if ($status === 'Rejected') {
+            $reason = isset($data->rejection_reason) ? $data->rejection_reason : 'Revision requested';
+            try {
+                NotificationHelper::sendToUser(
+                    $db,
+                    $task_info['user_id'],
+                    $reviewer_id,
+                    "Revision Required: " . $task_info['title'],
+                    "Reason: {$reason}. Please revise and resubmit.",
+                    "task_rejected",
+                    "staff",
+                    "/tasks",
+                    "high",
+                    ["task_id" => $data->task_id, "reason" => $reason]
+                );
+            } catch (Exception $e) {
+                $debug_log['notif_error'] = $e->getMessage();
+            }
+
+            // Send rejection email
+            if (!empty($task_info['email'])) {
+                try {
+                    $stmt_tpl = $db->prepare("SELECT subject, body FROM email_templates WHERE event_name = 'task_rejected'");
+                    $stmt_tpl->execute();
+                    if ($tpl = $stmt_tpl->fetch(PDO::FETCH_ASSOC)) {
+                        $subject = str_replace('{{task_title}}', $task_info['title'] ?? 'Task', $tpl['subject']);
+                        $body = $tpl['body'];
+                        $body = str_replace('{{staff_name}}', $task_info['name'], $body);
+                        $body = str_replace('{{task_title}}', $task_info['title'] ?? 'Task', $body);
+                        $body = str_replace('{{rejection_reason}}', nl2br(htmlspecialchars($reason)), $body);
+                        
+                        $imgHtml = '';
+                        if (!empty($rejection_image)) {
+                            $fullImageUrl = 'https://api.creativecomputeracademy.com' . $rejection_image;
+                            $imgHtml = '<div style="margin: 20px 0;"><p><strong>Screenshot:</strong></p><a href="'.$fullImageUrl.'" target="_blank"><img src="'.$fullImageUrl.'" alt="Rejection Screenshot" style="max-width: 100%; border: 1px solid #e2e8f0; border-radius: 8px;" /></a></div>';
+                        }
+                        $body = str_replace('{{rejection_image_html}}', $imgHtml, $body);
+                        
+                        $actionUrl = 'https://staff.creativecomputeracademy.com/tasks?taskId=' . $data->task_id;
+                        $htmlBody = EmailHelper::getHtmlTemplate($subject, $body, $actionUrl, 'View Task');
+                        
+                        $debug_log['mail_result'] = EmailHelper::sendEmail($task_info['email'], $task_info['name'], $subject, $htmlBody, false);
+                    } else {
+                        $debug_log['mail_error'] = 'Template task_rejected not found';
+                    }
+                } catch (Exception $e) {
+                    $debug_log['mail_error'] = $e->getMessage();
+                }
+            } else {
+                $debug_log['mail_error'] = 'User email is empty';
+            }
+        }
+    }
+
+    $db->commit();
+    echo json_encode(["status" => "success", "message" => "Task marked as " . $status, "debug" => $debug_log]);
+
+} catch(Throwable $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+}
+?>

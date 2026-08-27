@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans;
+  }
+}
+
+/* Custom scrollbar styling for webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1; /* slate-300 */
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8; /* slate-400 */
+}
+
+/* Force copy-pasted rich text content to use visible colors and transparent backgrounds on cards */
+.task-description-content * {
+  background-color: transparent !important;
+}
+
+/* Rich text / HTML content styling for task descriptions */
+.task-description-content h1 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 1.2rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 0.3rem;
+}
+.task-description-content h2 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 1.2rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1.5px solid #e2e8f0;
+  padding-bottom: 0.25rem;
+}
+.task-description-content h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+}
+.task-description-content ul {
+  list-style-type: disc !important;
+  padding-left: 1.4rem !important;
+  margin-top: 0.4rem !important;
+  margin-bottom: 0.6rem !important;
+}
+.task-description-content ol {
+  list-style-type: decimal !important;
+  padding-left: 1.4rem !important;
+  margin-top: 0.4rem !important;
+  margin-bottom: 0.6rem !important;
+}
+.task-description-content li {
+  display: list-item !important;
+  margin-top: 0.2rem !important;
+  margin-bottom: 0.2rem !important;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+.task-description-content ul ul,
+.task-description-content ol ul {
+  list-style-type: circle !important;
+}
+.task-description-content p {
+  margin-top: 0.4rem;
+  margin-bottom: 0.4rem;
+  color: #334155;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+.task-description-content strong,
+.task-description-content b {
+  font-weight: 700;
+  color: #1e293b;
+}
+.task-description-content u {
+  text-decoration: underline;
+}
+.task-description-content a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.task-description-content a:hover {
+  color: #1d4ed8;
+}
+.task-description-content br {
+  display: block;
+  content: "";
+  margin-top: 0.2rem;
+}
+
+.dark .task-description-content * { color: inherit !important; background-color: transparent !important; }
+.dark .task-description-content h1, .dark .task-description-content h2, .dark .task-description-content strong, .dark .task-description-content b { color: #f8fafc !important; }
+.dark .task-description-content h3, .dark .task-description-content p, .dark .task-description-content li { color: #cbd5e1 !important; }
+.dark .task-description-content a { color: #60a5fa !important; }
+.dark .task-description-content a:hover { color: #93c5fd !important; }
+
+/* Jodit Dark Mode Overrides */
+.dark .jodit-container { background-color: #0f172a !important; color: #f1f5f9 !important; border-color: #334155 !important; }
+.dark .jodit-toolbar__box { background-color: #1e293b !important; border-bottom-color: #334155 !important; }
+.dark .jodit-wysiwyg { background-color: #0f172a !important; color: #f1f5f9 !important; }
+.dark .jodit-toolbar-button__button:hover { background-color: #334155 !important; }
+.dark .jodit-ui-separator { border-left-color: #334155 !important; }
+.dark .jodit-toolbar-button__icon { filter: invert(1); }

@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-white: 255, 255, 255;
+  --color-dark-950: 0, 0, 0;        /* Pure Black background */
+  --color-dark-900: 10, 10, 10;     /* Very Dark Gray for Cards/Sidebar */
+  --color-dark-800: 18, 18, 18;     /* Dark Gray for Inner panels */
+  --color-dark-700: 28, 28, 28;     /* Accent Grays */
+  --color-dark-600: 38, 38, 38;
+}
+
+html.light {
+  --color-white: 15, 23, 42;        /* Dark slate text */
+  --color-dark-950: 241, 245, 249;  /* Soft light gray body background (slate-100) */
+  --color-dark-900: 255, 255, 255;  /* Pure White Sidebar / solid background */
+  --color-dark-800: 226, 232, 240;  /* Slate-200 for Light Borders */
+  --color-dark-700: 241, 245, 249;  /* Slate-100 for Hover Backgrounds */
+  --color-dark-600: 203, 213, 225;  /* Slate-300 for darker borders */
+}
+
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background-color: rgb(var(--color-dark-950));
+    color: rgba(var(--color-white), 0.85);
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: rgb(var(--color-dark-900)); }
+  ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 99px; }
+}
+
+@layer components {
+  .glass {
+    background: rgba(var(--color-white), 0.03);
+    border: 1px solid rgba(var(--color-white), 0.07);
+    backdrop-filter: blur(12px);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  html.light .glass {
+    background: #ffffff;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.02);
+  }
+  .glass-hover {
+    @apply glass transition-all duration-300;
+  }
+  .glass-hover:hover {
+    background: rgba(var(--color-white), 0.06);
+    border-color: rgba(99,102,241,0.4);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99,102,241,0.15);
+  }
+  html.light .glass-hover:hover {
+    background: #ffffff;
+    border-color: rgba(99,102,241,0.4);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1), 0 0 20px rgba(99,102,241,0.1);
+    transform: translateY(-4px) scale(1.01);
+  }
+  .glow-brand {
+    box-shadow: 0 0 24px rgba(99,102,241,0.3);
+  }
+  .score-excellent { @apply text-emerald-400; }
+  .score-good      { @apply text-yellow-400; }
+  .score-poor      { @apply text-red-400; }
+}
+
+/* ── Light Mode Text Contrast Overrides ── */
+html.light .text-white\/15,
+html.light .text-white\/20,
+html.light .text-white\/25 {
+  color: rgba(15, 23, 42, 0.45) !important;
+}
+
+html.light .text-white\/30,
+html.light .text-white\/40 {
+  color: rgba(15, 23, 42, 0.65) !important;
+}
+
+html.light .text-white\/50,
+html.light .text-white\/60 {
+  color: rgba(15, 23, 42, 0.75) !important;
+}
+
+html.light .text-white\/70,
+html.light .text-white\/80 {
+  color: rgba(15, 23, 42, 0.9) !important;
+}
+
+/* Base accent text contrast boost for Light mode */
+html.light .text-brand-400 { color: #4f46e5 !important; }
+html.light .text-yellow-400 { color: #d97706 !important; }
+html.light .text-emerald-400 { color: #059669 !important; }
+html.light .text-red-400 { color: #dc2626 !important; }
+html.light .text-purple-400 { color: #7c3aed !important; }
+html.light .text-blue-400 { color: #2563eb !important; }
+html.light .text-orange-400 { color: #ea580c !important; }
