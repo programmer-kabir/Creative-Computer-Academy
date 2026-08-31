@@ -1,13 +1,22 @@
 <?php
+require_once __DIR__ . '/env.php';
+
 date_default_timezone_set('Asia/Dhaka');
 
 class Database {
-    private $host = "localhost";
-    private $db_name = "u647959341_cca_manage_db";
-    private $username = "u647959341_cca_admin"; // Default XAMPP username
-    private $password = "Cc@dbAmin12";     // Default XAMPP password is empty
+    private $host;
+    private $db_name;
+    private $username;
+    private $password;
     public $conn;
-// Cc@dbAmin12
+
+    public function __construct() {
+        $this->host = env('DB_HOST', 'localhost');
+        $this->db_name = env('DB_NAME', 'u647959341_cca_manage_db');
+        $this->username = env('DB_USER', 'root');
+        $this->password = env('DB_PASS', '');
+    }
+
     public function getConnection() {
         $this->conn = null;
 

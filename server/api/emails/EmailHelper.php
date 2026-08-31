@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../config/env.php';
 require_once __DIR__ . '/../libs/PHPMailer/src/Exception.php';
 require_once __DIR__ . '/../libs/PHPMailer/src/PHPMailer.php';
 require_once __DIR__ . '/../libs/PHPMailer/src/SMTP.php';
@@ -7,13 +8,6 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 class EmailHelper {
-    private static $host = 'smtp.gmail.com';
-    private static $port = 465; 
-    private static $username = 'creativecomputeracademybd@gmail.com';
-    private static $password = 'gfzvfirurrrprmfw';
-    private static $fromName = 'CCA Notifications';
-    private static $encryption = PHPMailer::ENCRYPTION_SMTPS;
-
     /**
      * Send an email using PHPMailer
      */
@@ -21,17 +15,24 @@ class EmailHelper {
         $mail = new PHPMailer(true);
 
         try {
+            $host = env('SMTP_HOST', 'smtp.gmail.com');
+            $port = (int) env('SMTP_PORT', 465);
+            $username = env('SMTP_USER', '');
+            $password = env('SMTP_PASS', '');
+            $fromName = env('SMTP_FROM_NAME', 'CCA Notifications');
+            $encryption = ($port === 465) ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+
             // Server settings
             if ($debug) {
                 $mail->SMTPDebug = 2; // Enable verbose debug output
             }
             $mail->isSMTP();
-            $mail->Host       = self::$host;
+            $mail->Host       = $host;
             $mail->SMTPAuth   = true;
-            $mail->Username   = self::$username;
-            $mail->Password   = self::$password;
-            $mail->SMTPSecure = self::$encryption;
-            $mail->Port       = self::$port;
+            $mail->Username   = $username;
+            $mail->Password   = $password;
+            $mail->SMTPSecure = $encryption;
+            $mail->Port       = $port;
 
             // Optional: for development if SSL fails
             $mail->SMTPOptions = array(

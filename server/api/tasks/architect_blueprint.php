@@ -1,7 +1,8 @@
 <?php
 require_once '../../config/cors.php';
+require_once '../../config/env.php';
 
-$apiKey = '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';
+$apiKey = env('OPENROUTER_API_KEY', '');
 
 // Free models list on OpenRouter
 $candidateModels = [
