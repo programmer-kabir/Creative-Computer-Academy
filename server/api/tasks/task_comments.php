@@ -1,9 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 
 $database = new Database();
@@ -30,7 +26,7 @@ try {
         }
 
         $query = "SELECT tc.id, tc.task_id, tc.user_id, tc.comment, tc.image,
-                         CONVERT_TZ(tc.created_at, '+00:00', '+06:00') as created_at,
+                         tc.created_at,
                          u.name as user_name, u.profile_picture,
                          (SELECT role FROM user_roles WHERE user_id = u.id LIMIT 1) as user_role
                   FROM task_comments tc
@@ -101,7 +97,7 @@ try {
             exit;
         }
 
-        $insert = $db->prepare("INSERT INTO task_comments (task_id, user_id, comment, image) VALUES (:task_id, :user_id, :comment, :image)");
+        $insert = $db->prepare("INSERT INTO task_comments (task_id, user_id, comment, image, created_at) VALUES (:task_id, :user_id, :comment, :image, NOW())");
         $insert->execute([
             ':task_id' => $task_id,
             ':user_id' => $user_id,
@@ -133,7 +129,7 @@ try {
 
         // Fetch the newly created comment with user info
         $fetch = $db->prepare("SELECT tc.id, tc.task_id, tc.user_id, tc.comment, tc.image,
-                                       CONVERT_TZ(tc.created_at, '+00:00', '+06:00') as created_at,
+                                       tc.created_at,
                                        u.name as user_name, u.profile_picture,
                                        (SELECT role FROM user_roles WHERE user_id = u.id LIMIT 1) as user_role
                                FROM task_comments tc

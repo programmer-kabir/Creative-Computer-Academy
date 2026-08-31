@@ -19,13 +19,14 @@ try {
     // Select all active users, including admins and staff
     $role_filter = $admins_only ? "AND ur.role = 'admin'" : "";
     $query = "SELECT u.id, u.name, u.email, u.phone, u.profile_picture, u.last_activity,
-                     ur.role as role_name,
-                     d.name as department_name
+                     MIN(ur.role) as role_name,
+                     MAX(d.name) as department_name
               FROM users u
               INNER JOIN user_roles ur ON u.id = ur.user_id
               LEFT JOIN employees e ON u.id = e.user_id
               LEFT JOIN departments d ON e.department_id = d.id
               WHERE u.status = 'active' AND u.id != :exclude_id $role_filter
+              GROUP BY u.id
               ORDER BY u.name ASC";
               
     $stmt = $db->prepare($query);

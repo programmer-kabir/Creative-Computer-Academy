@@ -20,6 +20,7 @@ import { StatsGrid } from '../components/TaskOversight/StatsGrid';
 import { AgenticTaskModal } from '../components/TaskOversight/AgenticTaskModal';
 import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
+import TaskSkeletonGrid from '../components/TaskOversight/TaskSkeletonGrid';
 import { HiSparkles } from 'react-icons/hi';
 
 // Helper to strip HTML and decode entities for card previews
@@ -59,11 +60,36 @@ const EMPTY_TASK_FORM = {
 
 const TaskOversight = () => {
   const { currentUser } = useAuth();
-  const [tasks, setTasks] = useState([]);
-  const [staff, setStaff] = useState([]);
-  const [workloads, setWorkloads] = useState({});
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('cca_admin_tasks');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [staff, setStaff] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('cca_admin_staff');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [workloads, setWorkloads] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('cca_admin_workloads');
+      return cached ? JSON.parse(cached) : {};
+    } catch { return {}; }
+  });
+  const [departments, setDepartments] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('cca_admin_depts');
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('cca_admin_tasks');
+      return !cached;
+    } catch { return true; }
+  });
   const [actionLoading, setActionLoading] = useState(false);
 
   // Filters
@@ -327,37 +353,39 @@ const TaskOversight = () => {
       </div>
 
       {loading ? (
-        <div className="py-20 flex justify-center">
-          <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full" />
+        <div className="pt-4 pb-8">
+          <TaskSkeletonGrid count={8} />
         </div>
       ) : (
 
-        <div className="flex flex-col h-[calc(100vh-340px)] min-h-[480px]">
-          {/* Tabs Header */}
-          <div className="flex gap-2 overflow-x-auto pb-4 custom-scrollbar mb-4 border-b border-slate-200">
-            {Object.keys(renderColumns).map((colKey) => {
-              const isActive = activeTab === colKey || (!activeTab && colKey === Object.keys(renderColumns)[0]);
-              const style = getColStyle(colKey);
-              return (
-                <button
-                  key={colKey}
-                  onClick={() => setActiveTab(colKey)}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-t-xl transition-all font-bold text-sm uppercase tracking-wider whitespace-nowrap ${isActive
-                    ? `bg-white dark:bg-slate-800 text-${style.text.split('-')[1] || 'blue'}-600 border-t-2 border-l border-r border-slate-200 dark:border-slate-700/50 ${style.border} shadow-[0_-2px_10px_rgba(0,0,0,0.02)]`
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-700 dark:hover:text-slate-200 border-transparent border-t-2'
-                    }`}
-                >
-                  <span className={`w-2 h-2 rounded-full ${style.dot}`}></span>
-                  {colKey}
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-200' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
-                    {renderColumns[colKey].length}
-                  </span>
-                </button>
-              );
-            })}
+        <div className="flex flex-col">
+          {/* Sticky Tabs Navigation Bar */}
+          <div className="sticky -top-8 z-30 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md -mx-8 px-8 pt-4 pb-3 mb-6 border-b border-slate-200 dark:border-slate-800 shadow-sm transition-all">
+            <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+              {Object.keys(renderColumns).map((colKey) => {
+                const isActive = activeTab === colKey || (!activeTab && colKey === Object.keys(renderColumns)[0]);
+                const style = getColStyle(colKey);
+                return (
+                  <button
+                    key={colKey}
+                    onClick={() => setActiveTab(colKey)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-xl transition-all font-bold text-sm uppercase tracking-wider whitespace-nowrap shadow-sm ${isActive
+                      ? `bg-white dark:bg-slate-800 text-${style.text.split('-')[1] || 'blue'}-600 border ${style.border} dark:border-slate-700 shadow-md ring-2 ring-blue-500/10`
+                      : 'bg-white/60 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 border border-slate-200/60 dark:border-slate-700/60'
+                      }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${style.dot}`}></span>
+                    {colKey}
+                    <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-black' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400 font-bold'}`}>
+                      {renderColumns[colKey].length}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Active Tab Content */}
+          {/* Active Tab Content Area */}
           {(() => {
             const currentTab = activeTab && renderColumns[activeTab] ? activeTab : Object.keys(renderColumns)[0];
             if (!currentTab) return null;
@@ -366,11 +394,11 @@ const TaskOversight = () => {
             const style = getColStyle(currentTab);
 
             return (
-              <div className={`flex-1 overflow-y-auto custom-scrollbar bg-slate-50/50 dark:bg-slate-900/50 rounded-b-2xl rounded-tr-2xl p-6 border ${style.border} dark:border-slate-800`}>
+              <div className="min-h-[400px]">
                 {colTasks.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500">
+                  <div className="flex flex-col items-center justify-center py-24 bg-white dark:bg-slate-800/50 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500">
                     <FiList size={48} className="mb-4 opacity-20" />
-                    <p className="font-semibold">No tasks in this category.</p>
+                    <p className="font-semibold text-base">No tasks in this category.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -767,9 +795,15 @@ const TaskOversight = () => {
                         {(() => {
                           let totalSecs = parseInt(detailsTask.total_time_spent || 0, 10);
                           if (detailsTask.timer_status === 'Running' && detailsTask.session_start_time) {
-                            const start = new Date(detailsTask.session_start_time.replace(' ', 'T') + 'Z').getTime();
-                            const now = Date.now();
-                            totalSecs += Math.floor((now - start) / 1000);
+                            let cleanStr = String(detailsTask.session_start_time).trim().replace(' ', 'T');
+                            if (!cleanStr.includes('+') && !cleanStr.endsWith('Z')) {
+                              cleanStr += '+06:00';
+                            }
+                            const start = new Date(cleanStr).getTime();
+                            if (!isNaN(start)) {
+                              const now = Date.now();
+                              totalSecs += Math.max(0, Math.floor((now - start) / 1000));
+                            }
                           }
                           const hrs = Math.floor(totalSecs / 3600);
                           const mins = Math.floor((totalSecs % 3600) / 60);
@@ -1092,7 +1126,12 @@ const TaskOversight = () => {
                                 )}
 
                                 <span className={`text-xs text-slate-400 mt-1 font-medium ${isMe ? 'text-right' : ''}`}>
-                                  {new Date(c.created_at.includes('T') || c.created_at.includes('Z') ? c.created_at : c.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' })}
+                                  {(() => {
+                                    if (!c.created_at) return '';
+                                    let str = String(c.created_at).trim().replace(' ', 'T');
+                                    if (!str.includes('+') && !str.endsWith('Z')) str += '+06:00';
+                                    return new Date(str).toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' });
+                                  })()}
                                 </span>
                               </div>
                             </div>

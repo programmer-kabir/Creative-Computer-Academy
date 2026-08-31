@@ -1,13 +1,16 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
 import NotificationBell from '../components/NotificationBell';
 import ThemeToggle from '../components/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import Pusher from 'pusher-js';
 
 const AdminLayout = ({ children }) => {
   const { currentUser } = useAuth();
+  const location = useLocation();
+  const isMessagesPage = location.pathname === '/messages';
 
   React.useEffect(() => {
     if (!currentUser) return;
@@ -32,11 +35,12 @@ const AdminLayout = ({ children }) => {
   }, [currentUser]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex transition-colors">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors overflow-hidden">
+      <Toaster richColors position="top-right" />
       <AdminSidebar />
-      <div className="flex-1 ml-72 flex flex-col min-h-screen overflow-hidden">
+      <div className="flex-1 ml-72 flex flex-col h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-8 shadow-sm relative z-50 sticky top-0 transition-colors">
+        <header className="h-16 shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-8 shadow-sm relative z-50 transition-colors">
           <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">Administrator Console</h2>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -59,7 +63,7 @@ const AdminLayout = ({ children }) => {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-8 overflow-y-auto dark:bg-slate-900">
+        <main className={`flex-1 min-h-0 ${isMessagesPage ? 'overflow-hidden ' : 'overflow-y-auto custom-scrollbar p-8 '} dark:bg-slate-900`}>
           {children}
         </main>
       </div>

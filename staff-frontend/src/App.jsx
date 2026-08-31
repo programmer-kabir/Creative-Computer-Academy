@@ -14,6 +14,7 @@ const Leave = React.lazy(() => import('./pages/Leave'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
   return (
@@ -88,7 +89,8 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* Add more protected routes here later */}
+            {/* 404 Catch-All Route */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </Router>

@@ -1,3 +1,5 @@
+import React from 'react';
+
 const DeleteMessageModal = ({setMessageToDelete,handleDeleteMessage}) => {
     return (<div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="absolute inset-0" onClick={() => setMessageToDelete(null)} />

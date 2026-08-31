@@ -41,8 +41,8 @@ const Login = () => {
 
         <div className="relative z-10 text-center">
           {/* Logo mark */}
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-2xl shadow-indigo-900/50 mb-8 text-white font-black text-3xl">
-            CCA
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl shadow-indigo-900/50 mb-6 p-4">
+            <img src="/cca_logo.png" alt="CCA Logo" className="w-full h-full object-contain drop-shadow-lg" />
           </div>
           <h1 className="text-4xl font-black text-white tracking-tight leading-tight mb-4">
             Creative Computer<br />

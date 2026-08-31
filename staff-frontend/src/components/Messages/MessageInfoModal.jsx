@@ -33,7 +33,11 @@ const MessageInfoModal = ({ infoMessage, setInfoMessage }) => {
             <div key={r.user_id} className="flex justify-between items-center">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{r.name}</span>
               <span className="text-xs font-semibold text-blue-500 flex items-center gap-1">
-                <FiCheck /> {new Date(r.read_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <FiCheck /> {(() => {
+                  let str = String(r.read_at).trim().replace(' ', 'T');
+                  if (!str.includes('+') && !str.endsWith('Z')) str += '+06:00';
+                  return new Date(str).toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' });
+                })()}
               </span>
             </div>
           ))}
@@ -46,7 +50,11 @@ const MessageInfoModal = ({ infoMessage, setInfoMessage }) => {
             <div key={r.user_id} className="flex justify-between items-center">
               <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{r.name}</span>
               <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
-                <FiCheck /> {new Date(r.delivered_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                <FiCheck /> {(() => {
+                  let str = String(r.delivered_at).trim().replace(' ', 'T');
+                  if (!str.includes('+') && !str.endsWith('Z')) str += '+06:00';
+                  return new Date(str).toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' });
+                })()}
               </span>
             </div>
           ))}

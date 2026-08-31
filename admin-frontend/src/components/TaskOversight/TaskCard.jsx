@@ -3,7 +3,7 @@ import { FiCheckCircle, FiXCircle, FiClock, FiLink, FiEdit2, FiCalendar, FiCopy,
 import { HiSparkles } from 'react-icons/hi';
 import { extractJsonFromHtml } from './TaskDescriptionRenderer';
 
-export const TaskCard = ({ task, isReview, apiBase, onEdit, onDuplicate, onViewHistory, onOpenDetails, onStatusChange, onReject, actionLoading, innerRef, draggableProps, dragHandleProps, isDragging }) => {
+export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplicate, onViewHistory, onOpenDetails, onStatusChange, onReject, actionLoading, innerRef, draggableProps, dragHandleProps, isDragging }) => {
     const { jsonData, remainingHtml, hasRemainingText } = useMemo(() => extractJsonFromHtml(task.description || ''), [task.description]);
 
     return (
@@ -207,4 +207,4 @@ export const TaskCard = ({ task, isReview, apiBase, onEdit, onDuplicate, onViewH
         )}
     </div>
     );
-};
+});

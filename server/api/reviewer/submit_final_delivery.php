@@ -1,14 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 if (file_exists('../../config/R2Client.php')) {
     require_once '../../config/R2Client.php';
@@ -23,27 +14,7 @@ if (!$db) {
     exit();
 }
 
-// Auto-ensure task_final_deliveries table exists
-$createTableQuery = "CREATE TABLE IF NOT EXISTS `task_final_deliveries` (
-    `id` INT AUTO_INCREMENT PRIMARY KEY,
-    `task_id` INT NOT NULL UNIQUE,
-    `reviewer_id` INT NOT NULL,
-    `final_file_url` TEXT NOT NULL,
-    `final_image_url` TEXT DEFAULT NULL,
-    `fix_notes` TEXT DEFAULT NULL,
-    `is_stock_ready` TINYINT(1) DEFAULT 1,
-    `source_type` ENUM('reviewer_corrected', 'staff_verified') DEFAULT 'reviewer_corrected',
-    `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX (`task_id`),
-    INDEX (`reviewer_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
 
-try {
-    $db->exec($createTableQuery);
-} catch (Exception $e) {
-    error_log("Failed to create task_final_deliveries table: " . $e->getMessage());
-}
 
 $task_id = isset($_POST['task_id']) ? intval($_POST['task_id']) : null;
 $reviewer_id = isset($_POST['reviewer_id']) ? intval($_POST['reviewer_id']) : null;
@@ -195,6 +166,7 @@ try {
         SET status = 'Completed',
             reviewed_by = :reviewer_id,
             reviewed_at = NOW(),
+            updated_at = NOW(),
             rejected_by = NULL,
             rejected_at = NULL,
             rejection_reason = NULL

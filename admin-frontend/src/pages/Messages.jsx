@@ -77,7 +77,7 @@ const Messages = () => {
   } = useMessages();
 
   return (
-    <div className="relative h-[calc(100vh-6rem)] bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-700/80 overflow-hidden flex shadow-sm animate-in fade-in duration-300">
+    <div className="relative h-full w-full bg-slate-50 dark:bg-slate-900  border-slate-200 dark:border-slate-700/80 overflow-hidden flex shadow-sm animate-in fade-in duration-300">
 
       {/* 1. LEFT SIDEBAR: Chats list */}
       <ChatSidebar
@@ -160,6 +160,7 @@ const Messages = () => {
       {/* 3. NEW CHAT / GROUP MODAL */}
       {isNewChatModalOpen && (
         <NewChatModal
+          API_URL={API_URL}
           setIsNewChatModalOpen={setIsNewChatModalOpen}
           selectedContacts={selectedContacts}
           setSelectedContacts={setSelectedContacts}

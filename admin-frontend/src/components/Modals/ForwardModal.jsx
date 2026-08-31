@@ -1,7 +1,8 @@
-import { FiCheck, FiSearch, FiSend, FiX } from "react-icons/fi";
+import React from 'react';
+import { FiCheck, FiSearch, FiSend, FiX, FiUsers, FiUser } from "react-icons/fi";
 
 const ForwardModal = ({ setForwardModalOpen, handleForwardMessage, forwardSelectedTargets, toggleForwardTarget, forwardSearchQuery, setForwardSearchQuery, filteredForwardChats, filteredForwardContacts, contacts, API_URL, isForwarding }) => {
-    return (<diV>
+    return (<div>
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0" onClick={() => setForwardModalOpen(false)} />
             <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700/80 shadow-2xl relative flex flex-col animate-in zoom-in-95 duration-250 h-[80vh] max-h-[600px]">
@@ -106,6 +107,6 @@ const ForwardModal = ({ setForwardModalOpen, handleForwardMessage, forwardSelect
                 </div>
             </div>
         </div>
-    </diV>)
+    </div>)
 }
 export default ForwardModal;

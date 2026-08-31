@@ -1,4 +1,7 @@
-const NewChatModal = ({  setIsNewChatModalOpen, selectedContacts, setSelectedContacts, searchContact, setSearchContact, filteredContacts, toggleContactSelection, groupName, setGroupName, handleCreateChat }) => {
+import React from 'react';
+import { FiX, FiSearch, FiCheck } from 'react-icons/fi';
+
+const NewChatModal = ({  API_URL = '', setIsNewChatModalOpen, selectedContacts = [], setSelectedContacts, searchContact, setSearchContact, filteredContacts = [], toggleContactSelection, groupName, setGroupName, handleCreateChat }) => {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0" onClick={() => {

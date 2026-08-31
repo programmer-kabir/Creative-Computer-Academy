@@ -59,8 +59,8 @@ try {
 
     $creation_mode = !empty($data->creation_mode) ? $data->creation_mode : (!empty($data->blueprint_variants) || !empty($data->blueprint_data) ? 'agentic' : 'manual');
 
-    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, creation_mode, created_by, assigned_to, category, department_id, status, assign_date, deadline, deadline_time, submission_link) 
-              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :creation_mode, :created_by, :assigned_to, :category, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link)";
+    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, creation_mode, created_by, assigned_to, category, department_id, status, assign_date, deadline, deadline_time, submission_link, created_at, updated_at) 
+              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :creation_mode, :created_by, :assigned_to, :category, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link, NOW(), NOW())";
               
     $stmt = $db->prepare($query);
 

@@ -842,7 +842,12 @@ const TaskDetailsModal = (props) => {
                                 )}
 
                                 <span className={`text-[10px] text-slate-400 dark:text-white/30 mt-1 font-mono ${isMe ? 'text-right' : ''}`}>
-                                  {new Date(c.created_at.includes('T') || c.created_at.includes('Z') ? c.created_at : c.created_at.replace(' ', 'T') + 'Z').toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' })}
+                                  {(() => {
+                                    if (!c.created_at) return '';
+                                    let str = String(c.created_at).trim().replace(' ', 'T');
+                                    if (!str.includes('+') && !str.endsWith('Z')) str += '+06:00';
+                                    return new Date(str).toLocaleTimeString([], { timeZone: 'Asia/Dhaka', hour: '2-digit', minute: '2-digit' });
+                                  })()}
                                 </span>
                               </div>
                             </div>

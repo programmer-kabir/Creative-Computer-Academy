@@ -15,6 +15,7 @@ class Database {
             $this->conn = new PDO("mysql:host=" . $this->host . ";dbname=" . $this->db_name, $this->username, $this->password);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->conn->exec("set names utf8mb4");
+            $this->conn->exec("SET time_zone = '+06:00'");
         } catch(PDOException $exception) {
             echo "Database Connection Error: " . $exception->getMessage();
         }

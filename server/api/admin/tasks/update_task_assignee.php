@@ -38,7 +38,7 @@ try {
         $new_status = ($task_details && $task_details['status'] === 'Unassigned') ? 'To-Do' : ($task_details ? $task_details['status'] : 'To-Do');
     }
 
-    $query = "UPDATE tasks SET assigned_to = :assigned_to, status = :status WHERE id = :task_id";
+    $query = "UPDATE tasks SET assigned_to = :assigned_to, status = :status, updated_at = NOW() WHERE id = :task_id";
     $stmt = $db->prepare($query);
     $stmt->bindParam(':assigned_to', $employee_id);
     $stmt->bindParam(':status', $new_status);

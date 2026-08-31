@@ -37,11 +37,11 @@ const Login = () => {
         <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center glow-brand mb-4">
-              <FiShield size={30} className="text-white" />
+            <div className="w-20 h-20 rounded-2xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center p-3 shadow-xl mb-4">
+              <img src="/cca_logo.png" alt="Creative Computer Academy Logo" className="w-full h-full object-contain drop-shadow-md" />
             </div>
             <h1 className="text-2xl font-bold text-white">Review Portal</h1>
-            <p className="text-white/40 text-sm mt-1">Creative Computer Academy</p>
+            <p className="text-white/60 text-sm mt-1 font-medium">Creative Computer Academy</p>
           </div>
 
           {/* Error */}

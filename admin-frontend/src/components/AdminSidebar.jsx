@@ -91,8 +91,9 @@ const AdminSidebar = () => {
   return (
     <div className="w-72 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 h-screen flex flex-col shadow-xl border-r border-slate-200 dark:border-slate-800 fixed left-0 top-0 z-[100] transition-colors">
       {/* Brand */}
-      <div className="h-16 flex items-center px-6 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 transition-colors">
-        <h1 className="text-xl font-bold text-slate-800 dark:text-white tracking-wide">
+      <div className="h-16 flex items-center gap-3 px-6 bg-slate-50 dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 shrink-0 transition-colors">
+        <img src="/cca_logo.png" alt="CCA Logo" className="w-8 h-8 rounded-lg object-contain drop-shadow-xs shrink-0" />
+        <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-wide">
           CCA<span className="text-blue-600 dark:text-blue-500">Admin</span>
         </h1>
       </div>

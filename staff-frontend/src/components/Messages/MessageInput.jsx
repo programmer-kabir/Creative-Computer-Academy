@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiPaperclip, FiSend, FiX } from 'react-icons/fi';
+import { FiPaperclip, FiSend, FiX, FiSmile, FiCornerUpLeft, FiEdit2 } from 'react-icons/fi';
 
 const MessageInput = ({
   replyingTo,
@@ -16,90 +16,107 @@ const MessageInput = ({
   handleTyping,
   showEmojiPickerId,
   setShowEmojiPickerId,
-  emojis,
+  emojis = [],
   isSending,
 }) => {
   return (
-    <div className="p-4 md:p-6 bg-transparent relative z-10 w-full flex-shrink-0 pb-4 md:pb-8">
-      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl border border-slate-200/60 dark:border-slate-700/60 shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] rounded-[24px] p-2 mx-auto w-full relative flex flex-col">
+    <div className="p-3 sm:p-4 md:px-6 md:pb-5 bg-gradient-to-t from-slate-100/90 via-slate-100/50 to-transparent dark:from-slate-900/90 dark:via-slate-900/50 relative z-10 w-full flex-shrink-0">
+      <div className="bg-white/95 dark:bg-slate-850/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 rounded-2xl sm:rounded-3xl p-2 mx-auto w-full relative flex flex-col transition-all">
 
-        {/* Replying To Banner */}
+        {/* Replying Banner */}
         {replyingTo && (
-          <div className="mb-2 p-2 mx-2 mt-1 bg-indigo-50/50 dark:bg-indigo-900/20 rounded-xl border-l-4 border-indigo-500 flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-indigo-600 dark:text-indigo-400 font-bold mb-0.5">Replying to {replyingTo.sender_name}</span>
-              <span className="truncate opacity-70">{replyingTo.file_path ? 'Attachment 📎' : replyingTo.message}</span>
+          <div className="mb-2 p-2.5 mx-1.5 mt-1 bg-indigo-50/80 dark:bg-indigo-950/50 rounded-xl border-l-4 border-indigo-600 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 animate-in slide-in-from-bottom-2 duration-150">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <FiCornerUpLeft className="text-indigo-600 dark:text-indigo-400 flex-shrink-0" size={15} />
+              <div className="flex flex-col min-w-0">
+                <span className="text-indigo-600 dark:text-indigo-400 font-extrabold text-[11px]">
+                  Replying to {replyingTo.sender_name}
+                </span>
+                <span className="truncate opacity-80 text-[11px]">
+                  {replyingTo.file_path ? '📎 Attachment' : replyingTo.message}
+                </span>
+              </div>
             </div>
             <button
               onClick={() => setReplyingTo(null)}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg"
+              className="p-1 hover:bg-white/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
             >
-              <FiX size={16} />
+              <FiX size={15} />
             </button>
           </div>
         )}
 
-        {/* Editing Message Banner */}
+        {/* Editing Banner */}
         {editingMessage && (
-          <div className="mb-2 p-2 mx-2 mt-1 bg-amber-50/50 dark:bg-amber-900/20 rounded-xl border-l-4 border-amber-500 flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-amber-600 dark:text-amber-400 font-bold mb-0.5 flex items-center gap-1">Editing Message</span>
-              <span className="truncate opacity-70">{editingMessage.message}</span>
+          <div className="mb-2 p-2.5 mx-1.5 mt-1 bg-amber-50/80 dark:bg-amber-950/50 rounded-xl border-l-4 border-amber-500 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 animate-in slide-in-from-bottom-2 duration-150">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <FiEdit2 className="text-amber-600 dark:text-amber-400 flex-shrink-0" size={15} />
+              <div className="flex flex-col min-w-0">
+                <span className="text-amber-600 dark:text-amber-400 font-extrabold text-[11px]">
+                  Editing Message
+                </span>
+                <span className="truncate opacity-80 text-[11px]">{editingMessage.message}</span>
+              </div>
             </div>
             <button
-              onClick={() => { setEditingMessage(null); setTypedMessage(''); }}
-              className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg"
+              onClick={() => {
+                setEditingMessage(null);
+                setTypedMessage('');
+              }}
+              className="p-1 hover:bg-white/60 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
             >
-              <FiX size={16} />
+              <FiX size={15} />
             </button>
           </div>
         )}
 
-        {/* Selected File Label */}
+        {/* Selected File Banner */}
         {selectedFile && (
-          <div className="mb-2 p-2 mx-2 mt-1 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-700 flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-300">
-            <div className="flex items-center gap-2">
-              <FiPaperclip className="text-primary-600 dark:text-primary-400" />
-              <span className="truncate max-w-[200px]">{selectedFile.name}</span>
+          <div className="mb-2 p-2.5 mx-1.5 mt-1 bg-slate-100/90 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 animate-in slide-in-from-bottom-2 duration-150">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-500 flex items-center justify-center flex-shrink-0">
+                <FiPaperclip size={14} />
+              </div>
+              <span className="truncate max-w-[240px] font-bold text-xs">{selectedFile.name}</span>
             </div>
             <button
-              onClick={() => { setSelectedFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-              className="text-rose-500 hover:text-rose-700 p-1 hover:bg-rose-50 rounded-lg transition-all"
+              onClick={() => {
+                setSelectedFile(null);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+              }}
+              className="p-1 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-500 rounded-lg transition-colors"
             >
-              <FiX size={16} />
+              <FiX size={15} />
             </button>
           </div>
         )}
 
         {amIRemoved ? (
           <div className="w-full flex items-center justify-center py-3">
-            <div className="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border border-rose-100 dark:border-rose-900/50 rounded-xl px-4 py-3 text-sm font-bold w-full mx-2 text-center flex items-center justify-center gap-2">
-              <FiX size={18} /> You are no longer a participant in this group.
+            <div className="bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/60 rounded-2xl px-4 py-3 text-xs font-bold w-full mx-2 text-center flex items-center justify-center gap-2">
+              <FiX size={16} /> You are no longer a participant in this conversation.
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSendMessage} className="flex items-end gap-2 relative px-1 pb-1 pt-1">
+          <form onSubmit={handleSendMessage} className="flex items-end gap-2 relative p-1">
+            {/* File Upload Trigger */}
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => setSelectedFile(e.target.files[0] || null)}
+              ref={fileInputRef}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-10 h-10 mb-0.5 rounded-xl flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-all flex-shrink-0"
+              title="Attach File"
+            >
+              <FiPaperclip size={19} />
+            </button>
 
-            {/* File Upload Button */}
-            <div className="relative mb-1">
-              <input
-                type="file"
-                className="hidden"
-                onChange={(e) => setSelectedFile(e.target.files[0] || null)}
-                ref={fileInputRef}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/30 transition-colors"
-                title="Attach file"
-              >
-                <FiPaperclip size={20} />
-              </button>
-            </div>
-
-            {/* Text Input */}
-            <div className="flex-1 relative bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 focus-within:border-primary-500/50 focus-within:bg-white dark:focus-within:bg-slate-800 transition-all shadow-inner">
+            {/* Input & Emoji Container */}
+            <div className="flex-1 relative bg-slate-100/70 dark:bg-slate-900/60 rounded-xl sm:rounded-2xl border border-slate-200/70 dark:border-slate-700/60 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:bg-white dark:focus-within:bg-slate-900 transition-all">
               <textarea
                 value={typedMessage}
                 onChange={handleTyping}
@@ -109,30 +126,33 @@ const MessageInput = ({
                     handleSendMessage(e);
                   }
                 }}
-                placeholder="Type a message..."
-                className="w-full bg-transparent text-slate-700 dark:text-slate-200 py-3 pl-4 pr-10 focus:outline-none resize-none max-h-32 min-h-[44px] text-sm"
+                placeholder="Type your message... (Enter to send, Shift+Enter for newline)"
+                className="w-full bg-transparent text-slate-800 dark:text-slate-100 py-2.5 pl-3.5 pr-10 focus:outline-none resize-none max-h-32 min-h-[42px] text-xs sm:text-sm font-medium placeholder-slate-400"
                 rows="1"
               />
+
+              {/* Emoji Button */}
               <button
                 type="button"
                 onClick={() => setShowEmojiPickerId(showEmojiPickerId === 'main' ? null : 'main')}
-                className="absolute right-2 bottom-2 p-1.5 text-slate-400 hover:text-primary-500 transition-colors rounded-full hover:bg-slate-100 dark:hover:bg-slate-700"
+                className="absolute right-2.5 bottom-2 p-1 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                title="Emojis"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <FiSmile size={18} />
               </button>
 
-              {/* Main Emoji Picker Dropdown */}
+              {/* Emoji Floating Picker */}
               {showEmojiPickerId === 'main' && (
-                <div className="absolute right-0 bottom-full mb-2 bg-white dark:bg-slate-800 backdrop-blur-xl shadow-2xl rounded-2xl p-2 flex gap-1 z-50 border border-slate-100 dark:border-slate-700 animate-in zoom-in duration-200">
-                  {emojis.map(emoji => (
+                <div className="absolute right-0 bottom-full mb-3 bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl shadow-2xl rounded-2xl p-2.5 flex flex-wrap max-w-xs gap-1.5 z-50 border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-150">
+                  {emojis.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => {
-                        setTypedMessage(prev => prev + emoji);
+                        setTypedMessage((prev) => prev + emoji);
                         setShowEmojiPickerId(null);
                       }}
-                      className="w-8 h-8 flex items-center justify-center text-xl hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-transform hover:scale-125"
+                      className="w-8 h-8 flex items-center justify-center text-lg hover:bg-indigo-50 dark:hover:bg-indigo-950/50 rounded-xl transition-transform hover:scale-125"
                     >
                       {emoji}
                     </button>
@@ -145,12 +165,13 @@ const MessageInput = ({
             <button
               type="submit"
               disabled={isSending || (!typedMessage.trim() && !selectedFile)}
-              className="w-11 h-11 mb-0.5 rounded-full bg-primary-600 hover:bg-primary-700 text-white flex items-center justify-center transition-all flex-shrink-0 shadow-md hover:shadow-lg disabled:opacity-40 disabled:cursor-not-allowed hover:scale-105 active:scale-95 disabled:hover:scale-100"
+              className="w-10 h-10 mb-0.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white flex items-center justify-center transition-all duration-200 flex-shrink-0 shadow-md shadow-indigo-500/25 hover:shadow-lg hover:shadow-indigo-500/35 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none"
+              title="Send"
             >
               {isSending ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <FiSend size={18} className="ml-0.5 mt-0.5" />
+                <FiSend size={16} className="ml-0.5" />
               )}
             </button>
           </form>

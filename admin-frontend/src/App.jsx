@@ -18,6 +18,7 @@ import { Toaster } from 'sonner';
 
 import LeaveManagement from './pages/LeaveManagement';
 import DatabaseManager from './pages/DatabaseManager';
+import NotFound from './pages/NotFound';
 
 // Mock empty pages to avoid errors
 const Placeholder = ({ title }) => (
@@ -113,6 +114,9 @@ function App() {
               <AdminLayout><Settings /></AdminLayout>
             </ProtectedRoute>
           } />
+
+          {/* 404 Catch-All Route */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>

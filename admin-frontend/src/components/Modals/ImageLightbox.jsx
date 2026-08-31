@@ -1,3 +1,6 @@
+import React from 'react';
+import { FiX, FiDownload } from 'react-icons/fi';
+
 const ImageLightbox = ({ setLightboxImage, lightboxImage, API_URL }) => {
     return (<div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
         <button

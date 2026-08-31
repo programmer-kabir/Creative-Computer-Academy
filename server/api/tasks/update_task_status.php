@@ -86,13 +86,13 @@ if(isset($data->task_id) && isset($data->user_id) && isset($data->status)) {
             $submittedAtUpdate = ($status === 'In Review') ? ", submitted_at = NOW()" : "";
 
             if ($status === 'In Review' && $submission_link !== null) {
-                $update_query = "UPDATE tasks SET status = :status, submission_link = :link $timerUpdate $submittedAtUpdate WHERE id = :task_id";
+                $update_query = "UPDATE tasks SET status = :status, submission_link = :link, updated_at = NOW() $timerUpdate $submittedAtUpdate WHERE id = :task_id";
                 $update_stmt = $db->prepare($update_query);
                 $update_stmt->bindParam(':status', $status);
                 $update_stmt->bindParam(':link', $submission_link);
                 $update_stmt->bindParam(':task_id', $task_id);
             } else {
-                $update_query = "UPDATE tasks SET status = :status $timerUpdate $submittedAtUpdate WHERE id = :task_id";
+                $update_query = "UPDATE tasks SET status = :status, updated_at = NOW() $timerUpdate $submittedAtUpdate WHERE id = :task_id";
                 $update_stmt = $db->prepare($update_query);
                 $update_stmt->bindParam(':status', $status);
                 $update_stmt->bindParam(':task_id', $task_id);

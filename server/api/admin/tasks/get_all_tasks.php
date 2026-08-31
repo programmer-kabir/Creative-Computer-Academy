@@ -1,4 +1,9 @@
 <?php
+// Enable output buffering with compression if available
+if (!ob_start("ob_gzhandler")) {
+    ob_start();
+}
+
 require_once '../../../config/cors.php';
 require_once '../../../config/database.php';
 
@@ -6,6 +11,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 try {
+    // 1. Fetch main task list with assigned user details
     $query = "
         SELECT 
             t.*,
@@ -19,84 +25,93 @@ try {
 
     $stmt = $db->prepare($query);
     $stmt->execute();
+    $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $tasks = [];
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        // Fetch History
-        $history_query = "SELECT * FROM task_history WHERE task_id = :task_id ORDER BY created_at ASC";
-        $history_stmt = $db->prepare($history_query);
-        $history_stmt->execute([':task_id' => $row['id']]);
-        $row['history'] = $history_stmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($tasks)) {
+        // Collect all task IDs for batch fetching
+        $task_ids = array_column($tasks, 'id');
+        $in_placeholders = implode(',', array_fill(0, count($task_ids), '?'));
 
-        // Decode Checklists
-        if (!empty($row['checklists']) && is_string($row['checklists'])) {
-            $row['checklists'] = json_decode($row['checklists'], true);
-        } else {
-            $row['checklists'] = [];
-        }
-
-        // Fetch Submissions
+        // 2. Batch fetch all submissions in 1 single query
+        $subs_by_task = [];
         try {
-            $sub_query = "SELECT * FROM task_submissions WHERE task_id = :task_id ORDER BY id ASC";
-            $sub_stmt = $db->prepare($sub_query);
-            $sub_stmt->execute([':task_id' => $row['id']]);
-            $row['submissions'] = $sub_stmt->fetchAll(PDO::FETCH_ASSOC);
-        } catch (Exception $ex) {
-            $row['submissions'] = [];
-        }
+            $sub_stmt = $db->prepare("SELECT * FROM task_submissions WHERE task_id IN ($in_placeholders) ORDER BY id ASC");
+            $sub_stmt->execute($task_ids);
+            while ($sub = $sub_stmt->fetch(PDO::FETCH_ASSOC)) {
+                $subs_by_task[$sub['task_id']][] = $sub;
+            }
+        } catch (Exception $ex) {}
 
-        // Fetch Reviewer Final Stock Delivery
+        // 3. Batch fetch all final deliveries in 1 single query
+        $del_by_task = [];
         try {
-            $del_query = "SELECT tfd.*, u.name as reviewer_name 
-                          FROM task_final_deliveries tfd 
-                          LEFT JOIN users u ON tfd.reviewer_id = u.id 
-                          WHERE tfd.task_id = :task_id LIMIT 1";
-            $del_stmt = $db->prepare($del_query);
-            $del_stmt->execute([':task_id' => $row['id']]);
-            $row['final_delivery'] = $del_stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        } catch (Exception $ex) {
-            $row['final_delivery'] = null;
-        }
+            $del_stmt = $db->prepare("
+                SELECT tfd.*, u.name as reviewer_name 
+                FROM task_final_deliveries tfd 
+                LEFT JOIN users u ON tfd.reviewer_id = u.id 
+                WHERE tfd.task_id IN ($in_placeholders)
+            ");
+            $del_stmt->execute($task_ids);
+            while ($del = $del_stmt->fetch(PDO::FETCH_ASSOC)) {
+                $del_by_task[$del['task_id']] = $del;
+            }
+        } catch (Exception $ex) {}
 
-        // Decode blueprint_data
-        if (!empty($row['blueprint_data'])) {
-            $row['blueprint_data'] = is_string($row['blueprint_data']) ? json_decode($row['blueprint_data'], true) : $row['blueprint_data'];
-        } else {
-            $row['blueprint_data'] = null;
-        }
-
-        // Fetch blueprint variants if any
+        // 4. Batch fetch all blueprint variants in 1 single query
+        $bv_by_task = [];
         try {
-            $bv_stmt = $db->prepare("SELECT id, variant_name, ai_model_used, is_active, blueprint_json, created_at FROM task_blueprint_variants WHERE task_id = :task_id ORDER BY is_active DESC, id ASC");
-            $bv_stmt->execute([':task_id' => $row['id']]);
-            $b_variants = $bv_stmt->fetchAll(PDO::FETCH_ASSOC);
-            $row['blueprint_variants'] = array_map(function($bv) {
+            $bv_stmt = $db->prepare("
+                SELECT id, task_id, variant_name, ai_model_used, is_active, blueprint_json, created_at 
+                FROM task_blueprint_variants 
+                WHERE task_id IN ($in_placeholders) 
+                ORDER BY is_active DESC, id ASC
+            ");
+            $bv_stmt->execute($task_ids);
+            while ($bv = $bv_stmt->fetch(PDO::FETCH_ASSOC)) {
                 $bv['blueprint_data'] = !empty($bv['blueprint_json']) ? json_decode($bv['blueprint_json'], true) : null;
                 $bv['is_active'] = (int)$bv['is_active'] === 1;
-                return $bv;
-            }, $b_variants);
-        } catch (Exception $ex) {
-            $row['blueprint_variants'] = [];
-        }
+                $bv_by_task[$bv['task_id']][] = $bv;
+            }
+        } catch (Exception $ex) {}
 
-        // Fetch task review/rating if available
+        // 5. Batch fetch all reviews/ratings in 1 single query
+        $rev_by_task = [];
         try {
-            $tr_stmt = $db->prepare("SELECT tr.rating, tr.feedback_notes, tr.tags, tr.created_at as reviewed_at, u.name as reviewer_name 
+            $tr_stmt = $db->prepare("
+                SELECT tr.task_id, tr.rating, tr.feedback_notes, tr.tags, tr.created_at as reviewed_at, u.name as reviewer_name 
                 FROM task_reviews tr 
                 LEFT JOIN users u ON tr.reviewer_id = u.id 
-                WHERE tr.task_id = :task_id LIMIT 1");
-            $tr_stmt->execute([':task_id' => $row['id']]);
-            if ($rev = $tr_stmt->fetch(PDO::FETCH_ASSOC)) {
+                WHERE tr.task_id IN ($in_placeholders)
+            ");
+            $tr_stmt->execute($task_ids);
+            while ($rev = $tr_stmt->fetch(PDO::FETCH_ASSOC)) {
                 $rev['tags'] = !empty($rev['tags']) && is_string($rev['tags']) ? json_decode($rev['tags'], true) : [];
-                $row['review'] = $rev;
-            } else {
-                $row['review'] = null;
+                $rev_by_task[$rev['task_id']] = $rev;
             }
-        } catch (Exception $ex) {
-            $row['review'] = null;
-        }
+        } catch (Exception $ex) {}
 
-        $tasks[] = $row;
+        // 6. Fast O(1) in-memory stitching
+        foreach ($tasks as &$row) {
+            $t_id = $row['id'];
+            $row['submissions'] = $subs_by_task[$t_id] ?? [];
+            $row['final_delivery'] = $del_by_task[$t_id] ?? null;
+            $row['blueprint_variants'] = $bv_by_task[$t_id] ?? [];
+            $row['review'] = $rev_by_task[$t_id] ?? null;
+
+            // Decode Checklists
+            if (!empty($row['checklists']) && is_string($row['checklists'])) {
+                $row['checklists'] = json_decode($row['checklists'], true);
+            } else {
+                $row['checklists'] = is_array($row['checklists']) ? $row['checklists'] : [];
+            }
+
+            // Decode blueprint_data
+            if (!empty($row['blueprint_data'])) {
+                $row['blueprint_data'] = is_string($row['blueprint_data']) ? json_decode($row['blueprint_data'], true) : $row['blueprint_data'];
+            } else {
+                $row['blueprint_data'] = null;
+            }
+        }
     }
 
     echo json_encode([

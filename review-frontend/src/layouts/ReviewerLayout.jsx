@@ -13,15 +13,15 @@ import Pusher from 'pusher-js';
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const navItems = [
-  { to: '/',           icon: FiHome,          label: 'Dashboard' },
-  { to: '/pending',    icon: FiClock,         label: 'Pending Reviews' },
-  { to: '/completed',  icon: FiCheckCircle,   label: 'Completed Reviews' },
-  { to: '/rejected',   icon: FiAlertOctagon,  label: 'Rejected' },
-  { to: '/reports',    icon: FiPieChart,      label: 'Reports' },
-  { to: '/team',       icon: FiUsers,         label: 'My Team' },
-  { to: '/leaderboard',icon: FiAward,         label: 'Leaderboard' },
-  { to: '/profile',    icon: FiUser,          label: 'Profile' },
-  { to: '/settings',   icon: FiSettings,      label: 'Settings' },
+  { to: '/',            icon: FiHome,          label: 'Dashboard' },
+  { to: '/pending',     icon: FiClock,         label: 'Pending Reviews' },
+  { to: '/completed',   icon: FiCheckCircle,   label: 'Completed Reviews' },
+  { to: '/rejected',    icon: FiAlertOctagon,  label: 'Rejected' },
+  { to: '/reports',     icon: FiPieChart,      label: 'Reports' },
+  { to: '/team',        icon: FiUsers,         label: 'My Team' },
+  { to: '/leaderboard', icon: FiAward,         label: 'Leaderboard' },
+  { to: '/profile',     icon: FiUser,          label: 'Profile' },
+  { to: '/settings',    icon: FiSettings,      label: 'Settings' },
 ];
 
 const ReviewerLayout = ({ children }) => {
@@ -32,14 +32,14 @@ const ReviewerLayout = ({ children }) => {
 
   React.useEffect(() => {
     if (!currentUser) return;
-    
+
     const pusher = new Pusher('82a63711fed4b73bd74d', {
       cluster: 'ap2'
     });
 
     const channel = pusher.subscribe(`user-${currentUser.id}`);
-    
-    channel.bind('new-notification', function(data) {
+
+    channel.bind('new-notification', function (data) {
       toast.info(data.title, {
         description: data.message,
       });
@@ -64,14 +64,14 @@ const ReviewerLayout = ({ children }) => {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="px-6 py-6 border-b border-white/5">
+      <div className="px-6 py-5 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center glow-brand">
-            <FiShield className="text-white" size={18} />
+          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center p-1.5 shadow-md shrink-0">
+            <img src="/cca_logo.png" alt="CCA Logo" className="w-full h-full object-contain drop-shadow-xs" />
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-none">CCA Review</p>
-            <p className="text-white/40 text-xs mt-0.5">Work Portal</p>
+            <p className="text-white font-bold text-sm leading-tight">CCA Review</p>
+            <p className="text-white/40 text-xs font-medium">Work Portal</p>
           </div>
         </div>
       </div>
@@ -88,10 +88,10 @@ const ReviewerLayout = ({ children }) => {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 transform group ${isActive
                   ? isRejected
-                    ? 'bg-red-600/20 text-red-400 border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.12)]'
+                    ? 'bg-red-600/20 text-red-500 font-semibold border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
                     : 'bg-brand-600/20 text-brand-400 border border-brand-500/20 shadow-[0_0_15px_rgba(var(--brand-500-rgb),0.15)]'
                   : isRejected
-                    ? 'text-red-400/50 hover:text-red-400 hover:bg-red-500/5 hover:translate-x-1'
+                    ? 'text-red-500 font-semibold hover:text-red-400 hover:bg-red-500/10 hover:translate-x-1'
                     : 'text-white/50 hover:text-white hover:bg-white/5 hover:translate-x-1'
                 }`
               }
@@ -124,7 +124,7 @@ const ReviewerLayout = ({ children }) => {
         </div>
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-red-400/80 hover:bg-red-500/10 hover:text-red-400 transition-all"
+          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-500/15 hover:text-red-400 transition-all cursor-pointer"
         >
           <FiLogOut size={16} /> Logout
         </button>
@@ -135,7 +135,7 @@ const ReviewerLayout = ({ children }) => {
   return (
     <div className="relative w-full flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden font-sans">
       <Toaster richColors position="top-right" />
-      
+
       {/* Background glowing orbs */}
       <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-brand-600/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[150px] pointer-events-none" />
@@ -161,7 +161,7 @@ const ReviewerLayout = ({ children }) => {
         {/* Top Header */}
         <div className="flex items-center justify-between px-4 lg:px-6 py-3.5 bg-dark-900/60 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-50 shadow-sm">
           <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/60 hover:text-white transition-colors">
+            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/60 hover:text-white transition-colors cursor-pointer">
               <FiMenu size={22} />
             </button>
             <span className="text-white font-bold text-sm tracking-wide">CCA Review Portal</span>

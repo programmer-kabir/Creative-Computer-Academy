@@ -67,7 +67,8 @@ const Sidebar = () => {
   return (
     <div className="w-64 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 h-screen flex flex-col shadow-xl border-r border-slate-200 dark:border-slate-800 transition-colors duration-300 z-50">
       {/* Logo/Brand Area */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+      <div className="h-16 flex items-center gap-3 px-6 border-b border-slate-200 dark:border-slate-800 transition-colors duration-300">
+        <img src="/cca_logo.png" alt="CCA Logo" className="w-8 h-8 rounded-lg object-contain drop-shadow-xs shrink-0" />
         <h1 className="text-xl font-black text-slate-800 dark:text-white tracking-wide">CCA<span className="text-primary-600 dark:text-primary-400 drop-shadow-sm">Staff</span></h1>
       </div>
 

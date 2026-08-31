@@ -10,6 +10,7 @@ import TaskTabs from './Tasks/TaskTabs';
 import TaskDetailsModal from './Tasks/TaskDetailsModal';
 import ClaimTaskModal from './Tasks/ClaimTaskModal';
 import CreateSelfTaskModal from './Tasks/CreateSelfTaskModal';
+import StaffTaskSkeletonGrid from '../components/TaskSkeletonGrid';
 import { useLocation } from 'react-router-dom';
 
 const stripHtml = (html) => {
@@ -352,8 +353,11 @@ const Tasks = () => {
     if (!task) return '0h 0m 0s';
     let totalSecs = parseInt(task.total_time_spent || 0, 10);
     if (task.status === 'In Progress' && task.timer_status === 'Running' && task.session_start_time) {
-      const dateStr = task.session_start_time.replace(' ', 'T');
-      const start = new Date(dateStr).getTime();
+      let cleanStr = String(task.session_start_time).trim().replace(' ', 'T');
+      if (!cleanStr.includes('+') && !cleanStr.endsWith('Z')) {
+        cleanStr += '+06:00';
+      }
+      const start = new Date(cleanStr).getTime();
       if (!isNaN(start)) {
         const now = Date.now();
         const diff = Math.max(0, Math.floor((now - start) / 1000));
@@ -700,9 +704,13 @@ const Tasks = () => {
     'Completed': filteredTasks.filter(t => t.status === 'Completed'),
   };
 
-  if (loading) return <div className="p-8 text-center text-slate-500 flex items-center justify-center min-h-[50vh]">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-  </div>;
+  if (loading) {
+    return (
+      <div className="p-2 md:p-6 min-h-[60vh]">
+        <StaffTaskSkeletonGrid count={8} />
+      </div>
+    );
+  }
 
   return (
     <div className="pb-10 relative">

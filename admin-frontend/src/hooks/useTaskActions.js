@@ -156,7 +156,10 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
     }), [apiBase]);
 
 
-    const fetchTasksAndStaff = async () => {
+    const fetchTasksAndStaff = async (isSilent = false) => {
+        if (!isSilent) {
+            setLoading(prev => (tasks && tasks.length > 0 ? false : true));
+        }
         try {
             const [tasksRes, staffRes, deptRes, workloadRes] = await Promise.all([
                 axios.get(`${apiBase}api/admin/tasks/get_all_tasks.php`),
@@ -164,10 +167,22 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 axios.get(`${apiBase}api/admin/departments/get_departments.php`),
                 axios.get(`${apiBase}api/admin/tasks/get_workload.php`).catch(() => ({ data: { status: 'error' } }))
             ]);
-            if (tasksRes.data.status === 'success') setTasks(tasksRes.data.data);
-            if (staffRes.data.status === 'success') setStaff(staffRes.data.data);
-            if (deptRes.data.status === 'success') setDepartments(deptRes.data.data);
-            if (workloadRes.data.status === 'success') setWorkloads(workloadRes.data.data);
+            if (tasksRes.data.status === 'success') {
+                setTasks(tasksRes.data.data);
+                try { sessionStorage.setItem('cca_admin_tasks', JSON.stringify(tasksRes.data.data)); } catch (_) {}
+            }
+            if (staffRes.data.status === 'success') {
+                setStaff(staffRes.data.data);
+                try { sessionStorage.setItem('cca_admin_staff', JSON.stringify(staffRes.data.data)); } catch (_) {}
+            }
+            if (deptRes.data.status === 'success') {
+                setDepartments(deptRes.data.data);
+                try { sessionStorage.setItem('cca_admin_depts', JSON.stringify(deptRes.data.data)); } catch (_) {}
+            }
+            if (workloadRes.data.status === 'success') {
+                setWorkloads(workloadRes.data.data);
+                try { sessionStorage.setItem('cca_admin_workloads', JSON.stringify(workloadRes.data.data)); } catch (_) {}
+            }
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
@@ -319,23 +334,30 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
 
     const handleDeleteTask = async () => {
         if (!taskToDelete) return;
+        const targetId = taskToDelete.id || taskToDelete.task_id;
+        const prevTasks = [...tasks];
 
+        // Optimistic UI removal
+        setTasks(prev => prev.filter(t => (t.id || t.task_id) !== targetId));
+        setTaskToDelete(null);
+        setIsDetailsOpen(false);
+        setDetailsTask(null);
+        setIsEditOpen(false);
+        setEditTask(null);
         setActionLoading(true);
+
         try {
-            const taskId = taskToDelete.id || taskToDelete.task_id;
-            const res = await axios.post(`${apiBase}api/admin/tasks/delete_task.php`, { task_id: taskId });
+            const res = await axios.post(`${apiBase}api/admin/tasks/delete_task.php`, { task_id: targetId });
             if (res.data.status === 'success') {
-                await fetchTasksAndStaff();
-                setTaskToDelete(null);
-                setIsDetailsOpen(false);
-                setDetailsTask(null);
-                setIsEditOpen(false);
-                setEditTask(null);
+                toast.success('Task deleted successfully');
+                fetchTasksAndStaff(true);
             } else {
-                alert(res.data.message);
+                setTasks(prevTasks);
+                toast.error(res.data.message || 'Failed to delete task');
             }
         } catch (error) {
-            alert(`Failed to delete task: ${error.response?.data?.message || error.message}`);
+            setTasks(prevTasks);
+            toast.error(`Failed to delete task: ${error.response?.data?.message || error.message}`);
         } finally {
             setActionLoading(false);
         }
@@ -377,7 +399,11 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
     };
 
     const handleStatusChange = async (taskId, newStatus) => {
-        setActionLoading(true);
+        const prevTasks = [...tasks];
+        // Optimistic instant state update
+        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+        toast.success(`Status updated to ${newStatus}`);
+
         try {
             const res = await axios.post(`${apiBase}api/admin/tasks/update_task_status.php`, {
                 task_id: taskId,
@@ -385,14 +411,14 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 changed_by: currentUser?.id ?? null,
             });
             if (res.data.status === 'success') {
-                await fetchTasksAndStaff();
+                fetchTasksAndStaff(true);
             } else {
-                alert(res.data.message);
+                setTasks(prevTasks);
+                toast.error(res.data.message || 'Failed to update task.');
             }
         } catch {
-            alert('Failed to update task.');
-        } finally {
-            setActionLoading(false);
+            setTasks(prevTasks);
+            toast.error('Failed to update task.');
         }
     };
 
@@ -529,25 +555,34 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
 
     const submitReject = async () => {
         if (!rejectReason.trim()) {
-            alert('Please provide a reason for rejection.');
+            toast.error('Please provide a reason for rejection.');
             return;
         }
+        const currentReject = rejectTask;
+        const prevTasks = [...tasks];
+
+        // Optimistic UI update
+        setTasks(prev => prev.map(t => (t.id === currentReject.id ? { ...t, status: 'Rejected' } : t)));
+        setRejectTask(null);
+        toast.success('Task marked as Rejected');
         setActionLoading(true);
+
         try {
             const res = await axios.post(`${apiBase}api/admin/tasks/update_task_status.php`, {
-                task_id: rejectTask.id,
-                status: 'Rejected', // Mark as Rejected
+                task_id: currentReject.id,
+                status: 'Rejected',
                 admin_note: rejectReason,
                 changed_by: currentUser?.id ?? null,
             });
             if (res.data.status === 'success') {
-                setRejectTask(null);
-                await fetchTasksAndStaff();
+                fetchTasksAndStaff(true);
             } else {
-                alert(res.data.message);
+                setTasks(prevTasks);
+                toast.error(res.data.message || 'Failed to reject task.');
             }
         } catch {
-            alert('Failed to reject task.');
+            setTasks(prevTasks);
+            toast.error('Failed to reject task.');
         } finally {
             setActionLoading(false);
         }

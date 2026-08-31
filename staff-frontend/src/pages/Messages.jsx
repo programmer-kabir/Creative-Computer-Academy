@@ -178,7 +178,7 @@ const Messages = () => {
 
 
   return (
-    <div className="flex h-[calc(100vh-80px)] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-950 overflow-hidden relative">
+    <div className="flex h-full w-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-950 overflow-hidden relative">
 
       {/* 1. LEFT SIDEBAR: Chat List */}
       <ChatSidebar
@@ -199,7 +199,7 @@ const Messages = () => {
       />
 
       {/* 2. RIGHT CHAT WINDOW: Message History */}
-      <div className="flex-1 bg-transparent flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 bg-transparent flex flex-col h-full overflow-hidden relative min-w-0">
         {activeChat ? (
           <>
             {/* Chat Header */}
@@ -213,7 +213,7 @@ const Messages = () => {
             />
 
             {/* Messages logs area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-[2px] custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-[2px] custom-scrollbar min-h-0">
               {loadingMessages ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <div className="animate-spin h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full"></div>

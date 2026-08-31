@@ -44,12 +44,12 @@ const Login = () => {
         <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 border-t-0 rounded-b-3xl p-10 shadow-2xl shadow-black/50">
 
           {/* Header */}
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 shadow-xl shadow-blue-900/40 mb-5">
-              <FiShield className="text-white" size={28} />
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xl p-3 mb-4">
+              <img src="/cca_logo.png" alt="Creative Computer Academy Logo" className="w-full h-full object-contain drop-shadow-md" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight mb-1">Admin Console</h1>
-            <p className="text-slate-500 text-sm font-medium">
+            <p className="text-slate-400 text-sm font-medium">
               Creative Computer Academy — Restricted Access
             </p>
           </div>

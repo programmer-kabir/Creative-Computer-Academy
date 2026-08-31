@@ -103,7 +103,8 @@ try {
                       status = IF(status = 'Unassigned', 'To-Do', status),
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
-                      submission_link = :submission_link
+                      submission_link = :submission_link,
+                      updated_at = NOW()
                   WHERE id = :task_id";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':assigned_to', $employee_id);
@@ -115,7 +116,8 @@ try {
                       category = :category, department_id = :department_id,
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
-                      submission_link = :submission_link
+                      submission_link = :submission_link,
+                      updated_at = NOW()
                   WHERE id = :task_id";
         $stmt = $db->prepare($query);
     }

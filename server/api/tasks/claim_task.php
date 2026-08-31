@@ -42,7 +42,7 @@ try {
     }
 
     // 3. Update the task
-    $update_query = "UPDATE tasks SET assigned_to = :assigned_to, status = 'To-Do', assign_date = CURDATE() WHERE id = :task_id";
+    $update_query = "UPDATE tasks SET assigned_to = :assigned_to, status = 'To-Do', assign_date = CURDATE(), updated_at = NOW() WHERE id = :task_id";
     $update_stmt = $db->prepare($update_query);
     $update_stmt->execute([
         ':assigned_to' => $employee_id,

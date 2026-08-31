@@ -13,6 +13,7 @@ import RejectedReviews from './pages/RejectedReviews';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -80,6 +81,9 @@ function App() {
               <ReviewerLayout><Reports /></ReviewerLayout>
             </ProtectedRoute>
           } />
+
+          {/* 404 Catch-All Route */}
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </Router>
     </AuthProvider>
