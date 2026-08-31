@@ -6,7 +6,7 @@ import {
   FiCalendar, FiX, FiInfo, FiLink, FiDownload,
   FiSend, FiMessageSquare, FiTrash2, FiEdit2, FiImage, FiFlag,
   FiPauseCircle, FiCheckSquare, FiCode, FiExternalLink, FiUploadCloud,
-  FiPackage, FiFileText, FiAlertTriangle, FiAlertCircle
+  FiPackage, FiFileText, FiAlertTriangle, FiAlertCircle, FiStar, FiAward
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import TaskFileUploader from '../../components/TaskFileUploader';
@@ -105,7 +105,7 @@ const TaskDetailsModal = (props) => {
                         <HiSparkles size={13} className="text-amber-400" /> Self-Initiated
                       </span>
                     )}
-                    {(selectedTask?.creation_mode === 'agentic' || Boolean(blueprintData)) && (
+                    {(selectedTask?.creation_mode === 'agentic' || Boolean(blueprintData) || (Array.isArray(selectedTask?.blueprint_variants) && selectedTask.blueprint_variants.length > 0)) && (
                       <span className="px-2.5 py-0.5 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1 font-mono">
                         <HiSparkles size={13} className="text-amber-400" /> AI Blueprint
                       </span>
@@ -217,13 +217,13 @@ const TaskDetailsModal = (props) => {
                         type="button"
                         onClick={() => setTaskTab('reviewer_final')}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${taskTab === 'reviewer_final'
-                          ? 'bg-gradient-to-r from-blue-600/20 to-indigo-600/20 dark:from-blue-600/30 dark:to-indigo-600/30 text-blue-700 dark:text-white border border-blue-500/50 shadow-md shadow-blue-500/10'
-                          : 'text-blue-600/70 dark:text-blue-300/70 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-transparent'
+                          ? 'bg-gradient-to-r from-blue-600/15 to-indigo-600/15 dark:from-blue-600/30 dark:to-indigo-600/30 text-blue-700 dark:text-white border border-blue-500/40 dark:border-blue-500/50 shadow-sm shadow-blue-500/10'
+                          : 'text-blue-600 dark:text-blue-300/70 hover:text-blue-700 dark:hover:text-white hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-transparent'
                           }`}
                       >
                         <HiSparkles size={16} className="text-amber-500 dark:text-amber-400" />
                         <span>Reviewer Final Version</span>
-                        <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-[9px] font-black uppercase">
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/15 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[9px] font-black uppercase">
                           Stock-Ready
                         </span>
                       </button>
@@ -234,23 +234,23 @@ const TaskDetailsModal = (props) => {
                 {/* ── TAB 1: REVIEWER FINAL VERSION ── */}
                 {taskTab === 'reviewer_final' && selectedTask.final_delivery ? (
                   <div className="space-y-6 animate-in fade-in duration-200">
-                    <div className="p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-blue-950/40 via-indigo-950/30 to-slate-900 border border-blue-500/30 space-y-5 shadow-xl">
-                      <div className="flex items-center justify-between flex-wrap gap-4 border-b border-white/10 pb-4">
+                    <div className="p-6 sm:p-7 rounded-3xl bg-slate-50 dark:bg-gradient-to-br dark:from-blue-950/40 dark:via-indigo-950/30 dark:to-slate-900 border border-slate-200 dark:border-blue-500/30 space-y-5 shadow-sm dark:shadow-xl">
+                      <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200 dark:border-white/10 pb-4">
                         <div className="flex items-center gap-3.5">
-                          <div className="w-11 h-11 rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-inner">
-                            <HiSparkles size={24} className="text-amber-400" />
+                          <div className="w-11 h-11 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
+                            <HiSparkles size={24} className="text-amber-500 dark:text-amber-400" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
-                              <h3 className="text-white font-black text-base tracking-wide">
+                              <h3 className="text-slate-900 dark:text-white font-black text-base tracking-wide">
                                 Reviewer Corrected Stock Version
                               </h3>
-                              <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                              <span className="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-500/30 text-[10px] font-bold">
                                 Stock-Ready
                               </span>
                             </div>
-                            <p className="text-white/50 text-xs mt-0.5">
-                              Approved & Verified by <strong className="text-blue-300">{selectedTask.final_delivery.reviewer_name || 'Reviewer'}</strong>
+                            <p className="text-slate-500 dark:text-white/50 text-xs mt-0.5">
+                              Approved & Verified by <strong className="text-blue-600 dark:text-blue-300">{selectedTask.final_delivery.reviewer_name || 'Reviewer'}</strong>
                             </p>
                           </div>
                         </div>
@@ -266,9 +266,9 @@ const TaskDetailsModal = (props) => {
                                   : `${API_BASE}${selectedTask.final_delivery.final_image_url}`;
                                 downloadFile(url, `${selectedTask.id}_final_preview.jpg`);
                               }}
-                              className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-2 border border-white/10 shadow-sm"
+                              className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold transition-all flex items-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
                             >
-                              <FiDownload size={14} /> Download Preview JPG
+                              <FiDownload size={14} className="text-slate-500 dark:text-white/70" /> Download Preview JPG
                             </button>
                           )}
 
@@ -282,7 +282,7 @@ const TaskDetailsModal = (props) => {
                                   : `${API_BASE}${selectedTask.final_delivery.final_file_url}`;
                                 downloadFile(url);
                               }}
-                              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-lg shadow-blue-950/50"
+                              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-blue-500/20"
                             >
                               <FiDownload size={15} /> Download Final PSD
                             </button>
@@ -292,8 +292,8 @@ const TaskDetailsModal = (props) => {
 
                       {/* Reviewer Fix Notes */}
                       {selectedTask.final_delivery.fix_notes && (
-                        <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 text-xs text-white/80 space-y-1">
-                          <span className="text-white/40 font-bold uppercase text-[10px] block tracking-wider">
+                        <div className="p-4 rounded-2xl bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 text-xs text-slate-700 dark:text-white/80 space-y-1">
+                          <span className="text-slate-400 dark:text-white/40 font-bold uppercase text-[10px] block tracking-wider">
                             Correction Remarks & Guidance:
                           </span>
                           <p className="leading-relaxed whitespace-pre-wrap">{selectedTask.final_delivery.fix_notes}</p>
@@ -304,7 +304,7 @@ const TaskDetailsModal = (props) => {
                       {selectedTask.final_delivery.final_image_url && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <p className="text-white/40 font-bold uppercase text-[10px] tracking-wider">
+                            <p className="text-slate-500 dark:text-white/40 font-bold uppercase text-[10px] tracking-wider">
                               Final Approved Preview Image (Click to Zoom)
                             </p>
                             <button
@@ -316,13 +316,13 @@ const TaskDetailsModal = (props) => {
                                   : `${API_BASE}${selectedTask.final_delivery.final_image_url}`;
                                 downloadFile(url, `${selectedTask.id}_final_preview.jpg`);
                               }}
-                              className="text-blue-400 hover:text-blue-300 text-xs font-bold flex items-center gap-1 hover:underline"
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs font-bold flex items-center gap-1 hover:underline"
                             >
                               <FiDownload size={12} /> Download Image
                             </button>
                           </div>
 
-                          <div className="max-w-md rounded-2xl overflow-hidden border border-blue-500/30 bg-black/40 shadow-lg group relative cursor-pointer"
+                          <div className="max-w-md rounded-2xl overflow-hidden border border-slate-200 dark:border-blue-500/30 bg-white dark:bg-black/40 shadow-sm dark:shadow-md group relative cursor-pointer"
                             onClick={() => setLightboxImage(selectedTask.final_delivery.final_image_url.startsWith('http') ? selectedTask.final_delivery.final_image_url : `${API_BASE}${selectedTask.final_delivery.final_image_url}`)}>
                             <img
                               src={selectedTask.final_delivery.final_image_url.startsWith('http') ? selectedTask.final_delivery.final_image_url : `${API_BASE}${selectedTask.final_delivery.final_image_url}`}
@@ -353,6 +353,77 @@ const TaskDetailsModal = (props) => {
                 ) : (
                   /* ── TAB 2: TASK BRIEF & INSTRUCTIONS ── */
                   <div className="space-y-6 animate-in fade-in duration-200">
+
+                    {/* ⭐ Review Evaluation Card (for Completed Tasks) */}
+                    {selectedTask.status === 'Completed' && (selectedTask.review || selectedTask.rating || selectedTask.feedback_notes) && (
+                      (() => {
+                        const rev = selectedTask.review || {
+                          rating: selectedTask.rating,
+                          feedback_notes: selectedTask.feedback_notes,
+                          tags: selectedTask.tags || selectedTask.review_tags || [],
+                          reviewer_name: selectedTask.reviewer_name || selectedTask.reviewed_by_name || 'Reviewer'
+                        };
+                        const ratingVal = rev.rating ? Number(rev.rating) : 5;
+                        return (
+                          <div className="p-5 rounded-3xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 dark:border-amber-500/30 space-y-3 shadow-sm dark:shadow-md">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-500 flex items-center justify-center font-bold">
+                                  <FiAward size={18} />
+                                </div>
+                                <div>
+                                  <h4 className="text-xs font-black text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                                    Official Review Evaluation
+                                  </h4>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                    Evaluated by <strong className="text-slate-700 dark:text-slate-200">{rev.reviewer_name || 'Reviewer'}</strong>
+                                  </p>
+                                </div>
+                              </div>
+
+                              {ratingVal && (
+                                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
+                                  <FiStar size={13} className="fill-amber-500 text-amber-500" /> {ratingVal} / 5 Stars
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Stars icon row */}
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <FiStar
+                                  key={star}
+                                  size={20}
+                                  className={`${
+                                    star <= ratingVal
+                                      ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+                                      : 'text-slate-300 dark:text-slate-700'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+
+                            {/* Reviewer Feedback Notes */}
+                            {rev.feedback_notes && (
+                              <div className="p-3.5 rounded-2xl bg-white/80 dark:bg-white/[0.03] border border-amber-500/20 dark:border-white/5 text-xs text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                                "{rev.feedback_notes}"
+                              </div>
+                            )}
+
+                            {/* Review Tags */}
+                            {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 pt-1">
+                                {rev.tags.map((tag, idx) => (
+                                  <span key={idx} className="text-[10px] px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 font-semibold">
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()
+                    )}
 
                     {/* Pre-assigned Drive Folder Link */}
                     {selectedTask.submission_link && (
@@ -614,15 +685,21 @@ const TaskDetailsModal = (props) => {
 
                     {/* Specifications & Description (Adaptive: Agentic Blueprint Studio vs Classic Description) */}
                     <div className="space-y-2">
-                      {blueprintData ? (
-                        <AgenticBlueprintViewer blueprint={blueprintData} />
+                      {blueprintData || (selectedTask.blueprint_variants && selectedTask.blueprint_variants.length > 0) ? (
+                        <AgenticBlueprintViewer 
+                          blueprint={blueprintData} 
+                          variants={selectedTask.blueprint_variants || []} 
+                        />
                       ) : (
                         <>
                           <h4 className="text-xs font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-2">
                             <FiFileText className="text-blue-500 dark:text-blue-400" size={14} /> Task Description & Specifications
                           </h4>
                           <div className="p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-slate-800 dark:text-slate-200">
-                            <DescriptionRenderer htmlContent={selectedTask.description} />
+                            <DescriptionRenderer
+                              htmlContent={selectedTask.description}
+                              onImageClick={(url) => setLightboxImage(url.startsWith('http') ? url : `${API_BASE}${url}`)}
+                            />
                           </div>
                         </>
                       )}

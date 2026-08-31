@@ -9,6 +9,7 @@ import {
 } from 'react-icons/fi';
 import TaskTimeline from '../components/TaskTimeline';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
+import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import { downloadFile } from '../utils/fileDownloader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -646,12 +647,16 @@ const RejectedReviews = () => {
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
-                        </h4>
-                        <DescriptionRenderer htmlContent={activeTask.description} />
-                      </div>
+                      {activeTask.blueprint_variants && activeTask.blueprint_variants.length > 0 ? (
+                        <AgenticBlueprintViewer variants={activeTask.blueprint_variants} />
+                      ) : (
+                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
+                          <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
+                          </h4>
+                          <DescriptionRenderer htmlContent={activeTask.description} />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

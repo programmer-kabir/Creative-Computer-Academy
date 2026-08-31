@@ -45,17 +45,45 @@ try {
     if ($status === 'Completed') {
         $query = "UPDATE tasks 
                   SET status = :status, 
-                      reviewed_by = :reviewer_id, 
-                      reviewed_at = NOW(), 
-                      rejected_by = NULL, 
-                      rejected_at = NULL, 
-                      rejection_reason = NULL 
+                       reviewed_by = :reviewer_id, 
+                       reviewed_at = NOW(), 
+                       rejected_by = NULL, 
+                       rejected_at = NULL, 
+                       rejection_reason = NULL 
                   WHERE id = :id";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':status', $status);
         $stmt->bindParam(':reviewer_id', $reviewer_id);
         $stmt->bindParam(':id', $data->task_id);
         $stmt->execute();
+
+        // Extract rating data
+        $rating = isset($data->rating) ? intval($data->rating) : 5;
+        $feedback_notes = isset($data->feedback_notes) ? trim($data->feedback_notes) : null;
+        $tags_val = null;
+        if (isset($data->tags)) {
+            $tags_val = is_array($data->tags) ? json_encode($data->tags) : (is_string($data->tags) ? $data->tags : null);
+        }
+
+        // Insert or update task review in task_reviews table
+        try {
+            // Find staff user_id
+            $stf_stmt = $db->prepare("SELECT e.user_id FROM tasks t JOIN employees e ON t.assigned_to = e.id WHERE t.id = :id");
+            $stf_stmt->execute([':id' => $data->task_id]);
+            $staff_uid = $stf_stmt->fetchColumn() ?: null;
+
+            $rev_stmt = $db->prepare("INSERT INTO task_reviews (task_id, reviewer_id, staff_user_id, rating, feedback_notes, tags, created_at) 
+                VALUES (:task_id, :reviewer_id, :staff_user_id, :rating, :feedback_notes, :tags, NOW())
+                ON DUPLICATE KEY UPDATE rating = VALUES(rating), feedback_notes = VALUES(feedback_notes), tags = VALUES(tags), updated_at = NOW()");
+            $rev_stmt->execute([
+                ':task_id' => $data->task_id,
+                ':reviewer_id' => $reviewer_id,
+                ':staff_user_id' => $staff_uid,
+                ':rating' => $rating,
+                ':feedback_notes' => $feedback_notes,
+                ':tags' => $tags_val
+            ]);
+        } catch (Exception $ex) {}
     } else if ($status === 'Rejected') {
         $rejection_reason = isset($data->rejection_reason) ? $data->rejection_reason : null;
         

@@ -68,6 +68,21 @@ try {
         } else {
             $row['checklists'] = [];
         }
+
+        // Fetch blueprint variants from task_blueprint_variants
+        try {
+            $bv_stmt = $db->prepare("SELECT id, variant_name, ai_model_used, is_active, blueprint_json, created_at FROM task_blueprint_variants WHERE task_id = :task_id ORDER BY is_active DESC, id ASC");
+            $bv_stmt->execute([':task_id' => $row['task_id']]);
+            $b_variants = $bv_stmt->fetchAll(PDO::FETCH_ASSOC);
+            $row['blueprint_variants'] = array_map(function($bv) {
+                $bv['blueprint_data'] = !empty($bv['blueprint_json']) ? json_decode($bv['blueprint_json'], true) : null;
+                $bv['is_active'] = (int)$bv['is_active'] === 1;
+                return $bv;
+            }, $b_variants);
+        } catch (Exception $ex) {
+            $row['blueprint_variants'] = [];
+        }
+
         $pending_tasks[] = $row;
     }
 

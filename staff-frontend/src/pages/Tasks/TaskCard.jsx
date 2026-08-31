@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCode, FiFlag, FiPlayCircle, FiCheckSquare, FiPauseCircle, FiImage } from 'react-icons/fi';
+import { FiCode, FiFlag, FiPlayCircle, FiCheckSquare, FiPauseCircle, FiImage, FiStar } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 
 const stripHtml = (html) => {
@@ -105,6 +105,12 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
             </span>
           )}
 
+          {(task.creation_mode === 'agentic' || Boolean(task.blueprint_data) || (Array.isArray(task.blueprint_variants) && task.blueprint_variants.length > 0)) && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
+              <HiSparkles size={11} className="text-amber-400" /> AI Blueprint
+            </span>
+          )}
+
           {task.final_delivery && (
             <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
               <HiSparkles size={11} className="text-amber-500" /> Stock-Ready
@@ -131,6 +137,41 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
           <p className="text-[9px] font-black uppercase tracking-widest text-red-800/70 dark:text-red-400/70 mb-1">Feedback</p>
           <p className="text-[11px] text-red-700 dark:text-red-300 line-clamp-3 leading-relaxed font-medium">{task.admin_note || 'No specific reason provided.'}</p>
         </div>
+      ) : task.status === 'Completed' && (task.review || task.rating || task.feedback_notes) ? (
+        (() => {
+          const rev = task.review || { rating: task.rating, feedback_notes: task.feedback_notes, tags: task.tags || [] };
+          return (
+            <div className="mt-2 p-2.5 bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-900/50 rounded-xl mb-auto space-y-1.5">
+              <div className="flex items-center justify-between gap-1">
+                <span className="text-[9px] font-black uppercase tracking-widest text-amber-800/80 dark:text-amber-400/80 flex items-center gap-1">
+                  <HiSparkles size={11} className="text-amber-500" /> Reviewer Rating
+                </span>
+                {rev.rating && (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-lg border border-amber-300/40">
+                    <FiStar className="fill-amber-500 text-amber-500" size={11} /> {rev.rating}/5
+                  </span>
+                )}
+              </div>
+              {Array.isArray(rev.tags) && rev.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {rev.tags.slice(0, 2).map((tg, i) => (
+                    <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                      {tg}
+                    </span>
+                  ))}
+                  {rev.tags.length > 2 && (
+                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">+{rev.tags.length - 2}</span>
+                  )}
+                </div>
+              )}
+              {rev.feedback_notes && (
+                <p className="text-[11px] text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed italic font-medium">
+                  "{rev.feedback_notes}"
+                </p>
+              )}
+            </div>
+          );
+        })()
       ) : stripHtml(task.description).trim().startsWith('{') || stripHtml(task.description).trim().startsWith('[') ? (
         <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-700/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-600 w-fit mb-auto">
           <FiCode size={14} className="text-primary-500" /> Structured Data Attached

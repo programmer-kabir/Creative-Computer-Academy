@@ -114,7 +114,7 @@ const CopyButton = ({ textToCopy }) => {
   );
 };
 
-const DescriptionRenderer = React.memo(({ htmlContent }) => {
+const DescriptionRenderer = React.memo(({ htmlContent, onImageClick }) => {
   let jsonData = null;
   let textBefore = '';
   let textAfter = '';
@@ -147,6 +147,8 @@ const DescriptionRenderer = React.memo(({ htmlContent }) => {
       el.setAttribute('draggable', 'false');
       if (el.tagName === 'A') {
         el.classList.add('text-blue-600', 'hover:text-blue-700', 'dark:text-blue-400', 'dark:hover:text-blue-300', 'font-semibold', 'hover:underline');
+      } else if (el.tagName === 'IMG') {
+        el.classList.add('cursor-zoom-in', 'hover:opacity-90', 'transition-opacity', 'rounded-xl', 'border', 'border-slate-200', 'dark:border-white/10');
       }
     });
 
@@ -273,6 +275,12 @@ const DescriptionRenderer = React.memo(({ htmlContent }) => {
         <CopyButton textToCopy={fallbackText} />
       </div>
       <div
+        onClick={(e) => {
+          if (e.target && e.target.tagName === 'IMG' && e.target.src && onImageClick) {
+            e.stopPropagation();
+            onImageClick(e.target.src);
+          }
+        }}
         className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-xl text-slate-700 dark:text-slate-300 text-sm border border-slate-100 dark:border-slate-700 prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-2 prose-li:my-0 leading-normal task-description-content pr-20 select-text"
         dangerouslySetInnerHTML={{ __html: cleanHtml || '<span class="italic !text-slate-400" style="color: #94a3b8;">No description provided.</span>' }}
       />

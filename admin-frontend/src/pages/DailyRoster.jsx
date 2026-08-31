@@ -46,6 +46,10 @@ const WorkStatusBadge = ({ status, shortByMinutes }) => {
       label: `Short ${fmtMins(shortByMinutes)}`,
       className: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/50',
     },
+    leave: {
+      label: 'On Leave 🌴',
+      className: 'bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-200 dark:border-purple-800/50',
+    },
     absent: {
       label: 'Absent',
       className: 'bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800/50',
@@ -211,6 +215,7 @@ const DailyRoster = () => {
     completed:   rosterData.filter(s => s.work_status === 'completed').length,
     in_progress: rosterData.filter(s => s.work_status === 'in_progress').length,
     short:       rosterData.filter(s => s.work_status === 'short').length,
+    leave:       rosterData.filter(s => s.work_status === 'leave').length,
     absent:      rosterData.filter(s => s.work_status === 'absent').length,
   };
 
@@ -219,6 +224,7 @@ const DailyRoster = () => {
     { key: 'completed',   label: 'Full Shift',  color: 'text-emerald-600 dark:text-emerald-400' },
     { key: 'in_progress', label: 'In Office',   color: 'text-blue-600 dark:text-blue-400' },
     { key: 'short',       label: 'Short Hours', color: 'text-amber-600 dark:text-amber-400' },
+    { key: 'leave',       label: 'On Leave',    color: 'text-purple-600 dark:text-purple-400' },
     { key: 'absent',      label: 'Absent',      color: 'text-rose-600 dark:text-rose-400' },
   ];
 
@@ -267,11 +273,12 @@ const DailyRoster = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Present',    count: counts.completed + counts.in_progress, color: 'emerald', icon: <FiCheckCircle /> },
           { label: 'In Office',  count: counts.in_progress,                    color: 'blue',    icon: <FiClock /> },
           { label: 'Short Hrs',  count: counts.short,                          color: 'amber',   icon: <FiAlertTriangle /> },
+          { label: 'On Leave',   count: counts.leave,                          color: 'purple',  icon: <FiCalendar /> },
           { label: 'Absent',     count: counts.absent,                         color: 'rose',    icon: <FiXCircle /> },
         ].map(({ label, count, color, icon }) => (
           <div key={label} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">

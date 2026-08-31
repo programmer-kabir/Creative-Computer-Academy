@@ -52,7 +52,9 @@ try {
         $row['net_work_minutes'] = null;
         $row['work_status'] = 'absent'; // absent | in_progress | completed | short
 
-        if ($row['check_in'] && $row['check_out']) {
+        if ($row['attendance_status'] === 'Leave') {
+            $row['work_status'] = 'leave';
+        } elseif ($row['check_in'] && $row['check_out']) {
             $in_ts  = strtotime($row['check_in']);
             $out_ts = strtotime($row['check_out']);
             $gross_minutes = ($out_ts - $in_ts) / 60;

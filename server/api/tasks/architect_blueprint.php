@@ -17,6 +17,12 @@ $candidateModels = [
 $input = json_decode(file_get_contents("php://input"), true);
 $customPrompt = $input['instructions'] ?? 'Extract full design blueprint specifications, color palette, typography and PSD layer tree for this flyer/design.';
 $imageBase64 = $input['image_base64'] ?? null;
+$requestedModel = !empty($input['ai_model']) ? trim($input['ai_model']) : null;
+
+// If client requested a specific model, prioritize it at the top; otherwise use default order
+if (!empty($requestedModel)) {
+    $candidateModels = array_values(array_unique(array_merge([$requestedModel], $candidateModels)));
+}
 
 $systemPrompt = <<<EOT
 You are an expert PSD Architect and Graphic Design Director.
@@ -163,6 +169,7 @@ function callOpenRouter($model, $systemPrompt, $userPromptText, $imageBase64, $a
 $success = false;
 $rawText = '';
 $lastError = '';
+$usedModel = null;
 
 // Try OpenRouter auto router first, then candidate models
 foreach ($candidateModels as $model) {
@@ -173,6 +180,7 @@ foreach ($candidateModels as $model) {
         if (!empty($resData['choices'][0]['message']['content'])) {
             $rawText = $resData['choices'][0]['message']['content'];
             $success = true;
+            $usedModel = $model;
             break;
         }
     } else {
@@ -189,6 +197,7 @@ if (!$success && !empty($imageBase64)) {
             if (!empty($resData['choices'][0]['message']['content'])) {
                 $rawText = $resData['choices'][0]['message']['content'];
                 $success = true;
+                $usedModel = $model;
                 break;
             }
         }
@@ -232,6 +241,7 @@ if (!$blueprintData) {
 
 echo json_encode([
     "status" => "success",
-    "blueprint" => $blueprintData
+    "blueprint" => $blueprintData,
+    "model_used" => $usedModel
 ]);
 ?>

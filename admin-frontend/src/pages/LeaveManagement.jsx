@@ -248,8 +248,12 @@ const LeaveManagement = () => {
                         </div>
                       )}
                     </td>
-                    <td className="p-4">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={leave.reason}>{leave.reason}</p>
+                    <td className="p-4 max-w-sm">
+                      <div className="bg-slate-50/90 dark:bg-slate-800/70 p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/60 shadow-xs">
+                        <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap break-words leading-relaxed">
+                          {leave.reason || <span className="italic text-slate-400">No reason specified</span>}
+                        </p>
+                      </div>
                     </td>
                     <td className="p-4">
                       {getStatusBadge(leave.status)}

@@ -115,6 +115,18 @@ const TaskOversight = () => {
   // Edit modal
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editTask, setEditTask] = useState(null);
+  const [editUiMode, setEditUiMode] = useState('agentic');
+
+  // Auto-sync editUiMode based on task type
+  useEffect(() => {
+    if (editTask) {
+      if (editTask.creation_mode === 'agentic' || Boolean(editTask.blueprint_data) || (Array.isArray(editTask.blueprint_variants) && editTask.blueprint_variants.length > 0)) {
+        setEditUiMode('agentic');
+      } else {
+        setEditUiMode('manual');
+      }
+    }
+  }, [editTask?.task_id, editTask?.id]);
 
   const createEditorRef = useRef(null);
   const editEditorRef = useRef(null);
@@ -478,8 +490,24 @@ const TaskOversight = () => {
         </ModalShell>
       )}
 
-      {/* ── Edit Task Modal ── */}
-      {isEditOpen && editTask && (
+      {/* ── Edit Task Modal (Conditional: Agentic Studio vs Manual Form) ── */}
+      {isEditOpen && editTask && editUiMode === 'agentic' ? (
+        <AgenticTaskModal
+          isOpen={isEditOpen}
+          onClose={() => { setIsEditOpen(false); setEditTask(null); }}
+          formData={editTask}
+          setFormData={setEditTask}
+          staff={staff}
+          workloads={workloads}
+          departments={departments}
+          apiBase={API_BASE}
+          onSubmit={handleEditTask}
+          actionLoading={actionLoading}
+          onSwitchToManual={() => setEditUiMode('manual')}
+          isEdit={true}
+          onDelete={() => setTaskToDelete(editTask)}
+        />
+      ) : isEditOpen && editTask && (
         <ModalShell
           title="Edit Task"
           onClose={() => { setIsEditOpen(false); setEditTask(null); }}
@@ -488,6 +516,15 @@ const TaskOversight = () => {
           actionLoading={actionLoading}
           onDelete={() => setTaskToDelete(editTask)}
         >
+          <div className="mb-4 flex justify-end">
+            <button
+              type="button"
+              onClick={() => setEditUiMode('agentic')}
+              className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 text-xs font-bold flex items-center gap-1.5 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all shadow-sm"
+            >
+              <FiCpu size={13} /> Switch to AI Blueprint Studio
+            </button>
+          </div>
           <TaskFormFields
             formData={editTask}
             setFormData={setEditTask}
@@ -618,12 +655,26 @@ const TaskOversight = () => {
                   <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">ID: #{detailsTask.id}</p>
                 </div>
               </div>
-              <button
-                onClick={() => { setIsDetailsOpen(false); setDetailsTask(null); }}
-                className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-              >
-                <FiX size={20} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const taskToEdit = detailsTask;
+                    setIsDetailsOpen(false);
+                    setDetailsTask(null);
+                    openEditModal(taskToEdit);
+                  }}
+                  className="px-3.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-800/40 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all flex items-center gap-1.5 border border-blue-200 dark:border-blue-800 shadow-sm"
+                >
+                  <FiEdit2 size={13} /> {detailsTask.blueprint_data ? 'Edit AI Blueprint' : 'Edit Task'}
+                </button>
+                <button
+                  onClick={() => { setIsDetailsOpen(false); setDetailsTask(null); }}
+                  className="p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
             </div>
 
             {/* Body */}
@@ -660,8 +711,11 @@ const TaskOversight = () => {
 
                 {/* Specifications & Description (Adaptive: Agentic Blueprint vs Classic Description) */}
                 <div className="space-y-2">
-                  {detailsTask.blueprint_data ? (
-                    <AgenticBlueprintViewer blueprint={detailsTask.blueprint_data} />
+                  {detailsTask.blueprint_data || (detailsTask.blueprint_variants && detailsTask.blueprint_variants.length > 0) ? (
+                    <AgenticBlueprintViewer 
+                      blueprint={detailsTask.blueprint_data} 
+                      variants={detailsTask.blueprint_variants || []} 
+                    />
                   ) : (
                     <>
                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Description & Instructions</h4>

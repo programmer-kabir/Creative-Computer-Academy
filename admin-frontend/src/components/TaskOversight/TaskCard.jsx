@@ -65,7 +65,7 @@ export const TaskCard = ({ task, isReview, apiBase, onEdit, onDuplicate, onViewH
                 )}
 
                 {/* Agentic AI Blueprint Badge */}
-                {(task.creation_mode === 'agentic' || Boolean(task.blueprint_data)) && (
+                {(task.creation_mode === 'agentic' || Boolean(task.blueprint_data) || (Array.isArray(task.blueprint_variants) && task.blueprint_variants.length > 0)) && (
                     <span className="text-[10px] font-black px-2 py-1 rounded-md border flex items-center gap-1 uppercase tracking-wider bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-500/30">
                         <HiSparkles size={11} className="text-amber-400" /> AI Blueprint
                     </span>

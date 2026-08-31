@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import { Toaster } from 'sonner';
 
 import LeaveManagement from './pages/LeaveManagement';
+import DatabaseManager from './pages/DatabaseManager';
 
 // Mock empty pages to avoid errors
 const Placeholder = ({ title }) => (
@@ -98,6 +99,12 @@ function App() {
           <Route path="/leave" element={
             <ProtectedRoute>
               <AdminLayout><LeaveManagement /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/database" element={
+            <ProtectedRoute>
+              <AdminLayout><DatabaseManager /></AdminLayout>
             </ProtectedRoute>
           } />
 

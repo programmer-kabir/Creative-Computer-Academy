@@ -14,9 +14,11 @@ if (!isset($data->task_id) || !isset($data->title) || !isset($data->category)) {
 }
 
 try {
-    $stmt_old = $db->prepare("SELECT assigned_to FROM tasks WHERE id = :id");
+    $stmt_old = $db->prepare("SELECT assigned_to, creation_mode FROM tasks WHERE id = :id");
     $stmt_old->execute([':id' => $data->task_id]);
-    $old_employee_id = $stmt_old->fetchColumn();
+    $old_task = $stmt_old->fetch(PDO::FETCH_ASSOC);
+    $old_employee_id = $old_task['assigned_to'] ?? null;
+    $old_creation_mode = $old_task['creation_mode'] ?? 'manual';
 
     // If assigned_to (user_id) is provided, look up the employee id
     $employee_id = null;
@@ -76,6 +78,18 @@ try {
         } catch(Exception $e) {}
     }
 
+    // Auto-ensure columns exist in tasks table
+    try {
+        $db->exec("ALTER TABLE tasks ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'");
+    } catch (Exception $e) {}
+
+    // An agentic task must ALWAYS stay agentic and never convert into manual on edit
+    if ($old_creation_mode === 'agentic' || (!empty($data->creation_mode) && $data->creation_mode === 'agentic') || !empty($data->blueprint_variants) || !empty($data->blueprint_data)) {
+        $creation_mode = 'agentic';
+    } else {
+        $creation_mode = !empty($data->creation_mode) ? $data->creation_mode : 'manual';
+    }
+
     $priority = $data->priority ?? 'Medium';
     $checklists_val = isset($data->checklists) ? (is_string($data->checklists) ? $data->checklists : json_encode($data->checklists)) : null;
 
@@ -84,6 +98,7 @@ try {
     if ($employee_id) {
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
+                      creation_mode = :creation_mode,
                       category = :category, department_id = :department_id, assigned_to = :assigned_to,
                       status = IF(status = 'Unassigned', 'To-Do', status),
                       assign_date = COALESCE(:assign_date, assign_date),
@@ -96,6 +111,7 @@ try {
         // Keep existing assigned_to if not provided
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
+                      creation_mode = :creation_mode,
                       category = :category, department_id = :department_id,
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
@@ -111,6 +127,7 @@ try {
     $stmt->bindParam(':ref_links',       $ref_links);
     $stmt->bindParam(':ref_image',       $ref_image);
     $stmt->bindParam(':visual_image',    $visual_image);
+    $stmt->bindParam(':creation_mode',   $creation_mode);
     $stmt->bindParam(':category',        $category);
     $stmt->bindParam(':department_id',   $department_id);
     $stmt->bindParam(':assign_date',     $assign_date);
@@ -120,6 +137,69 @@ try {
     $stmt->bindParam(':task_id',         $task_id);
 
     if ($stmt->execute()) {
+        // Sync blueprint variants if provided in edit request
+        if (isset($data->blueprint_variants) || isset($data->blueprint_data)) {
+            try {
+                $raw_variants = isset($data->blueprint_variants) ? $data->blueprint_variants : [];
+                $variants = json_decode(json_encode($raw_variants), true);
+                if (!is_array($variants)) $variants = [];
+
+                $blueprint_data_val = isset($data->blueprint_data) ? (is_string($data->blueprint_data) ? $data->blueprint_data : json_encode($data->blueprint_data)) : null;
+
+                $hasAnyValidBlueprint = false;
+                foreach ($variants as $v) {
+                    if (is_array($v) && (!empty($v['blueprint_data']) || !empty($v['blueprint_json']))) {
+                        $hasAnyValidBlueprint = true;
+                        break;
+                    }
+                }
+
+                if (!$hasAnyValidBlueprint && !empty($blueprint_data_val)) {
+                    $parsed_b = json_decode($blueprint_data_val, true);
+                    $model_used = $parsed_b['model_used'] ?? 'meta-llama/llama-3.3-70b-instruct:free';
+                    $variants = [
+                        [
+                            'variant_name' => 'Variant 1',
+                            'ai_model_used' => $model_used,
+                            'is_active' => 1,
+                            'blueprint_json' => $blueprint_data_val
+                        ]
+                    ];
+                }
+
+                if (is_array($variants) && count($variants) > 0) {
+                    $db->prepare("DELETE FROM task_blueprint_variants WHERE task_id = :task_id")->execute([':task_id' => $task_id]);
+                    
+                    $ins_var = $db->prepare("INSERT INTO task_blueprint_variants (task_id, variant_name, ai_model_used, is_active, blueprint_json) 
+                        VALUES (:task_id, :variant_name, :ai_model_used, :is_active, :blueprint_json)");
+                    
+                    $hasActive = false;
+                    foreach ($variants as $v) {
+                        if (is_array($v) && !empty($v['is_active'])) { $hasActive = true; break; }
+                    }
+
+                    foreach ($variants as $idx => $v) {
+                        if (!is_array($v)) continue;
+                        $v_name = !empty($v['variant_name']) ? trim($v['variant_name']) : ('Variant ' . ($idx + 1));
+                        $v_model = !empty($v['ai_model_used']) ? trim($v['ai_model_used']) : null;
+                        $v_active = (!empty($v['is_active']) || (!$hasActive && $idx === 0)) ? 1 : 0;
+                        $raw_b = $v['blueprint_data'] ?? $v['blueprint_json'] ?? null;
+                        $v_json = is_array($raw_b) ? json_encode($raw_b) : (is_string($raw_b) ? $raw_b : null);
+
+                        if (!empty($v_json) && $v_json !== 'null' && $v_json !== '""') {
+                            $ins_var->execute([
+                                ':task_id' => $task_id,
+                                ':variant_name' => $v_name,
+                                ':ai_model_used' => $v_model,
+                                ':is_active' => $v_active,
+                                ':blueprint_json' => $v_json
+                            ]);
+                        }
+                    }
+                }
+            } catch (Exception $e) {}
+        }
+
         require_once '../../tasks/task_history_helper.php';
         $logger = new TaskHistoryLogger($db);
         $logger->logHistory($task_id, "Task Updated", $updated_by_name);

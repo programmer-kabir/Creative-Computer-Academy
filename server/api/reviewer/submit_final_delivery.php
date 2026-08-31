@@ -206,14 +206,45 @@ try {
         ':task_id' => $task_id
     ]);
 
-    // 3. Log History Safely
+    // 3. Save Rating / Review to task_reviews if provided
+    $rating = isset($_POST['rating']) ? intval($_POST['rating']) : null;
+    $feedback_notes = isset($_POST['feedback_notes']) ? trim($_POST['feedback_notes']) : $fix_notes;
+    $tags_val = null;
+    if (isset($_POST['tags'])) {
+        $tags_val = is_array($_POST['tags']) ? json_encode($_POST['tags']) : (is_string($_POST['tags']) ? $_POST['tags'] : null);
+    }
+
+    if ($rating !== null && $rating > 0) {
+        try {
+            // Find staff user_id
+            $stf_stmt = $db->prepare("SELECT e.user_id FROM tasks t JOIN employees e ON t.assigned_to = e.id WHERE t.id = :id");
+            $stf_stmt->execute([':id' => $task_id]);
+            $staff_uid = $stf_stmt->fetchColumn() ?: null;
+
+            $rev_stmt = $db->prepare("INSERT INTO task_reviews (task_id, reviewer_id, staff_user_id, rating, feedback_notes, tags, created_at) 
+                VALUES (:task_id, :reviewer_id, :staff_user_id, :rating, :feedback_notes, :tags, NOW())
+                ON DUPLICATE KEY UPDATE rating = VALUES(rating), feedback_notes = VALUES(feedback_notes), tags = VALUES(tags), updated_at = NOW()");
+            $rev_stmt->execute([
+                ':task_id' => $task_id,
+                ':reviewer_id' => $reviewer_id,
+                ':staff_user_id' => $staff_uid,
+                ':rating' => $rating,
+                ':feedback_notes' => $feedback_notes,
+                ':tags' => $tags_val
+            ]);
+        } catch (Exception $ex) {
+            error_log("Failed to insert task review in submit_final_delivery: " . $ex->getMessage());
+        }
+    }
+
+    // 4. Log History Safely
     $reviewerNameStmt = $db->prepare("SELECT name FROM users WHERE id = :id");
     $reviewerNameStmt->execute([':id' => $reviewer_id]);
     $reviewerName = $reviewerNameStmt->fetchColumn() ?: 'Reviewer';
 
     $actionLog = ($source_type === 'reviewer_corrected')
-        ? "Reviewer uploaded corrected final stock version & approved task"
-        : "Reviewer approved task as-is";
+        ? "Reviewer uploaded corrected final stock version & approved task" . ($rating > 0 ? " ({$rating} Stars)" : "")
+        : "Reviewer approved task as-is" . ($rating > 0 ? " ({$rating} Stars)" : "");
 
     try {
         $histQuery = "INSERT INTO task_history (task_id, action, changed_by, created_at) VALUES (:task_id, :action, :changed_by, NOW())";
@@ -237,6 +268,7 @@ try {
             "final_file_url" => $final_file_url,
             "final_image_url" => $final_image_url,
             "fix_notes" => $fix_notes,
+            "rating" => $rating,
             "source_type" => $source_type
         ]
     ]);

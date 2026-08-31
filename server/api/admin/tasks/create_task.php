@@ -56,15 +56,11 @@ try {
     try {
         $db->exec("ALTER TABLE tasks ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'");
     } catch (Exception $e) {}
-    try {
-        $db->exec("ALTER TABLE tasks ADD COLUMN `blueprint_data` LONGTEXT DEFAULT NULL");
-    } catch (Exception $e) {}
 
-    $creation_mode = !empty($data->creation_mode) ? $data->creation_mode : (!empty($data->blueprint_data) ? 'agentic' : 'manual');
-    $blueprint_data_val = isset($data->blueprint_data) ? (is_string($data->blueprint_data) ? $data->blueprint_data : json_encode($data->blueprint_data)) : null;
+    $creation_mode = !empty($data->creation_mode) ? $data->creation_mode : (!empty($data->blueprint_variants) || !empty($data->blueprint_data) ? 'agentic' : 'manual');
 
-    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, blueprint_data, creation_mode, created_by, assigned_to, category, department_id, status, assign_date, deadline, deadline_time, submission_link) 
-              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :blueprint_data, :creation_mode, :created_by, :assigned_to, :category, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link)";
+    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, creation_mode, created_by, assigned_to, category, department_id, status, assign_date, deadline, deadline_time, submission_link) 
+              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :creation_mode, :created_by, :assigned_to, :category, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link)";
               
     $stmt = $db->prepare($query);
 
@@ -88,30 +84,26 @@ try {
 
     // ref_image processing: ensure valid string paths only
     $raw_images = $data->ref_image ?? null;
-    if (is_string($raw_images)) {
-        $decoded = json_decode($raw_images, true);
-        $raw_images = is_array($decoded) ? $decoded : ($raw_images ? [$raw_images] : []);
-    }
     if (is_array($raw_images)) {
-        $cleaned_images = array_values(array_filter($raw_images, function($item) {
-            return is_string($item) && trim($item) !== '' && $item !== '{}' && $item !== '[object Object]';
+        $clean_images = array_values(array_filter($raw_images, function($img) {
+            return is_string($img) && !empty(trim($img));
         }));
-        $ref_image_val = json_encode($cleaned_images);
+        $ref_image_val = json_encode($clean_images);
+    } elseif (is_string($raw_images) && !empty(trim($raw_images))) {
+        $ref_image_val = $raw_images;
     } else {
         $ref_image_val = json_encode([]);
     }
 
     // visual_image processing: ensure valid string paths only
     $raw_visual = $data->visual_image ?? null;
-    if (is_string($raw_visual)) {
-        $decoded = json_decode($raw_visual, true);
-        $raw_visual = is_array($decoded) ? $decoded : ($raw_visual ? [$raw_visual] : []);
-    }
     if (is_array($raw_visual)) {
-        $cleaned_visual = array_values(array_filter($raw_visual, function($item) {
-            return is_string($item) && trim($item) !== '' && $item !== '{}' && $item !== '[object Object]';
+        $clean_visual = array_values(array_filter($raw_visual, function($img) {
+            return is_string($img) && !empty(trim($img));
         }));
-        $visual_image_val = json_encode($cleaned_visual);
+        $visual_image_val = json_encode($clean_visual);
+    } elseif (is_string($raw_visual) && !empty(trim($raw_visual))) {
+        $visual_image_val = $raw_visual;
     } else {
         $visual_image_val = json_encode([]);
     }
@@ -124,7 +116,6 @@ try {
         ':ref_links'       => $ref_links_val,
         ':ref_image'       => $ref_image_val,
         ':visual_image'    => $visual_image_val,
-        ':blueprint_data'  => $blueprint_data_val,
         ':creation_mode'   => $creation_mode,
         ':created_by'      => $created_by,
         ':assigned_to'     => $employee_id,
@@ -138,6 +129,67 @@ try {
     ]);
 
     $task_id = $db->lastInsertId();
+
+    // Insert blueprint variants if provided
+    try {
+        $raw_variants = isset($data->blueprint_variants) ? $data->blueprint_variants : [];
+        $variants = json_decode(json_encode($raw_variants), true);
+        if (!is_array($variants)) $variants = [];
+
+        $blueprint_data_val = isset($data->blueprint_data) ? (is_string($data->blueprint_data) ? $data->blueprint_data : json_encode($data->blueprint_data)) : null;
+
+        // Check if any variant already has a valid blueprint
+        $hasAnyValidBlueprint = false;
+        foreach ($variants as $v) {
+            if (is_array($v) && (!empty($v['blueprint_data']) || !empty($v['blueprint_json']))) {
+                $hasAnyValidBlueprint = true;
+                break;
+            }
+        }
+
+        // If no variants have valid blueprint but blueprint_data is sent, create initial Variant 1
+        if (!$hasAnyValidBlueprint && !empty($blueprint_data_val)) {
+            $parsed_b = json_decode($blueprint_data_val, true);
+            $model_used = $parsed_b['model_used'] ?? 'meta-llama/llama-3.3-70b-instruct:free';
+            $variants = [
+                [
+                    'variant_name' => 'Variant 1',
+                    'ai_model_used' => $model_used,
+                    'is_active' => 1,
+                    'blueprint_json' => $blueprint_data_val
+                ]
+            ];
+        }
+
+        if (!empty($variants)) {
+            $ins_var = $db->prepare("INSERT INTO task_blueprint_variants (task_id, variant_name, ai_model_used, is_active, blueprint_json) 
+                VALUES (:task_id, :variant_name, :ai_model_used, :is_active, :blueprint_json)");
+            
+            $hasActive = false;
+            foreach ($variants as $v) {
+                if (is_array($v) && !empty($v['is_active'])) { $hasActive = true; break; }
+            }
+
+            foreach ($variants as $idx => $v) {
+                if (!is_array($v)) continue;
+                $v_name = !empty($v['variant_name']) ? trim($v['variant_name']) : ('Variant ' . ($idx + 1));
+                $v_model = !empty($v['ai_model_used']) ? trim($v['ai_model_used']) : null;
+                $v_active = (!empty($v['is_active']) || (!$hasActive && $idx === 0)) ? 1 : 0;
+                $raw_b = $v['blueprint_data'] ?? $v['blueprint_json'] ?? null;
+                $v_json = is_array($raw_b) ? json_encode($raw_b) : (is_string($raw_b) ? $raw_b : null);
+
+                if (!empty($v_json) && $v_json !== 'null' && $v_json !== '""') {
+                    $ins_var->execute([
+                        ':task_id' => $task_id,
+                        ':variant_name' => $v_name,
+                        ':ai_model_used' => $v_model,
+                        ':is_active' => $v_active,
+                        ':blueprint_json' => $v_json
+                    ]);
+                }
+            }
+        }
+    } catch (Exception $e) {}
 
     // Log history
     require_once '../../tasks/task_history_helper.php';

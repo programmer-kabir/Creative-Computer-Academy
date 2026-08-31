@@ -6,11 +6,14 @@ export const StaffSelect = ({ value, onChange, staff, apiBase, workloads = {} })
     const [search, setSearch] = React.useState('');
     const ref = React.useRef(null);
 
-    const selected = value === 'unassigned' ? { id: 'unassigned', name: 'Unassigned (Save for Later)', profile_picture: null, designation: 'Task Pool' } : staff.find(s => String(s.id) === String(value));
+    const selected = value === 'unassigned'
+        ? { id: 'unassigned', name: 'Unassigned (Save for Later)', profile_picture: null, designation: 'Task Pool' }
+        : staff.find(s => String(s.id) === String(value) || String(s.user_id) === String(value) || (s.name && String(s.name).toLowerCase() === String(value).toLowerCase()));
 
     const filtered = staff.filter(s =>
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        (s.designation || '').toLowerCase().includes(search.toLowerCase())
+        (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.designation || '').toLowerCase().includes(search.toLowerCase()) ||
+        (s.email || '').toLowerCase().includes(search.toLowerCase())
     );
 
     // Close on outside click
@@ -38,7 +41,7 @@ export const StaffSelect = ({ value, onChange, staff, apiBase, workloads = {} })
             <button
                 type="button"
                 onClick={() => { setOpen(o => !o); setSearch(''); }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all outline-none text-left
+                className={`w-full h-[42px] flex items-center gap-2.5 px-3 rounded-xl border transition-all outline-none text-left
           ${open
                         ? 'border-blue-500 ring-2 ring-blue-500/20 bg-white dark:bg-slate-800'
                         : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 hover:border-slate-300 dark:hover:border-slate-600'
@@ -47,31 +50,31 @@ export const StaffSelect = ({ value, onChange, staff, apiBase, workloads = {} })
                 {selected ? (
                     <>
                         {value === 'unassigned' ? (
-                            <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-dashed border-slate-300 dark:border-slate-600">
-                                <FiUsers size={12} className="text-slate-400" />
+                            <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center flex-shrink-0 border border-dashed border-slate-300 dark:border-slate-600">
+                                <FiUsers size={11} className="text-slate-400" />
                             </div>
                         ) : (
-                            <Avatar s={selected} />
+                            <Avatar s={selected} size="sm" />
                         )}
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{selected.name}</p>
-                            <p className="text-xs text-slate-400 truncate">{selected.designation || 'Staff'}</p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{selected.name}</p>
+                            <p className="text-[10px] text-slate-400 truncate leading-none">{selected.designation || 'Staff'}</p>
                         </div>
                     </>
                 ) : (
                     <>
-                        <div className="w-7 h-7 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
-                            <FiUser size={13} className="text-slate-400" />
+                        <div className="w-6 h-6 rounded-md bg-slate-200 dark:bg-slate-800 flex items-center justify-center flex-shrink-0">
+                            <FiUser size={12} className="text-slate-400" />
                         </div>
-                        <span className="flex-1 text-sm text-slate-400 font-medium">Select Staff Member</span>
+                        <span className="flex-1 text-xs text-slate-400 font-medium">Select Staff Member</span>
                     </>
                 )}
-                <FiChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+                <FiChevronDown size={14} className={`text-slate-400 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
             </button>
 
             {/* Dropdown panel */}
             {open && (
-                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-[300] overflow-hidden">
+                <div className="absolute left-0 right-0 top-full mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl z-[999] overflow-hidden">
                     {/* Search */}
                     <div className="p-2 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/50 rounded-xl px-3 py-2 border border-slate-200 dark:border-slate-700">

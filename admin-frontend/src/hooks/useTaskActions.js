@@ -240,6 +240,21 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             }
         }
 
+        let parsedBlueprint = null;
+        if (task.blueprint_data) {
+            try {
+                parsedBlueprint = typeof task.blueprint_data === 'string' ? JSON.parse(task.blueprint_data) : task.blueprint_data;
+            } catch (e) {
+                console.error('Failed to parse blueprint_data:', e);
+                parsedBlueprint = null;
+            }
+        }
+
+        const activeVariant = Array.isArray(task.blueprint_variants) 
+          ? (task.blueprint_variants.find(v => v.is_active) || task.blueprint_variants[0])
+          : null;
+        const activeBlueprintData = activeVariant?.blueprint_data || parsedBlueprint;
+
         setEditTask({
             task_id: task.id,
             title: task.title || '',
@@ -253,39 +268,50 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             ref_image: parsedImages,
             visual_image: task.visual_image ? (Array.isArray(JSON.parse(task.visual_image || '[]')) ? JSON.parse(task.visual_image || '[]') : [task.visual_image]) : [],
             submission_link: task.submission_link || '',
+            creation_mode: task.creation_mode || (activeBlueprintData || (task.blueprint_variants && task.blueprint_variants.length > 0) ? 'agentic' : 'manual'),
+            blueprint_data: activeBlueprintData,
+            blueprint_variants: task.blueprint_variants || [],
+            priority: task.priority || 'Medium',
+            checklists: task.checklists ? (typeof task.checklists === 'string' ? JSON.parse(task.checklists) : task.checklists) : []
         });
         setIsEditOpen(true);
     };
 
-    const handleEditTask = async (e) => {
-        e.preventDefault();
-        if (!editTask.title?.trim() || !editTask.category?.trim()) {
+    const handleEditTask = async (e, overrideFormData = null) => {
+        if (e && e.preventDefault) e.preventDefault();
+        const dataToSave = overrideFormData || editTask;
+        if (!dataToSave || !dataToSave.title?.trim() || !dataToSave.category?.trim()) {
             toast.error('Title and Category are required!');
             return;
         }
         setActionLoading(true);
         try {
-            const links = (Array.isArray(editTask.ref_links) ? editTask.ref_links : [editTask.ref_links || ''])
-                .filter(l => l.trim());
-            const imgs = Array.isArray(editTask.ref_image) ? editTask.ref_image : [];
-            const visImgs = Array.isArray(editTask.visual_image) ? editTask.visual_image : [];
-            const dept = departments.find(d => d.name === editTask.category);
+            const links = (Array.isArray(dataToSave.ref_links) ? dataToSave.ref_links : [dataToSave.ref_links || ''])
+                .filter(l => typeof l === 'string' && l.trim());
+            const imgs = Array.isArray(dataToSave.ref_image) ? dataToSave.ref_image : [];
+            const visImgs = Array.isArray(dataToSave.visual_image) ? dataToSave.visual_image : [];
+            const dept = departments.find(d => d.name === dataToSave.category);
             const payload = {
-                ...editTask,
+                ...dataToSave,
                 department_id: dept ? dept.id : null,
                 ref_links: JSON.stringify(links),
-                ref_image: JSON.stringify(imgs)
+                ref_image: JSON.stringify(imgs),
+                visual_image: JSON.stringify(visImgs),
+                creation_mode: dataToSave.creation_mode || (dataToSave.blueprint_data || (dataToSave.blueprint_variants && dataToSave.blueprint_variants.length > 0) ? 'agentic' : 'manual'),
+                blueprint_data: dataToSave.blueprint_data ? (typeof dataToSave.blueprint_data === 'string' ? dataToSave.blueprint_data : JSON.stringify(dataToSave.blueprint_data)) : null,
+                blueprint_variants: dataToSave.blueprint_variants || []
             };
             const res = await axios.post(`${apiBase}api/admin/tasks/edit_task.php`, payload);
             if (res.data.status === 'success') {
+                toast.success('Task updated successfully!');
                 await fetchTasksAndStaff();
                 setIsEditOpen(false);
                 setEditTask(null);
             } else {
-                alert(res.data.message);
+                toast.error(res.data.message || 'Failed to update task.');
             }
         } catch (error) {
-            alert(`Failed to update task: ${error.response?.data?.message || error.message}`);
+            toast.error(`Failed to update task: ${error.response?.data?.message || error.message}`);
         } finally {
             setActionLoading(false);
         }

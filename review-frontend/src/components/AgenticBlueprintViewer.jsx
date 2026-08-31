@@ -6,11 +6,24 @@ import {
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 
-export default function AgenticBlueprintViewer({ blueprint }) {
+export default function AgenticBlueprintViewer({ blueprint: initialBlueprint, variants = [] }) {
   const [copiedColor, setCopiedColor] = useState(null);
   const [copiedLayerTree, setCopiedLayerTree] = useState(false);
   const [activeTab, setActiveTab] = useState('json_spec'); // 'json_spec' | 'assets_links' | 'layer_tree'
   const [showRawJson, setShowRawJson] = useState(false);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState(() => {
+    if (Array.isArray(variants) && variants.length > 0) {
+      const activeI = variants.findIndex(v => v.is_active);
+      return activeI >= 0 ? activeI : 0;
+    }
+    return 0;
+  });
+
+  const activeVariant = Array.isArray(variants) && variants.length > 0
+    ? variants[selectedVariantIdx]
+    : null;
+
+  const blueprint = activeVariant?.blueprint_data || (activeVariant?.blueprint_json ? (typeof activeVariant.blueprint_json === 'string' ? JSON.parse(activeVariant.blueprint_json) : activeVariant.blueprint_json) : initialBlueprint);
 
   if (!blueprint) return null;
 
@@ -28,6 +41,41 @@ export default function AgenticBlueprintViewer({ blueprint }) {
 
   return (
     <div className="space-y-6 select-text bg-white dark:bg-[#0b1120] text-slate-800 dark:text-slate-100 p-6 rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-sm dark:shadow-2xl">
+      {/* ── Multi-Variant Selector (if multiple variants exist) ── */}
+      {Array.isArray(variants) && variants.length > 1 && (
+        <div className="p-2.5 bg-slate-50 dark:bg-[#0e172a] rounded-2xl border border-slate-200 dark:border-slate-800/80 flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-black uppercase text-slate-500 dark:text-slate-400 px-2">
+            <FiLayers size={14} className="text-blue-500" />
+            <span>Blueprint Variants:</span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {variants.map((v, idx) => {
+              const isSelected = selectedVariantIdx === idx;
+              return (
+                <button
+                  key={v.id || idx}
+                  type="button"
+                  onClick={() => setSelectedVariantIdx(idx)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'bg-white dark:bg-[#131d31] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-blue-400'
+                  }`}
+                >
+                  {v.is_active && <span>⭐</span>}
+                  <span>{v.variant_name || `Variant ${idx + 1}`}</span>
+                  {v.ai_model_used && (
+                    <span className={`text-[9px] px-1 py-0.2 rounded font-mono ${isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+                      {v.ai_model_used.includes('llama') ? 'Llama' : (v.ai_model_used.includes('deepseek') ? 'DeepSeek' : (v.ai_model_used.includes('qwen') ? 'Qwen' : 'AI'))}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Blueprint Header Specs Bar ── */}
       <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-gradient-to-r dark:from-blue-500/10 dark:via-indigo-500/10 dark:to-purple-500/10 border border-blue-200 dark:border-blue-500/20 flex items-center justify-between flex-wrap gap-3 shadow-sm">
         <div className="flex items-center gap-3 min-w-0">
@@ -40,7 +88,7 @@ export default function AgenticBlueprintViewer({ blueprint }) {
                 {blueprint.task_title || blueprint.title || 'AI Design Blueprint Specifications'}
               </h3>
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-blue-500/15 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 font-mono">
-                AGENTIC SPEC
+                {activeVariant?.is_active ? '⭐ PRIMARY TARGET' : 'AGENTIC SPEC'}
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">

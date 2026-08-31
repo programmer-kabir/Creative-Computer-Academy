@@ -147,6 +147,37 @@ if(isset($data->user_id)) {
                 $row['blueprint_data'] = null;
             }
 
+            // Fetch blueprint variants if any
+            try {
+                $bv_stmt = $db->prepare("SELECT id, variant_name, ai_model_used, is_active, blueprint_json, created_at FROM task_blueprint_variants WHERE task_id = :task_id ORDER BY is_active DESC, id ASC");
+                $bv_stmt->execute([':task_id' => $row['id']]);
+                $b_variants = $bv_stmt->fetchAll(PDO::FETCH_ASSOC);
+                $row['blueprint_variants'] = array_map(function($bv) {
+                    $bv['blueprint_data'] = !empty($bv['blueprint_json']) ? json_decode($bv['blueprint_json'], true) : null;
+                    $bv['is_active'] = (int)$bv['is_active'] === 1;
+                    return $bv;
+                }, $b_variants);
+            } catch (Exception $ex) {
+                $row['blueprint_variants'] = [];
+            }
+
+            // Fetch task review/rating if available
+            try {
+                $tr_stmt = $db->prepare("SELECT tr.rating, tr.feedback_notes, tr.tags, tr.created_at as reviewed_at, u.name as reviewer_name 
+                    FROM task_reviews tr 
+                    LEFT JOIN users u ON tr.reviewer_id = u.id 
+                    WHERE tr.task_id = :task_id LIMIT 1");
+                $tr_stmt->execute([':task_id' => $row['id']]);
+                if ($rev = $tr_stmt->fetch(PDO::FETCH_ASSOC)) {
+                    $rev['tags'] = !empty($rev['tags']) && is_string($rev['tags']) ? json_decode($rev['tags'], true) : [];
+                    $row['review'] = $rev;
+                } else {
+                    $row['review'] = null;
+                }
+            } catch (Exception $ex) {
+                $row['review'] = null;
+            }
+
             $tasks[] = $row;
         }
 

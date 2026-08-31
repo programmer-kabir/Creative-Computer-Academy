@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FiGrid, FiUsers, FiCheckSquare, FiClock, FiCalendar, FiSettings, FiLogOut, FiBarChart2, FiMessageSquare } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiCheckSquare, FiClock, FiCalendar, FiSettings, FiLogOut, FiBarChart2, FiMessageSquare, FiDatabase } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 
@@ -84,6 +84,7 @@ const AdminSidebar = () => {
       ]
     },
     { name: 'Message',         path: '/messages',     icon: <FiMessageSquare size={20} /> },
+    { name: 'Database Manager', path: '/database',    icon: <FiDatabase size={20} /> },
     { name: 'Settings',        path: '/settings',    icon: <FiSettings size={20} /> },
   ];
 

@@ -51,12 +51,18 @@ try {
             u.id AS user_id,
             u.name AS staff_name,
             u.profile_picture AS staff_avatar,
-            d.name AS department_name
+            d.name AS department_name,
+            tr.rating,
+            tr.feedback_notes,
+            tr.feedback_notes AS review_feedback,
+            tr.tags,
+            tr.tags AS review_tags
         FROM tasks t
         JOIN employees e ON t.assigned_to = e.id
         JOIN users u ON e.user_id = u.id
         LEFT JOIN departments d ON e.department_id = d.id
         LEFT JOIN task_final_deliveries tfd ON t.id = tfd.task_id
+        LEFT JOIN task_reviews tr ON t.id = tr.task_id
         WHERE e.reporting_manager_id = :reviewer_user_id
           AND t.status = 'Completed'
         ORDER BY t.updated_at DESC
@@ -73,6 +79,30 @@ try {
         } else {
             $row['checklists'] = [];
         }
+
+        $raw_tags = $row['tags'] ?? $row['review_tags'] ?? null;
+        if (!empty($raw_tags) && is_string($raw_tags)) {
+            $row['tags'] = json_decode($raw_tags, true);
+            $row['review_tags'] = $row['tags'];
+        } else {
+            $row['tags'] = is_array($raw_tags) ? $raw_tags : [];
+            $row['review_tags'] = $row['tags'];
+        }
+
+        // Fetch blueprint variants from task_blueprint_variants
+        try {
+            $bv_stmt = $db->prepare("SELECT id, variant_name, ai_model_used, is_active, blueprint_json, created_at FROM task_blueprint_variants WHERE task_id = :task_id ORDER BY is_active DESC, id ASC");
+            $bv_stmt->execute([':task_id' => $row['task_id']]);
+            $b_variants = $bv_stmt->fetchAll(PDO::FETCH_ASSOC);
+            $row['blueprint_variants'] = array_map(function($bv) {
+                $bv['blueprint_data'] = !empty($bv['blueprint_json']) ? json_decode($bv['blueprint_json'], true) : null;
+                $bv['is_active'] = (int)$bv['is_active'] === 1;
+                return $bv;
+            }, $b_variants);
+        } catch (Exception $ex) {
+            $row['blueprint_variants'] = [];
+        }
+
         $completed_tasks[] = $row;
     }
 

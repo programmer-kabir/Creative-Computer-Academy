@@ -8,11 +8,14 @@ import {
   FiClock, FiSearch, FiFilter, FiCheck, FiX, FiUsers,
   FiChevronDown, FiCalendar, FiEye, FiLink, FiDownload,
   FiImage, FiMaximize, FiMinimize, FiCode, FiMessageSquare,
-  FiSend, FiPlusCircle, FiAlertCircle, FiFileText, FiPackage, FiExternalLink
+  FiSend, FiPlusCircle, FiAlertCircle, FiFileText, FiPackage, FiExternalLink,
+  FiStar, FiTag
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import TaskTimeline from '../components/TaskTimeline';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
+import ApprovalRatingModal from '../components/ApprovalRatingModal';
+import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import { downloadFile } from '../utils/fileDownloader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -262,6 +265,24 @@ const RefLinksRenderer = ({ linksJson }) => {
   );
 };
 
+const DELIVERY_STAR_LABELS = {
+  1: { label: 'Needs Improvement', desc: 'Minimal acceptable quality, several flaws', color: 'text-amber-500' },
+  2: { label: 'Below Average', desc: 'Acceptable with minor issues or corrections', color: 'text-amber-500 dark:text-amber-400' },
+  3: { label: 'Good', desc: 'Meets requirements and quality standards', color: 'text-yellow-600 dark:text-yellow-400' },
+  4: { label: 'Very Good', desc: 'High quality, well structured and polished', color: 'text-emerald-600 dark:text-emerald-400' },
+  5: { label: 'Outstanding!', desc: 'Exceptional, flawless execution and creative', color: 'text-indigo-600 dark:text-brand-400' }
+};
+
+const DELIVERY_SUGGESTED_TAGS = [
+  '⚡ Fast Delivery',
+  '🎯 High Accuracy',
+  '🎨 Creative Design',
+  '🧹 Clean Layers & Files',
+  '💡 Followed Instructions',
+  '✨ Great Typography',
+  '🔥 Pixel Perfect'
+];
+
 // ── Main Page Component ──────────────────────────────────────────────────────
 const PendingReviews = () => {
   const { currentUser } = useAuth();
@@ -277,6 +298,7 @@ const PendingReviews = () => {
   const [rejectScreenshot, setRejectScreenshot] = useState(null);
   const [rejectScreenshotPreview, setRejectScreenshotPreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [ratingModalTask, setRatingModalTask] = useState(null);
 
   // Reviewer Final Stock Delivery States
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
@@ -289,6 +311,10 @@ const PendingReviews = () => {
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
   const [deliveryProgress, setDeliveryProgress] = useState(0);
   const [isDraggingFinal, setIsDraggingFinal] = useState(false);
+  const [deliveryRating, setDeliveryRating] = useState(5);
+  const [deliveryHoverRating, setDeliveryHoverRating] = useState(0);
+  const [deliveryIncludeRating, setDeliveryIncludeRating] = useState(true);
+  const [deliverySelectedTags, setDeliverySelectedTags] = useState(['⚡ Fast Delivery', '🎯 High Accuracy']);
 
   const smartMacros = [
     { icon: '📏', label: "Alignment", text: "Please fix the alignment and spacing issues across the main layout. Ensure margins are consistent." },
@@ -465,7 +491,7 @@ const PendingReviews = () => {
   };
 
   // Status updates: Approve (Completed)
-  const handleStatusUpdate = async (taskId, newStatus) => {
+  const handleStatusUpdate = async (taskId, newStatus, ratingData = null) => {
     // Optimistic UI Update: Remove card immediately
     const previousTasks = [...tasks];
     setTasks(prev => prev.filter(t => t.task_id !== taskId));
@@ -484,11 +510,18 @@ const PendingReviews = () => {
     }
 
     try {
-      axios.post(`${API_BASE}api/reviewer/update_task_status.php`, {
+      const payload = {
         task_id: taskId,
         status: newStatus,
         changed_by: currentUser.id
-      }).then(res => {
+      };
+      if (ratingData) {
+        if (ratingData.rating) payload.rating = ratingData.rating;
+        if (ratingData.feedback_notes) payload.feedback_notes = ratingData.feedback_notes;
+        if (ratingData.tags) payload.tags = ratingData.tags;
+      }
+
+      axios.post(`${API_BASE}api/reviewer/update_task_status.php`, payload).then(res => {
         if (res.data.status !== 'success') {
           console.error(res.data);
           alert('Failed to update task status. Reverting changes.');
@@ -565,7 +598,19 @@ const PendingReviews = () => {
     setFinalImage(null);
     setFinalImagePreview(null);
     setFixNotes('');
+    setDeliveryRating(5);
+    setDeliveryHoverRating(0);
+    setDeliveryIncludeRating(true);
+    setDeliverySelectedTags(['⚡ Fast Delivery', '🎯 High Accuracy']);
     setDeliveryModalOpen(true);
+  };
+
+  const handleDeliveryTagToggle = (tag) => {
+    if (deliverySelectedTags.includes(tag)) {
+      setDeliverySelectedTags(deliverySelectedTags.filter(t => t !== tag));
+    } else {
+      setDeliverySelectedTags([...deliverySelectedTags, tag]);
+    }
   };
 
   const submitFinalDelivery = async () => {
@@ -586,6 +631,14 @@ const PendingReviews = () => {
       formData.append('reviewer_id', currentUser.id);
       formData.append('fix_notes', fixNotes);
       formData.append('source_type', 'reviewer_corrected');
+
+      if (deliveryIncludeRating && deliveryRating > 0) {
+        formData.append('rating', deliveryRating);
+        formData.append('feedback_notes', fixNotes);
+        if (deliverySelectedTags.length > 0) {
+          formData.append('tags', JSON.stringify(deliverySelectedTags));
+        }
+      }
 
       if (finalFile) {
         formData.append('final_file', finalFile);
@@ -852,9 +905,9 @@ const PendingReviews = () => {
                         <FiX size={12} />
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); handleStatusUpdate(t.task_id, 'Completed'); }}
+                        onClick={(e) => { e.stopPropagation(); setRatingModalTask(t); }}
                         className="opacity-0 group-hover:opacity-100 p-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/30 shadow-sm"
-                        title="Quick Approve (Shift+A)"
+                        title="Rate & Approve Task"
                       >
                         <FiCheck size={12} />
                       </button>
@@ -988,12 +1041,16 @@ const PendingReviews = () => {
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
-                        </h4>
-                        <DescriptionRenderer htmlContent={activeReviewTask.description} />
-                      </div>
+                      {activeReviewTask.blueprint_variants && activeReviewTask.blueprint_variants.length > 0 ? (
+                        <AgenticBlueprintViewer variants={activeReviewTask.blueprint_variants} />
+                      ) : (
+                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
+                          <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
+                          </h4>
+                          <DescriptionRenderer htmlContent={activeReviewTask.description} />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1060,10 +1117,10 @@ const PendingReviews = () => {
                     <HiSparkles size={16} className="text-amber-300" /> Upload Stock Final Version
                   </button>
                   <button
-                    onClick={() => handleStatusUpdate(activeReviewTask.task_id, 'Completed')}
+                    onClick={() => setRatingModalTask(activeReviewTask)}
                     className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-950/20"
                   >
-                    <FiCheck size={15} /> Approve (As-Is)
+                    <FiCheck size={15} /> Rate & Approve
                   </button>
                 </div>
               )}
@@ -1192,25 +1249,25 @@ const PendingReviews = () => {
             onClick={() => { if (!isSubmittingDelivery) { setDeliveryModalOpen(false); setDeliveryTask(null); } }}
           />
 
-          <div className="relative z-10 glass rounded-3xl border border-blue-500/30 max-w-lg w-full p-6 sm:p-7 space-y-5 shadow-2xl animate-fade-in bg-dark-900/95">
+          <div className="relative z-10 glass rounded-3xl border border-slate-200 dark:border-blue-500/30 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-5 shadow-2xl animate-fade-in bg-white dark:bg-[#0f172a] text-slate-800 dark:text-white">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 flex items-center justify-center">
-                  <HiSparkles size={20} className="text-amber-400" />
+                <div className="w-9 h-9 rounded-2xl bg-blue-50 dark:bg-blue-600/20 border border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                  <HiSparkles size={20} className="text-amber-500" />
                 </div>
                 <div>
-                  <h3 className="text-white font-black text-sm tracking-wide">
+                  <h3 className="text-slate-900 dark:text-white font-black text-sm tracking-wide">
                     Upload Corrected Stock Version
                   </h3>
-                  <p className="text-white/40 text-[11px]">
+                  <p className="text-slate-500 dark:text-white/40 text-[11px]">
                     Preserves staff's original submission while saving your final stock-ready file
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => { if (!isSubmittingDelivery) { setDeliveryModalOpen(false); setDeliveryTask(null); } }}
-                className="text-white/40 hover:text-white transition-colors p-1"
+                className="text-slate-400 dark:text-white/40 hover:text-slate-700 dark:hover:text-white transition-colors p-1"
               >
                 <FiX size={18} />
               </button>
@@ -1218,14 +1275,14 @@ const PendingReviews = () => {
 
             {/* Task Info Chip */}
             {deliveryTask && (
-              <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/5 flex items-center justify-between text-xs">
+              <div className="p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 flex items-center justify-between text-xs">
                 <div className="min-w-0">
-                  <p className="text-white/40 text-[10px] uppercase font-bold">Task Title</p>
-                  <p className="text-white font-bold truncate">{deliveryTask.title}</p>
+                  <p className="text-slate-400 dark:text-white/40 text-[10px] uppercase font-bold">Task Title</p>
+                  <p className="text-slate-800 dark:text-white font-bold truncate">{deliveryTask.title}</p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-white/40 text-[10px] uppercase font-bold">Staff</p>
-                  <p className="text-brand-400 font-bold">{deliveryTask.staff_name}</p>
+                  <p className="text-slate-400 dark:text-white/40 text-[10px] uppercase font-bold">Staff</p>
+                  <p className="text-indigo-600 dark:text-brand-400 font-bold">{deliveryTask.staff_name}</p>
                 </div>
               </div>
             )}
@@ -1234,14 +1291,17 @@ const PendingReviews = () => {
             <div className="space-y-4">
               {/* 1. Final Source File (PSD / ZIP / Link) */}
               <div>
-                <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <FiPackage className="text-blue-400" /> Corrected Final Source File (PSD / ZIP / AI)
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <FiPackage className="text-blue-500 dark:text-blue-400" /> Corrected Final Source File (PSD / ZIP / AI)
                 </label>
 
                 <div className="flex flex-col gap-2">
                   <div
-                    className={`border-2 border-dashed rounded-2xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-between gap-2 relative ${finalFile ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-white/10 hover:border-blue-500/50 bg-white/5 text-white/60'
-                      }`}
+                    className={`border-2 border-dashed rounded-2xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-between gap-2 relative ${
+                      finalFile 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-slate-900 dark:text-white' 
+                        : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/60'
+                    }`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -1251,7 +1311,7 @@ const PendingReviews = () => {
                     }}
                   >
                     <label className="flex items-center justify-center gap-2 cursor-pointer flex-1 min-w-0">
-                      <FiDownload size={16} className={finalFile ? "text-blue-400 shrink-0" : "text-white/30 shrink-0"} />
+                      <FiDownload size={16} className={finalFile ? "text-blue-500 dark:text-blue-400 shrink-0" : "text-slate-400 dark:text-white/30 shrink-0"} />
                       <span className="text-xs font-semibold truncate">
                         {finalFile ? finalFile.name : 'Click or Drag & Drop Final PSD / ZIP File'}
                       </span>
@@ -1274,7 +1334,7 @@ const PendingReviews = () => {
                           e.stopPropagation();
                           setFinalFile(null);
                         }}
-                        className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors shrink-0"
+                        className="p-1 rounded-lg bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-500/40 transition-colors shrink-0"
                         title="Remove File"
                       >
                         <FiX size={14} />
@@ -1283,13 +1343,13 @@ const PendingReviews = () => {
                   </div>
 
                   <div className="relative">
-                    <FiLink size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+                    <FiLink size={13} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/30" />
                     <input
                       type="url"
                       placeholder="Or enter Drive / Cloud storage link..."
                       value={finalFileLink}
                       onChange={(e) => setFinalFileLink(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:border-blue-500/50"
+                      className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/20 rounded-xl pl-9 pr-3 py-2 text-xs outline-none focus:border-blue-500/50"
                     />
                   </div>
                 </div>
@@ -1297,13 +1357,16 @@ const PendingReviews = () => {
 
               {/* 2. Final Preview Image Dropzone / Paste */}
               <div>
-                <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <FiImage className="text-blue-400" /> Final Corrected Preview Image (JPG/PNG)
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <FiImage className="text-blue-500 dark:text-blue-400" /> Final Corrected Preview Image (JPG/PNG)
                 </label>
 
                 <div
-                  className={`border-2 border-dashed rounded-2xl p-3 text-center transition-all relative overflow-hidden ${isDraggingFinal ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-blue-500/50 bg-white/5'
-                    }`}
+                  className={`border-2 border-dashed rounded-2xl p-3 text-center transition-all relative overflow-hidden ${
+                    isDraggingFinal 
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' 
+                      : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5'
+                  }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDraggingFinal(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDraggingFinal(false); }}
                   onDrop={(e) => {
@@ -1329,9 +1392,9 @@ const PendingReviews = () => {
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center cursor-pointer h-24 w-full">
-                      <FiImage className="text-white/30 mb-1" size={20} />
-                      <span className="text-white/70 text-xs font-medium">Click or Drag & Drop preview image</span>
-                      <span className="text-white/35 text-[10px] mt-0.5">(Or press Ctrl+V to paste)</span>
+                      <FiImage className="text-slate-400 dark:text-white/30 mb-1" size={20} />
+                      <span className="text-slate-600 dark:text-white/70 text-xs font-medium">Click or Drag & Drop preview image</span>
+                      <span className="text-slate-400 dark:text-white/35 text-[10px] mt-0.5">(Or press Ctrl+V to paste)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1349,32 +1412,118 @@ const PendingReviews = () => {
                 </div>
               </div>
 
-              {/* 3. Fix Notes */}
+              {/* 3. Optional 5-Star Rating & Recognition Toggle Section */}
+              <div className="bg-slate-50/90 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={deliveryIncludeRating}
+                      onChange={(e) => setDeliveryIncludeRating(e.target.checked)}
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-0 cursor-pointer accent-indigo-600"
+                    />
+                    <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
+                      <FiStar className="text-amber-400 fill-amber-400" size={14} /> 
+                      Give Staff Rating & Recognition
+                    </span>
+                  </label>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    deliveryIncludeRating 
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                      : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40'
+                  }`}>
+                    {deliveryIncludeRating ? `${deliveryRating} Stars` : 'No Stars'}
+                  </span>
+                </div>
+
+                {deliveryIncludeRating && (
+                  <div className="space-y-3 pt-1 border-t border-slate-200/70 dark:border-white/5 animate-fade-in">
+                    {/* Interactive Star Buttons */}
+                    <div className="flex flex-col items-center justify-center py-1">
+                      <div className="flex items-center gap-1.5">
+                        {[1, 2, 3, 4, 5].map((star) => {
+                          const isAct = star <= (deliveryHoverRating || deliveryRating);
+                          return (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setDeliveryRating(star)}
+                              onMouseEnter={() => setDeliveryHoverRating(star)}
+                              onMouseLeave={() => setDeliveryHoverRating(0)}
+                              className="p-1 transition-transform hover:scale-125 focus:outline-none"
+                            >
+                              <FiStar
+                                size={24}
+                                className={`${
+                                  isAct
+                                    ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+                                    : 'text-slate-200 dark:text-white/20'
+                                } transition-colors duration-150`}
+                              />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="text-[11px] font-bold mt-1 text-slate-600 dark:text-white/60">
+                        {deliveryRating} / 5 ⭐ {DELIVERY_STAR_LABELS[deliveryHoverRating || deliveryRating]?.label}
+                      </div>
+                    </div>
+
+                    {/* Quick Tags */}
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 dark:text-white/40 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                        <FiTag size={11} /> Quick Quality Tags
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {DELIVERY_SUGGESTED_TAGS.map((tag) => {
+                          const isSel = deliverySelectedTags.includes(tag);
+                          return (
+                            <button
+                              key={tag}
+                              type="button"
+                              onClick={() => handleDeliveryTagToggle(tag)}
+                              className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${
+                                isSel
+                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-brand-500/20 dark:border-brand-500/40 dark:text-brand-300 shadow-xs'
+                                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/50 dark:hover:text-white'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 4. Fix Notes */}
               <div>
-                <label className="block text-[11px] font-bold text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <FiFileText className="text-blue-400" /> Stock Correction Notes / Remarks (Optional)
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-white/70 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <FiFileText className="text-blue-500 dark:text-blue-400" /> Stock Correction Notes / Feedback (Optional)
                 </label>
                 <textarea
                   rows={2}
                   value={fixNotes}
                   onChange={(e) => setFixNotes(e.target.value)}
                   placeholder="e.g. Corrected bleed margin and adjusted font weight for stock guidelines..."
-                  className="w-full bg-white/5 border border-white/10 text-white placeholder-white/25 rounded-xl p-3 text-xs outline-none focus:border-blue-500/50 resize-none"
+                  className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/25 rounded-xl p-3 text-xs outline-none focus:border-blue-500/50 resize-none"
                 />
               </div>
             </div>
 
             {/* Upload Progress Indicator */}
             {isSubmittingDelivery && (
-              <div className="p-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/30 space-y-2 animate-fade-in">
+              <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/30 space-y-2 animate-fade-in">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-blue-300 font-bold flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping inline-block" />
+                  <span className="text-blue-700 dark:text-blue-300 font-bold flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping inline-block" />
                     Uploading Final PSD / JPG to Cloudflare R2...
                   </span>
-                  <span className="text-blue-400 font-black text-xs">{deliveryProgress}%</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-black text-xs">{deliveryProgress}%</span>
                 </div>
-                <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-300"
                     style={{ width: `${deliveryProgress}%` }}
@@ -1389,7 +1538,7 @@ const PendingReviews = () => {
                 type="button"
                 disabled={isSubmittingDelivery}
                 onClick={() => { setDeliveryModalOpen(false); setDeliveryTask(null); }}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-white/70 text-xs font-semibold transition-all"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-white/5 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.02] dark:hover:bg-white/[0.06] text-slate-700 dark:text-white/70 text-xs font-semibold transition-all"
               >
                 Cancel
               </button>
@@ -1397,14 +1546,18 @@ const PendingReviews = () => {
                 type="button"
                 disabled={isSubmittingDelivery || (!finalFile && !finalFileLink && !finalImage)}
                 onClick={submitFinalDelivery}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-950/40"
+                className="flex-[1.5] py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20"
               >
                 {isSubmittingDelivery ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <FiCheck size={14} />
-                    <span>Approve as Final Stock Version</span>
+                    <span>
+                      {deliveryIncludeRating && deliveryRating > 0
+                        ? `Submit Final & Rate (${deliveryRating} ⭐)`
+                        : 'Approve as Final Stock Version'}
+                    </span>
                   </>
                 )}
               </button>
@@ -1484,6 +1637,17 @@ const PendingReviews = () => {
         </div>,
         document.body
       )}
+      {/* 5-Star Approval & Rating Modal */}
+      <ApprovalRatingModal
+        isOpen={!!ratingModalTask}
+        task={ratingModalTask}
+        onClose={() => setRatingModalTask(null)}
+        onConfirm={async (ratingData) => {
+          if (ratingModalTask) {
+            await handleStatusUpdate(ratingModalTask.task_id, 'Completed', ratingData);
+          }
+        }}
+      />
     </div>
   );
 };

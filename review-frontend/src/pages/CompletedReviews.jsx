@@ -5,10 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import {
   FiClock, FiCheck, FiX, FiCode, FiLink, FiChevronDown,
   FiAlertCircle, FiMessageSquare, FiSend, FiPlusCircle,
-  FiSearch, FiCalendar, FiUsers, FiFileText, FiEye, FiFilter, FiCheckCircle, FiPackage, FiExternalLink, FiDownload
+  FiSearch, FiCalendar, FiUsers, FiFileText, FiEye, FiFilter, FiCheckCircle, FiPackage, FiExternalLink, FiDownload, FiStar, FiTag, FiAward
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
+import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import { downloadFile } from '../utils/fileDownloader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -486,6 +487,11 @@ const CompletedReviews = () => {
                     </div>
                     
                     <div className="flex items-center gap-2 flex-wrap shrink-0">
+                      {t.rating && (
+                        <span className="px-2 py-0.5 rounded-full border text-[10px] font-bold text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
+                          <FiStar className="fill-amber-400 text-amber-400" size={10} /> {t.rating}/5
+                        </span>
+                      )}
                       <span className="px-2 py-0.5 rounded-full border text-[9px] font-semibold text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
                         Completed
                       </span>
@@ -501,6 +507,13 @@ const CompletedReviews = () => {
                   <h3 className="text-white/90 font-bold text-sm leading-snug line-clamp-2 mt-2 group-hover:text-emerald-400 transition-colors">
                     {t.title}
                   </h3>
+
+                  {/* Rating feedback snippet if present */}
+                  {t.feedback_notes && (
+                    <p className="text-xs text-white/50 italic line-clamp-1 mt-2 bg-white/[0.02] px-2.5 py-1 rounded-lg border border-white/5">
+                      "{t.feedback_notes}"
+                    </p>
+                  )}
                 </div>
 
                 {/* Footer details */}
@@ -721,18 +734,70 @@ const CompletedReviews = () => {
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in duration-200">
-                      <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-                        <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
-                        </h4>
-                        <DescriptionRenderer htmlContent={activeReviewTask.description} />
-                      </div>
+                      {activeReviewTask.blueprint_variants && activeReviewTask.blueprint_variants.length > 0 ? (
+                        <AgenticBlueprintViewer variants={activeReviewTask.blueprint_variants} />
+                      ) : (
+                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
+                          <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
+                          </h4>
+                          <DescriptionRenderer htmlContent={activeReviewTask.description} />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Right Column (1/3 width): References & Checklist */}
+                {/* Right Column (1/3 width): Review Evaluation & References */}
                 <div className="space-y-6 border-t lg:border-t-0 lg:border-l border-white/5 pt-6 lg:pt-0 lg:pl-6">
+                  
+                  {/* ⭐ Review Evaluation Card */}
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-brand-500/5 to-transparent border border-amber-500/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <FiAward size={14} /> Review Evaluation
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-black text-xs flex items-center gap-1">
+                        <FiStar size={12} className="fill-amber-400 text-amber-400" /> {activeReviewTask.rating || 5} / 5 Stars
+                      </span>
+                    </div>
+
+                    {/* Star display */}
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <FiStar
+                          key={star}
+                          size={18}
+                          className={`${
+                            star <= (activeReviewTask.rating || 5)
+                              ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+                              : 'text-white/20'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Reviewer Feedback Notes */}
+                    {activeReviewTask.feedback_notes && (
+                      <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-xs text-white/80 leading-relaxed italic">
+                        "{activeReviewTask.feedback_notes}"
+                      </div>
+                    )}
+
+                    {/* Review Tags */}
+                    {activeReviewTask.review_tags && (
+                      <div className="flex flex-wrap gap-1.5 pt-1">
+                        {(typeof activeReviewTask.review_tags === 'string'
+                          ? (activeReviewTask.review_tags.startsWith('[') ? JSON.parse(activeReviewTask.review_tags) : activeReviewTask.review_tags.split(','))
+                          : activeReviewTask.review_tags
+                        ).map((tag, idx) => (
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/10 text-white/70 font-medium">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Checklists (Sub tasks) */}
                   {activeReviewTask.checklists && Array.isArray(activeReviewTask.checklists) && activeReviewTask.checklists.length > 0 && (
