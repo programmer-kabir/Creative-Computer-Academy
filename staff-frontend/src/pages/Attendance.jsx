@@ -11,13 +11,13 @@ const Attendance = () => {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const time = useServerTime() || new Date(); // fallback to local if not loaded yet
-  
+
   const [todayStatus, setTodayStatus] = useState(null); // null if not checked in, object if checked in
   const [history, setHistory] = useState([]);
   const [shiftHours, setShiftHours] = useState(8);
   const [totalBreakMinutes, setTotalBreakMinutes] = useState(0);
   const [actionError, setActionError] = useState('');
-  
+
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [selectedDisputeDate, setSelectedDisputeDate] = useState(null);
   const [disputeSuccessMsg, setDisputeSuccessMsg] = useState('');
@@ -43,7 +43,7 @@ const Attendance = () => {
   };
 
   useEffect(() => {
-    if(currentUser?.id) {
+    if (currentUser?.id) {
       fetchAttendance();
     }
   }, [currentUser]);
@@ -51,7 +51,7 @@ const Attendance = () => {
   const handleCheckIn = async () => {
     setActionError('');
     try {
-      const response = await axios.post((import.meta.env.VITE_API_BASE_URL ) + 'api/attendance/check_in.php', {
+      const response = await axios.post((import.meta.env.VITE_API_BASE_URL) + 'api/attendance/check_in.php', {
         user_id: currentUser.id
       });
       if (response.data.status === 'success') {
@@ -67,7 +67,7 @@ const Attendance = () => {
   const handleCheckOut = async () => {
     setActionError('');
     try {
-      const response = await axios.post((import.meta.env.VITE_API_BASE_URL ) + 'api/attendance/check_out.php', {
+      const response = await axios.post((import.meta.env.VITE_API_BASE_URL) + 'api/attendance/check_out.php', {
         user_id: currentUser.id
       });
       if (response.data.status === 'success') {
@@ -80,23 +80,23 @@ const Attendance = () => {
     }
   };
 
-  
+
   const calculateWorkTime = (checkInTimeStr) => {
     if (!checkInTimeStr) return null;
-    
+
     // Parse checkInTimeStr "HH:MM:SS"
     const parts = checkInTimeStr.split(':').map(Number);
-    if(parts.length < 3) return null;
+    if (parts.length < 3) return null;
     const [hours, minutes, seconds] = parts;
     const checkInDate = new Date(time); // Use current time date for today
     checkInDate.setHours(hours, minutes, seconds, 0);
 
-    const now = time; 
-    
+    const now = time;
+
     // Total elapsed seconds
     let elapsedSeconds = Math.floor((now - checkInDate) / 1000);
     if (elapsedSeconds < 0) elapsedSeconds = 0; // Prevent negative if clocks mismatch
-    
+
     const TARGET_HOURS = shiftHours || 8;
     const TARGET_SECONDS = TARGET_HOURS * 3600;
 
@@ -106,36 +106,36 @@ const Attendance = () => {
       const s = totalSec % 60;
       return `${h.toString().padStart(2, '0')}h ${m.toString().padStart(2, '0')}m ${s.toString().padStart(2, '0')}s`;
     };
-    
+
     const formatElapsed = formatTime(elapsedSeconds);
 
     if (elapsedSeconds >= TARGET_SECONDS) {
-       const overtimeSec = elapsedSeconds - TARGET_SECONDS;
-       return {
-          type: 'overtime',
-          label: 'Overtime (+)',
-          color: 'text-emerald-600 dark:text-emerald-400',
-          bg: 'bg-emerald-50 dark:bg-emerald-500/10',
-          borderColor: 'border-emerald-200 dark:border-emerald-800/50',
-          barColor: 'bg-emerald-500 dark:bg-emerald-400',
-          value: formatTime(overtimeSec),
-          elapsed: formatElapsed,
-          progress: 100
-       };
+      const overtimeSec = elapsedSeconds - TARGET_SECONDS;
+      return {
+        type: 'overtime',
+        label: 'Overtime (+)',
+        color: 'text-emerald-600 dark:text-emerald-400',
+        bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+        borderColor: 'border-emerald-200 dark:border-emerald-800/50',
+        barColor: 'bg-emerald-500 dark:bg-emerald-400',
+        value: formatTime(overtimeSec),
+        elapsed: formatElapsed,
+        progress: 100
+      };
     } else {
-       const remainingSec = TARGET_SECONDS - elapsedSeconds;
-       const progress = (elapsedSeconds / TARGET_SECONDS) * 100;
-       return {
-          type: 'remaining',
-          label: 'Time Remaining',
-          color: 'text-amber-600 dark:text-amber-400',
-          bg: 'bg-amber-50 dark:bg-amber-500/10',
-          borderColor: 'border-amber-200 dark:border-amber-800/50',
-          barColor: 'bg-amber-500 dark:bg-amber-400',
-          value: formatTime(remainingSec),
-          elapsed: formatElapsed,
-          progress: progress
-       };
+      const remainingSec = TARGET_SECONDS - elapsedSeconds;
+      const progress = (elapsedSeconds / TARGET_SECONDS) * 100;
+      return {
+        type: 'remaining',
+        label: 'Time Remaining',
+        color: 'text-amber-600 dark:text-amber-400',
+        bg: 'bg-amber-50 dark:bg-amber-500/10',
+        borderColor: 'border-amber-200 dark:border-amber-800/50',
+        barColor: 'bg-amber-500 dark:bg-amber-400',
+        value: formatTime(remainingSec),
+        elapsed: formatElapsed,
+        progress: progress
+      };
     }
   };
 
@@ -149,7 +149,7 @@ const Attendance = () => {
 
   const processedHistory = history.map(record => {
     if (!record.check_in || !record.check_out || record.check_out === '-') return record;
-    
+
     let total_hours = record.total_hours;
     let overtime = null;
     let is_short = false;
@@ -158,69 +158,69 @@ const Attendance = () => {
 
     // Force recalculate overtime/gap to ensure it always shows
     const parseTime = (timeStr) => {
-        const parts = timeStr.match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
-        if (!parts) return null;
-        let h = parseInt(parts[1], 10);
-        let m = parseInt(parts[2], 10);
-        let s = parts[3] ? parseInt(parts[3], 10) : 0;
-        let ampm = parts[4] ? parts[4].toUpperCase() : null;
-        if (ampm === 'PM' && h < 12) h += 12;
-        if (ampm === 'AM' && h === 12) h = 0;
-        return { h, m, s };
-      };
+      const parts = timeStr.match(/(\d+):(\d+)(?::(\d+))?\s*(AM|PM)?/i);
+      if (!parts) return null;
+      let h = parseInt(parts[1], 10);
+      let m = parseInt(parts[2], 10);
+      let s = parts[3] ? parseInt(parts[3], 10) : 0;
+      let ampm = parts[4] ? parts[4].toUpperCase() : null;
+      if (ampm === 'PM' && h < 12) h += 12;
+      if (ampm === 'AM' && h === 12) h = 0;
+      return { h, m, s };
+    };
 
-      const inTime = parseTime(record.check_in);
-      const outTime = parseTime(record.check_out);
-      
-      if (inTime && outTime) {
-        const inDate = new Date();
-        inDate.setHours(inTime.h, inTime.m, inTime.s, 0);
-        
-        const outDate = new Date();
-        outDate.setHours(outTime.h, outTime.m, outTime.s, 0);
-        
-        let elapsedSeconds = Math.floor((outDate - inDate) / 1000);
-        if (elapsedSeconds < 0) elapsedSeconds += 24 * 3600;
-        
-        const TARGET_SECONDS = (shiftHours || 8) * 3600;
-        
-        if (!total_hours) {
-          const h = Math.floor(elapsedSeconds / 3600);
-          const m = Math.floor((elapsedSeconds % 3600) / 60);
-          total_hours = `${h}h ${m}m`;
-        }
-        
-        if (!overtime) {
-          if (elapsedSeconds > TARGET_SECONDS) {
-            const overSec = elapsedSeconds - TARGET_SECONDS;
-            rawOverSec = overSec;
-            const oh = Math.floor(overSec / 3600);
-            const om = Math.floor((overSec % 3600) / 60);
-            if (overSec >= 60) {
-              overtime = `+${oh}h ${om}m`;
-              is_short = false;
-            } else {
-              overtime = `PERFECT`;
-              is_short = null;
-            }
-          } else if (elapsedSeconds < TARGET_SECONDS) {
-            const shortSec = TARGET_SECONDS - elapsedSeconds;
-            rawShortSec = shortSec;
-            const sh = Math.floor(shortSec / 3600);
-            const sm = Math.floor((shortSec % 3600) / 60);
-            if (shortSec >= 60) {
-              overtime = `-${sh}h ${sm}m GAP`;
-              is_short = true;
-            } else {
-              overtime = `PERFECT`;
-              is_short = null;
-            }
+    const inTime = parseTime(record.check_in);
+    const outTime = parseTime(record.check_out);
+
+    if (inTime && outTime) {
+      const inDate = new Date();
+      inDate.setHours(inTime.h, inTime.m, inTime.s, 0);
+
+      const outDate = new Date();
+      outDate.setHours(outTime.h, outTime.m, outTime.s, 0);
+
+      let elapsedSeconds = Math.floor((outDate - inDate) / 1000);
+      if (elapsedSeconds < 0) elapsedSeconds += 24 * 3600;
+
+      const TARGET_SECONDS = (shiftHours || 8) * 3600;
+
+      if (!total_hours) {
+        const h = Math.floor(elapsedSeconds / 3600);
+        const m = Math.floor((elapsedSeconds % 3600) / 60);
+        total_hours = `${h}h ${m}m`;
+      }
+
+      if (!overtime) {
+        if (elapsedSeconds > TARGET_SECONDS) {
+          const overSec = elapsedSeconds - TARGET_SECONDS;
+          rawOverSec = overSec;
+          const oh = Math.floor(overSec / 3600);
+          const om = Math.floor((overSec % 3600) / 60);
+          if (overSec >= 60) {
+            overtime = `+${oh}h ${om}m`;
+            is_short = false;
           } else {
             overtime = `PERFECT`;
             is_short = null;
           }
+        } else if (elapsedSeconds < TARGET_SECONDS) {
+          const shortSec = TARGET_SECONDS - elapsedSeconds;
+          rawShortSec = shortSec;
+          const sh = Math.floor(shortSec / 3600);
+          const sm = Math.floor((shortSec % 3600) / 60);
+          if (shortSec >= 60) {
+            overtime = `-${sh}h ${sm}m GAP`;
+            is_short = true;
+          } else {
+            overtime = `PERFECT`;
+            is_short = null;
+          }
+        } else {
+          overtime = `PERFECT`;
+          is_short = null;
         }
       }
+    }
     return { ...record, total_hours, overtime, is_short, rawOverSec, rawShortSec };
   });
 
@@ -322,7 +322,7 @@ const Attendance = () => {
         </div>
       )}
 
-      
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {/* Live Clock & Action Box */}
         <div className="group bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-700 p-8 flex flex-col items-center justify-center text-center relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-1">
@@ -331,13 +331,13 @@ const Attendance = () => {
 
           <div className="relative mb-6 mt-2">
             <div className="absolute inset-0 bg-cyan-500/20 dark:bg-cyan-500/30 rounded-full animate-ping opacity-75"></div>
-            
+
             {/* Outer Bezel (3D Cyan Gradient) */}
             <div className="w-40 h-40 rounded-full bg-gradient-to-br from-cyan-300 via-cyan-500 to-cyan-700 shadow-[0_0_20px_rgba(6,182,212,0.6)] p-[8px] relative z-10 group-hover:scale-105 transition-transform duration-500">
-              
+
               {/* Inner White Face */}
               <div className="w-full h-full bg-white rounded-full shadow-[inset_0_2px_15px_rgba(0,0,0,0.15)] relative flex items-center justify-center">
-                
+
                 {/* 60 Minute Ticks */}
                 {[...Array(60)].map((_, i) => (
                   <div key={`tick-${i}`} className="absolute inset-[3px] pointer-events-none" style={{ transform: `rotate(${i * 6}deg)` }}>
@@ -354,7 +354,7 @@ const Attendance = () => {
                   const y = -Math.cos((angle * Math.PI) / 180) * radius;
                   return (
                     <div key={`num-${num}`} className="absolute top-1/2 left-1/2 text-[14px] font-bold text-slate-800 pointer-events-none flex items-center justify-center leading-none"
-                         style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}>
+                      style={{ transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` }}>
                       {num}
                     </div>
                   );
@@ -367,16 +367,16 @@ const Attendance = () => {
 
                 {/* Hour Hand (Dark Cyan) */}
                 <div className="absolute top-1/2 left-1/2 w-[5px] h-[26%] bg-cyan-950 rounded-full origin-bottom z-10 shadow-sm transition-transform duration-200"
-                     style={{ transform: `translate(-50%, -100%) rotate(${(time.getHours() / 12) * 360 + (time.getMinutes() / 60) * 30}deg)` }}></div>
-                     
+                  style={{ transform: `translate(-50%, -100%) rotate(${(time.getHours() / 12) * 360 + (time.getMinutes() / 60) * 30}deg)` }}></div>
+
                 {/* Minute Hand (Dark Cyan) */}
                 <div className="absolute top-1/2 left-1/2 w-[3.5px] h-[37%] bg-cyan-900 rounded-full origin-bottom z-20 shadow-sm transition-transform duration-200"
-                     style={{ transform: `translate(-50%, -100%) rotate(${(time.getMinutes() / 60) * 360 + (time.getSeconds() / 60) * 6}deg)` }}></div>
-                     
+                  style={{ transform: `translate(-50%, -100%) rotate(${(time.getMinutes() / 60) * 360 + (time.getSeconds() / 60) * 6}deg)` }}></div>
+
                 {/* Second Hand (Orange with tail) */}
                 <div className="absolute top-1/2 left-1/2 w-[2px] h-[46%] bg-orange-500 rounded-full origin-[50%_80%] z-30 shadow-md transition-transform duration-200 ease-linear"
-                     style={{ transform: `translate(-50%, -80%) rotate(${(time.getSeconds() / 60) * 360}deg)` }}></div>
-                     
+                  style={{ transform: `translate(-50%, -80%) rotate(${(time.getSeconds() / 60) * 360}deg)` }}></div>
+
                 {/* Center Pin (Black with silver dot) */}
                 <div className="absolute top-1/2 left-1/2 w-3.5 h-3.5 bg-slate-900 rounded-full -translate-x-1/2 -translate-y-1/2 z-40 shadow-md flex items-center justify-center">
                   <div className="w-[3px] h-[3px] bg-slate-300 rounded-full"></div>
@@ -394,12 +394,12 @@ const Attendance = () => {
 
           <div className="w-full max-w-sm">
             {!todayStatus ? (
-              <button 
+              <button
                 onClick={handleCheckIn}
                 className="relative overflow-hidden w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider group/btn"
               >
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]"></div>
-                <FiCheckCircle size={20} className="relative z-10" /> <span className="relative z-10">Check In Now</span> 
+                <FiCheckCircle size={20} className="relative z-10" /> <span className="relative z-10">Check In Now</span>
               </button>
             ) : !todayStatus.check_out ? (
               <div className="space-y-4">
@@ -410,7 +410,7 @@ const Attendance = () => {
                   <p className="text-emerald-800 dark:text-emerald-300 font-black uppercase tracking-wider text-sm mb-0.5">Checked In</p>
                   <p className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">at {todayStatus.check_in}</p>
                 </div>
-                <button 
+                <button
                   onClick={handleCheckOut}
                   className="w-full py-4 bg-rose-600 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] hover:bg-rose-700 hover:shadow-[0_6px_20px_rgba(225,29,72,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
                 >
@@ -439,48 +439,48 @@ const Attendance = () => {
 
         {/* Live Tracker Box */}
         {workTimeData ? (
-           <div className="group bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-700 p-8 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-1">
-             <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1">
-                Shift Progress ({shiftHours} Hours)
-             </h3>
-             
-             {/* Circular/Linear Progress Display */}
-             <div className="flex flex-col items-center justify-center mb-8">
-                <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden shadow-inner mb-4">
-                   <div 
-                     className={`h-full transition-all duration-1000 ${workTimeData.barColor}`} 
-                     style={{ width: `${Math.min(workTimeData.progress, 100)}%` }}
-                   ></div>
-                </div>
-                <div className="flex justify-between w-full text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <span>0h</span>
-                  <span>{Math.floor(shiftHours / 2)}h</span>
-                  <span>{shiftHours}h</span>
-                </div>
-             </div>
+          <div className="group bg-white dark:bg-slate-800 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 dark:border-slate-700 p-8 flex flex-col justify-center relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/10 hover:-translate-y-1">
+            <h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-6 flex items-center gap-2 transition-transform duration-300 group-hover:translate-x-1">
+              Shift Progress ({shiftHours} Hours)
+            </h3>
 
-             <div className="grid grid-cols-2 gap-4">
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 text-center">
-                   <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Worked</p>
-                   <p className="text-2xl font-black text-slate-800 dark:text-slate-100 font-mono">{workTimeData.elapsed}</p>
-                </div>
-                <div className={`p-5 rounded-2xl border text-center transition-transform hover:scale-105 duration-300 ${workTimeData.bg} ${workTimeData.borderColor}`}>
-                   <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${workTimeData.color}`}>{workTimeData.label}</p>
-                   <p className={`text-2xl font-black font-mono ${workTimeData.color}`}>{workTimeData.value}</p>
-                </div>
-             </div>
-           </div>
-        ) : (
-           <div className="bg-slate-50 dark:bg-slate-900/50/50 rounded-3xl border border-slate-200 dark:border-slate-700 border-dashed p-8 flex flex-col items-center justify-center relative text-center">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
-                 <FiClock size={24} />
+            {/* Circular/Linear Progress Display */}
+            <div className="flex flex-col items-center justify-center mb-8">
+              <div className="w-full bg-slate-100 dark:bg-slate-800 h-4 rounded-full overflow-hidden shadow-inner mb-4">
+                <div
+                  className={`h-full transition-all duration-1000 ${workTimeData.barColor}`}
+                  style={{ width: `${Math.min(workTimeData.progress, 100)}%` }}
+                ></div>
               </div>
-              <h3 className="text-lg font-black text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Shift Tracker Offline</h3>
-              <p className="text-slate-400 font-medium text-sm">Check in to start your {shiftHours}-hour live countdown.</p>
-           </div>
+              <div className="flex justify-between w-full text-xs font-bold text-slate-400 uppercase tracking-wider">
+                <span>0h</span>
+                <span>{Math.floor(shiftHours / 2)}h</span>
+                <span>{shiftHours}h</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-700 text-center">
+                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Total Worked</p>
+                <p className="text-2xl font-black text-slate-800 dark:text-slate-100 font-mono">{workTimeData.elapsed}</p>
+              </div>
+              <div className={`p-5 rounded-2xl border text-center transition-transform hover:scale-105 duration-300 ${workTimeData.bg} ${workTimeData.borderColor}`}>
+                <p className={`text-xs font-bold uppercase tracking-wider mb-1 ${workTimeData.color}`}>{workTimeData.label}</p>
+                <p className={`text-2xl font-black font-mono ${workTimeData.color}`}>{workTimeData.value}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-50 dark:bg-slate-900/50/50 rounded-3xl border border-slate-200 dark:border-slate-700 border-dashed p-8 flex flex-col items-center justify-center relative text-center">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400 mb-4">
+              <FiClock size={24} />
+            </div>
+            <h3 className="text-lg font-black text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Shift Tracker Offline</h3>
+            <p className="text-slate-400 font-medium text-sm">Check in to start your {shiftHours}-hour live countdown.</p>
+          </div>
         )}
       </div>
-      
+
       {/* Break Widget Section - Only visible to User ID 2 */}
       {currentUser?.id === 2 && (
         <div className="mb-8">
@@ -510,8 +510,8 @@ const Attendance = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {processedHistory.length > 0 ? processedHistory.map((record, index) => (
-                <tr 
-                  key={index} 
+                <tr
+                  key={index}
                   className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-300 cursor-default animate-fade-in"
                   style={{ animationFillMode: 'both', animationDelay: `${index * 50}ms` }}
                 >
@@ -521,7 +521,7 @@ const Attendance = () => {
                     <div className="flex flex-col gap-1 items-start">
                       <span>{record.check_out || '-'}</span>
                       {Number(record.is_forgotten_checkout) === 1 && (
-                        <span 
+                        <span
                           className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md cursor-help"
                           title="Auto checked out by system at shift end. Click report issue if you worked overtime."
                         >
@@ -536,11 +536,10 @@ const Attendance = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-700 dark:text-slate-300">{record.total_hours}</span>
                         {record.overtime && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-transform duration-300 group-hover:scale-110 ${
-                            record.is_short === true ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400' : 
-                            record.is_short === false ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' :
-                            'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
-                          }`}>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md transition-transform duration-300 group-hover:scale-110 ${record.is_short === true ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400' :
+                              record.is_short === false ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400' :
+                                'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-400'
+                            }`}>
                             {record.overtime}
                           </span>
                         )}
@@ -551,17 +550,16 @@ const Attendance = () => {
                     {record.total_break_minutes > 0 ? `${record.total_break_minutes}m` : '-'}
                   </td>
                   <td className="p-4">
-                    <span className={`inline-block transition-transform duration-300 group-hover:translate-x-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md border ${
-                      record.status === 'Present' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' :
-                      record.status === 'Late' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800/50' :
-                      record.status === 'Absent' ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800/50' :
-                      'bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}>
+                    <span className={`inline-block transition-transform duration-300 group-hover:translate-x-1 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md border ${record.status === 'Present' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50' :
+                        record.status === 'Late' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-800/50' :
+                          record.status === 'Absent' ? 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800/50' :
+                            'bg-slate-50 dark:bg-slate-900/50 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                      }`}>
                       {record.status}
                     </span>
                   </td>
                   <td className="p-4 text-center">
-                    <button 
+                    <button
                       onClick={() => {
                         setSelectedDisputeDate(record.date);
                         setIsDisputeModalOpen(true);
@@ -591,9 +589,9 @@ const Attendance = () => {
         </div>
       )}
 
-      <AttendanceDisputeModal 
-        isOpen={isDisputeModalOpen} 
-        onClose={() => setIsDisputeModalOpen(false)} 
+      <AttendanceDisputeModal
+        isOpen={isDisputeModalOpen}
+        onClose={() => setIsDisputeModalOpen(false)}
         selectedDate={selectedDisputeDate}
         onSuccess={(msg) => {
           setDisputeSuccessMsg(msg);
