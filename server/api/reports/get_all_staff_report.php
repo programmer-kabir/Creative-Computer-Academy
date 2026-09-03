@@ -79,24 +79,27 @@ try {
     // 3. Fetch all tasks in period
     $task_query = "
         SELECT 
-            id,
-            title,
-            assigned_to,
-            created_by,
-            category,
-            priority,
-            status,
-            is_self_created,
-            total_time_spent,
-            assign_date,
-            deadline,
-            created_at,
-            submitted_at,
-            reviewed_at
-        FROM tasks
-        WHERE (DATE(COALESCE(assign_date, created_at)) >= :start_date AND DATE(COALESCE(assign_date, created_at)) <= :end_date)
-           OR (submitted_at >= :start_dt AND submitted_at <= :end_dt)
-        ORDER BY created_at DESC
+            t.id,
+            t.title,
+            t.assigned_to,
+            t.created_by,
+            COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') AS category,
+            t.priority,
+            t.status,
+            t.is_self_created,
+            t.total_time_spent,
+            t.assign_date,
+            t.deadline,
+            t.created_at,
+            t.submitted_at,
+            t.reviewed_at
+        FROM tasks t
+        LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
+        LEFT JOIN task_categories tc_sub ON t.subcategory_id = tc_sub.id
+        LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
+        WHERE (DATE(COALESCE(t.assign_date, t.created_at)) >= :start_date AND DATE(COALESCE(t.assign_date, t.created_at)) <= :end_date)
+           OR (t.submitted_at >= :start_dt AND t.submitted_at <= :end_dt)
+        ORDER BY t.created_at DESC
     ";
     $task_stmt = $db->prepare($task_query);
     $task_stmt->execute([

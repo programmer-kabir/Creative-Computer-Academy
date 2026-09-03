@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useSearch } from '../context/SearchContext';
 import { FiCalendar, FiFileText, FiSend, FiClock, FiCheckCircle, FiXCircle, FiMessageSquare } from 'react-icons/fi';
 
 const Leave = () => {
   const { currentUser } = useAuth();
+  const { searchTerm } = useSearch();
   const [leaves, setLeaves] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -37,6 +39,19 @@ const Leave = () => {
   useEffect(() => {
     fetchLeaves();
   }, [currentUser]);
+
+  const filteredLeaves = leaves.filter(l => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().trim();
+    return (
+      (l.type || '').toLowerCase().includes(term) ||
+      (l.reason || '').toLowerCase().includes(term) ||
+      (l.status || '').toLowerCase().includes(term) ||
+      (l.admin_comment || '').toLowerCase().includes(term) ||
+      (l.start_date || '').toLowerCase().includes(term) ||
+      (l.end_date || '').toLowerCase().includes(term)
+    );
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -241,17 +256,17 @@ const Leave = () => {
             
             {loading ? (
                 <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-4 border-primary-500 border-t-transparent rounded-full"></div></div>
-            ) : leaves.length === 0 ? (
+            ) : filteredLeaves.length === 0 ? (
                 <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-12 text-center shadow-sm">
                     <div className="w-16 h-16 bg-slate-50 dark:bg-slate-900/50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <FiCalendar className="text-3xl text-slate-400" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">No Leave History</h3>
-                    <p className="text-slate-500 dark:text-slate-400 text-sm">You haven't applied for any leaves yet.</p>
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-1">{searchTerm ? 'No Matching Leaves' : 'No Leave History'}</h3>
+                    <p className="text-slate-500 dark:text-slate-400 text-sm">{searchTerm ? `No records found matching "${searchTerm}"` : "You haven't applied for any leaves yet."}</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
-                    {leaves.map((leave) => (
+                    {filteredLeaves.map((leave) => (
                         <div key={leave.id} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group">
                             <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
                                 <div>

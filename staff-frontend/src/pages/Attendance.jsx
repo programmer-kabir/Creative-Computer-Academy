@@ -2,13 +2,16 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { FiClock, FiCheckCircle, FiLogOut, FiCalendar, FiAlertTriangle, FiPieChart, FiTrendingDown, FiAward, FiCoffee, FiAlertCircle } from 'react-icons/fi';
+import { soundFx } from '../utils/soundFx';
 import BreakWidget from '../components/BreakWidget';
 import AttendanceDisputeModal from '../components/AttendanceDisputeModal';
 import TiffinTimer from '../components/TiffinTimer';
 import useServerTime from '../hooks/useServerTime';
+import { useSearch } from '../context/SearchContext';
 
 const Attendance = () => {
   const { currentUser } = useAuth();
+  const { searchTerm } = useSearch();
   const [loading, setLoading] = useState(true);
   const time = useServerTime() || new Date(); // fallback to local if not loaded yet
 
@@ -55,6 +58,7 @@ const Attendance = () => {
         user_id: currentUser.id
       });
       if (response.data.status === 'success') {
+        soundFx.playPunchIn();
         fetchAttendance(); // Refresh data
       } else {
         setActionError(response.data.message);
@@ -71,6 +75,7 @@ const Attendance = () => {
         user_id: currentUser.id
       });
       if (response.data.status === 'success') {
+        soundFx.playPunchOut();
         fetchAttendance(); // Refresh data
       } else {
         setActionError(response.data.message);
@@ -222,6 +227,18 @@ const Attendance = () => {
       }
     }
     return { ...record, total_hours, overtime, is_short, rawOverSec, rawShortSec };
+  });
+
+  const displayHistory = processedHistory.filter(record => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase().trim();
+    return (
+      (record.date || '').toLowerCase().includes(term) ||
+      (record.status || '').toLowerCase().includes(term) ||
+      (record.check_in || '').toLowerCase().includes(term) ||
+      (record.check_out || '').toLowerCase().includes(term) ||
+      (record.total_hours || '').toLowerCase().includes(term)
+    );
   });
 
   const totalOvertimeSec = processedHistory.reduce((acc, curr) => acc + (curr.rawOverSec || 0), 0);
@@ -509,7 +526,7 @@ const Attendance = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {processedHistory.length > 0 ? processedHistory.map((record, index) => (
+              {displayHistory.length > 0 ? displayHistory.map((record, index) => (
                 <tr
                   key={index}
                   className="group hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-all duration-300 cursor-default animate-fade-in"

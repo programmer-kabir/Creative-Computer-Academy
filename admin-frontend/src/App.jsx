@@ -18,6 +18,7 @@ import { Toaster } from 'sonner';
 
 import LeaveManagement from './pages/LeaveManagement';
 import DatabaseManager from './pages/DatabaseManager';
+import BrandResources from './pages/BrandResources';
 import NotFound from './pages/NotFound';
 
 // Mock empty pages to avoid errors
@@ -106,6 +107,12 @@ function App() {
           <Route path="/database" element={
             <ProtectedRoute>
               <AdminLayout><DatabaseManager /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/brand-resources" element={
+            <ProtectedRoute>
+              <AdminLayout><BrandResources /></AdminLayout>
             </ProtectedRoute>
           } />
 

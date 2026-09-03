@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiSearch, FiX, FiCheck } from 'react-icons/fi';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 const NewChatModal = ({
   isNewChatModalOpen,
@@ -21,92 +22,100 @@ const NewChatModal = ({
     setIsNewChatModalOpen(false);
     setSelectedContacts([]);
     setGroupName('');
+    setSearchContact('');
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={handleClose} />
-
-      <div className="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-700/80 shadow-2xl z-10 relative overflow-hidden flex flex-col max-h-[85vh]">
-        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200/80 dark:border-slate-700/80">
+        
+        {/* Header */}
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-700/60">
           <div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Start New Chat</h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Choose one for private chat, or select multiple for a group.</p>
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">New Message</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500 font-semibold mt-0.5">Select members to start chatting</p>
           </div>
           <button
             onClick={handleClose}
-            className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300 p-1 hover:bg-slate-100 dark:bg-slate-700/50 dark:hover:bg-slate-700 rounded-lg transition-all"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
           >
-            <FiX size={20} />
+            <FiX size={18} />
           </button>
         </div>
 
-        {/* Group Name input (Only shown when >1 contact is selected) */}
+        {/* Group Name (shows if >= 2 selected) */}
         {selectedContacts.length > 1 && (
-          <div className="mb-4 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 dark:border-indigo-900/50 flex-shrink-0">
-            <label className="block text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-2">Group Conversation Name</label>
+          <div className="mt-4">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Group Subject</label>
             <input
               type="text"
-              placeholder="Enter group name (e.g. Design Team)"
+              placeholder="e.g. Graphic Design Team"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-100 font-semibold text-sm rounded-xl p-2.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-              required
+              className="w-full text-sm px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
         )}
 
-        {/* Search Contact */}
-        <div className="relative mb-4 flex-shrink-0">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        {/* Search */}
+        <div className="mt-4 relative">
+          <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
           <input
             type="text"
-            placeholder="Search staff, managers, instructors..."
+            placeholder="Search contacts..."
             value={searchContact}
             onChange={(e) => setSearchContact(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl py-2.5 pl-9 pr-4 text-xs font-semibold text-slate-700 dark:text-slate-200 placeholder-slate-400 outline-none focus:bg-white dark:bg-slate-800 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all"
+            className="w-full text-sm pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500"
           />
         </div>
 
-        {/* Contact List */}
-        <div className="flex-1 overflow-y-auto space-y-1 p-1 pr-2">
+        {/* Contacts List */}
+        <div className="mt-4 max-h-60 overflow-y-auto space-y-1.5 pr-1">
           {filteredContacts.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-xs text-slate-400 dark:text-slate-500 font-bold">No contacts found</p>
-            </div>
+            <p className="text-center text-xs text-slate-400 py-6">No contacts found</p>
           ) : (
             filteredContacts.map((contact) => {
               const isChecked = selectedContacts.includes(contact.id);
+              const contactOnline = isUserOnline(contact);
+              const contactLastSeen = formatLastSeen(contact.last_activity, contactOnline);
               return (
                 <div
                   key={contact.id}
                   onClick={() => toggleContactSelection(contact.id)}
-                  className={`p-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all ${isChecked ? 'bg-primary-50/50 border border-primary-100 dark:border-primary-900/50' : 'hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-700/50 border border-transparent'
-                    }`}
+                  className={`flex items-center justify-between p-2.5 rounded-2xl cursor-pointer transition-all ${
+                    isChecked
+                      ? 'bg-primary-50/80 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800/40'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/40 border border-transparent'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="relative flex-shrink-0 overflow-hidden" style={{ width: '36px', height: '36px', minWidth: '36px', borderRadius: '8px' }}>
+                    <div className="relative">
                       {contact.profile_picture ? (
                         <img
                           src={`${API_URL}${contact.profile_picture}`}
                           alt="Profile"
                           style={{ width: '36px', height: '36px', objectFit: 'cover', display: 'block' }}
+                          className="rounded-full"
                         />
                       ) : (
-                        <div style={{ width: '36px', height: '36px' }} className="bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-200 rounded-lg flex items-center justify-center font-black text-xs uppercase shadow-sm">
+                        <div style={{ width: '36px', height: '36px' }} className="bg-slate-100 dark:bg-slate-700/50 text-slate-700 dark:text-slate-200 rounded-full flex items-center justify-center font-black text-xs uppercase shadow-sm">
                           {contact.name.charAt(0)}
                         </div>
                       )}
 
-                      {contact.is_online && (
-                        <span className="absolute bottom-0 right-0 bg-emerald-500 border-2 border-white rounded-full" style={{ width: '9px', height: '9px' }}></span>
+                      {contactOnline && (
+                        <span className="absolute bottom-0 right-0 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full shadow-sm animate-pulse" style={{ width: '9px', height: '9px' }}></span>
                       )}
                     </div>
 
                     <div>
                       <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{contact.name}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
-                        {contact.role_display} {contact.department_name ? `• ${contact.department_name}` : ''}
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 flex items-center gap-1">
+                        <span>{contact.role_display} {contact.department_name ? `• ${contact.department_name}` : ''}</span>
+                        <span>•</span>
+                        <span className={contactOnline ? 'text-emerald-500 font-bold' : ''}>
+                          {contactOnline ? 'Online' : contactLastSeen}
+                        </span>
                       </p>
                     </div>
                   </div>

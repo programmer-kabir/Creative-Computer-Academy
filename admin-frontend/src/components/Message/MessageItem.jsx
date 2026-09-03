@@ -82,18 +82,16 @@ const MessageItem = ({
         )}
 
         <div
-          className={`relative p-3.5 rounded-2xl text-sm transition-all shadow-sm ${
-            isMe
+          className={`relative p-3.5 rounded-2xl text-sm transition-all shadow-sm ${isMe
               ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-primary-600 text-white rounded-tr-xs shadow-indigo-500/15'
-              : 'bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-800 shadow-slate-200/50 dark:shadow-none'
-          } ${msg.reactions?.length > 0 ? 'mb-3.5' : ''}`}
+              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/80 shadow-slate-200/50 dark:shadow-none'
+            } ${msg.reactions?.length > 0 ? 'mb-3.5' : ''}`}
         >
           {/* Forwarded Badge */}
           {msg.is_forwarded === 1 && !msg.is_deleted && (
             <div
-              className={`flex items-center gap-1 text-[10px] font-extrabold italic mb-1.5 opacity-80 ${
-                isMe ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'
-              }`}
+              className={`flex items-center gap-1 text-[10px] font-extrabold italic mb-1.5 opacity-80 ${isMe ? 'text-white' : 'text-indigo-600 dark:text-indigo-400'
+                }`}
             >
               <FiMessageSquare size={11} className="rotate-180" /> Forwarded
             </div>
@@ -102,9 +100,8 @@ const MessageItem = ({
           {/* Top Quick Actions (Floating Capsule on Hover) */}
           {!msg.is_deleted && (
             <div
-              className={`absolute top-1.5 ${
-                isMe ? 'left-1.5' : 'right-1.5'
-              } flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 dark:bg-white/10 backdrop-blur-md rounded-lg p-0.5 z-10`}
+              className={`absolute top-1.5 ${isMe ? 'left-1.5' : 'right-1.5'
+                } flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/10 dark:bg-white/10 backdrop-blur-md rounded-lg p-0.5 z-10`}
             >
               {/* Emoji Reaction Trigger */}
               <button
@@ -113,9 +110,8 @@ const MessageItem = ({
                   setShowEmojiPickerId(showEmojiPickerId === msg.id ? null : msg.id);
                   setActiveDropdown(null);
                 }}
-                className={`p-1 rounded-md transition-colors ${
-                  isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300'
-                }`}
+                className={`p-1 rounded-md transition-colors ${isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300'
+                  }`}
                 title="React"
               >
                 <FiSmile size={13} />
@@ -127,9 +123,8 @@ const MessageItem = ({
                   e.stopPropagation();
                   setActiveDropdown(activeDropdown === msg.id ? null : msg.id);
                 }}
-                className={`p-1 rounded-md transition-colors ${
-                  isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300'
-                }`}
+                className={`p-1 rounded-md transition-colors ${isMe ? 'hover:bg-white/20 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300'
+                  }`}
                 title="Options"
               >
                 <FiMoreVertical size={13} />
@@ -140,9 +135,8 @@ const MessageItem = ({
           {/* Dropdown Menu */}
           {activeDropdown === msg.id && !msg.is_deleted && (
             <div
-              className={`absolute top-8 ${
-                isMe ? 'left-0' : 'right-0'
-              } w-40 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150`}
+              className={`absolute top-8 ${isMe ? 'left-0' : 'right-0'
+                } w-40 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden py-1 animate-in fade-in zoom-in-95 duration-150`}
             >
               <button
                 onClick={(e) => {
@@ -210,11 +204,10 @@ const MessageItem = ({
           {/* Replied Message Block */}
           {msg.reply_to_id && (
             <div
-              className={`mb-2 p-2.5 rounded-xl text-xs border-l-4 ${
-                isMe
+              className={`mb-2 p-2.5 rounded-xl text-xs border-l-4 ${isMe
                   ? 'bg-black/15 border-white/80 text-white/90'
                   : 'bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-500 text-slate-700 dark:text-slate-200'
-              }`}
+                }`}
             >
               <p className="font-extrabold mb-0.5 truncate text-[11px]">{msg.reply_to_name || 'User'}</p>
               <p className="truncate opacity-80 text-[11px]">{msg.reply_to_file ? '📎 Attachment' : msg.reply_to_message}</p>
@@ -237,11 +230,10 @@ const MessageItem = ({
                   download={msg.file_name}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
-                    isMe
+                  className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${isMe
                       ? 'bg-white/10 border-white/20 text-white hover:bg-white/20'
                       : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-750'
-                  }`}
+                    }`}
                 >
                   <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">
                     <FiFile className="text-lg" />
@@ -268,9 +260,8 @@ const MessageItem = ({
           {/* Emoji Picker Popup */}
           {showEmojiPickerId === msg.id && !msg.is_deleted && (
             <div
-              className={`absolute -top-12 ${
-                isMe ? 'right-0' : 'left-0'
-              } flex items-center gap-1 p-1.5 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-full shadow-2xl ring-1 ring-black/10 dark:ring-white/15 z-50 animate-in fade-in zoom-in-95 duration-150`}
+              className={`absolute -top-12 ${isMe ? 'right-0' : 'left-0'
+                } flex items-center gap-1 p-1.5 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-full shadow-2xl ring-1 ring-black/10 dark:ring-white/15 z-50 animate-in fade-in zoom-in-95 duration-150`}
             >
               {emojis?.map((emoji) => {
                 const isSelected = msg.reactions?.some((r) => r.user_id === currentUser?.id && r.reaction === emoji);
@@ -281,9 +272,8 @@ const MessageItem = ({
                       e.stopPropagation();
                       handleReact(msg.id, emoji);
                     }}
-                    className={`w-8 h-8 flex items-center justify-center text-lg rounded-full transition-all hover:scale-125 transform ${
-                      isSelected ? 'bg-indigo-100 dark:bg-indigo-500/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
+                    className={`w-8 h-8 flex items-center justify-center text-lg rounded-full transition-all hover:scale-125 transform ${isSelected ? 'bg-indigo-100 dark:bg-indigo-500/30' : 'hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
                   >
                     {emoji}
                   </button>
@@ -295,9 +285,8 @@ const MessageItem = ({
           {/* Reaction Badges */}
           {msg.reactions && msg.reactions.length > 0 && (
             <div
-              className={`absolute -bottom-3 ${
-                isMe ? 'right-2' : 'left-2'
-              } flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200/80 dark:border-slate-700 text-[11px] animate-in zoom-in duration-150 z-10`}
+              className={`absolute -bottom-3 ${isMe ? 'right-2' : 'left-2'
+                } flex items-center gap-1 px-2 py-0.5 bg-white dark:bg-slate-800 rounded-full shadow-md border border-slate-200/80 dark:border-slate-700 text-[11px] animate-in zoom-in duration-150 z-10`}
             >
               {Array.from(new Set(msg.reactions.map((r) => r.reaction))).map((emoji) => (
                 <span key={emoji} className="inline-block">

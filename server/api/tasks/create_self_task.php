@@ -116,12 +116,18 @@ try {
         }
     }
 
+    $category_id = !empty($_POST['category_id']) ? (int)$_POST['category_id'] : ($data->category_id ?? null);
+    $subcategory_id = !empty($_POST['subcategory_id']) ? (int)$_POST['subcategory_id'] : ($data->subcategory_id ?? null);
+    $child_category_id = !empty($_POST['child_category_id']) ? (int)$_POST['child_category_id'] : ($data->child_category_id ?? null);
+
     // 3. Insert Task with status = 'To-Do', is_self_created = 1, assign_date = CURDATE()
     $insert_query = "INSERT INTO tasks (
         title, 
         description, 
         priority, 
-        category, 
+        category_id,
+        subcategory_id,
+        child_category_id,
         department_id, 
         visual_image, 
         ref_links,
@@ -137,7 +143,9 @@ try {
         :title, 
         :description, 
         :priority, 
-        :category, 
+        :category_id,
+        :subcategory_id,
+        :child_category_id,
         :department_id, 
         :visual_image, 
         :ref_links,
@@ -153,16 +161,18 @@ try {
 
     $stmt = $db->prepare($insert_query);
     $stmt->execute([
-        ':title'           => trim($title),
-        ':description'     => $description ? trim($description) : null,
-        ':priority'        => $priority,
-        ':category'        => trim($category),
-        ':department_id'   => $department_id,
-        ':visual_image'    => $visual_image_val,
-        ':ref_links'       => $ref_links_val,
-        ':submission_link' => !empty($submission_link) ? trim($submission_link) : null,
-        ':created_by'      => $user_id,
-        ':assigned_to'     => $employee_id
+        ':title'             => trim($title),
+        ':description'       => $description ? trim($description) : null,
+        ':priority'          => $priority,
+        ':category_id'       => $category_id,
+        ':subcategory_id'    => $subcategory_id,
+        ':child_category_id' => $child_category_id,
+        ':department_id'     => $department_id,
+        ':visual_image'      => $visual_image_val,
+        ':ref_links'         => $ref_links_val,
+        ':submission_link'   => !empty($submission_link) ? trim($submission_link) : null,
+        ':created_by'        => $user_id,
+        ':assigned_to'       => $employee_id
     ]);
 
     $task_id = $db->lastInsertId();

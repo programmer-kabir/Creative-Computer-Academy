@@ -12,6 +12,7 @@ import { HiSparkles } from 'react-icons/hi';
 import TaskFileUploader from '../../components/TaskFileUploader';
 import TaskDeliverablesViewer from '../../components/TaskDeliverablesViewer';
 import AgenticBlueprintViewer from '../../components/AgenticBlueprintViewer';
+import AIQualityScanner from '../../components/AIQualityScanner';
 import { downloadFile } from '../../utils/fileDownloader';
 
 const TaskDetailsModal = (props) => {
@@ -31,6 +32,7 @@ const TaskDetailsModal = (props) => {
 
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [taskTab, setTaskTab] = useState('brief'); // 'brief' | 'deliverables' | 'reviewer_final'
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const blueprintData = React.useMemo(() => {
     if (!selectedTask?.blueprint_data) return null;
@@ -46,6 +48,7 @@ const TaskDetailsModal = (props) => {
 
   useEffect(() => {
     setSubmissionFiles([]);
+    setIsScannerOpen(false);
     if (selectedTask?.final_delivery) {
       setTaskTab('reviewer_final');
     } else if (selectedTask?.status === 'In Review' || selectedTask?.status === 'Completed' || (selectedTask?.submissions && selectedTask.submissions.length > 0)) {
@@ -54,6 +57,12 @@ const TaskDetailsModal = (props) => {
       setTaskTab('brief');
     }
   }, [selectedTask?.id]);
+
+  useEffect(() => {
+    if (isScannerOpen && (!submissionFiles || submissionFiles.length === 0)) {
+      setIsScannerOpen(false);
+    }
+  }, [submissionFiles, isScannerOpen]);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -394,11 +403,10 @@ const TaskDetailsModal = (props) => {
                                 <FiStar
                                   key={star}
                                   size={20}
-                                  className={`${
-                                    star <= ratingVal
+                                  className={`${star <= ratingVal
                                       ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
                                       : 'text-slate-300 dark:text-slate-700'
-                                  }`}
+                                    }`}
                                 />
                               ))}
                             </div>
@@ -686,9 +694,9 @@ const TaskDetailsModal = (props) => {
                     {/* Specifications & Description (Adaptive: Agentic Blueprint Studio vs Classic Description) */}
                     <div className="space-y-2">
                       {blueprintData || (selectedTask.blueprint_variants && selectedTask.blueprint_variants.length > 0) ? (
-                        <AgenticBlueprintViewer 
-                          blueprint={blueprintData} 
-                          variants={selectedTask.blueprint_variants || []} 
+                        <AgenticBlueprintViewer
+                          blueprint={blueprintData}
+                          variants={selectedTask.blueprint_variants || []}
                         />
                       ) : (
                         <>
@@ -966,25 +974,69 @@ const TaskDetailsModal = (props) => {
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
+                  {/* Real AI Quality Inspector Deck (Inline Expansion) */}
+                  {isScannerOpen && submissionFiles.length > 0 && (() => {
+                    const previewFileObj = submissionFiles.find(f => {
+                      const name = f?.name || f?.file?.name || (typeof f === 'string' ? f : '');
+                      return /\.(jpg|jpeg|png|webp|gif)$/i.test(name) || (f?.file && f.file.type?.startsWith('image/'));
+                    }) || submissionFiles[0];
+
+                    const previewImageSrc = previewFileObj?.url || (previewFileObj?.file instanceof Blob ? previewFileObj.file : previewFileObj) || null;
+
+                    return (
+                      <AIQualityScanner
+                        isOpen={isScannerOpen}
+                        onClose={() => setIsScannerOpen(false)}
+                        task={selectedTask}
+                        file={previewFileObj?.file || (previewFileObj instanceof Blob ? previewFileObj : null)}
+                        imageUrl={typeof previewImageSrc === 'string' ? previewImageSrc : null}
+                        submissionFiles={submissionFiles}
+                        onProceedSubmit={() => {
+                          setIsScannerOpen(false);
+                          handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
+                        }}
+                      />
+                    );
+                  })()}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
                     <button
                       type="button"
-                      onClick={() => setSelectedTask(null)}
-                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/70 font-semibold rounded-xl transition-colors text-xs"
+                      onClick={() => {
+                        if (!submissionFiles || submissionFiles.length === 0) return;
+                        setIsScannerOpen(!isScannerOpen);
+                      }}
+                      disabled={isSubmittingWork || !submissionFiles || submissionFiles.length === 0}
+                      className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs ${isScannerOpen
+                          ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/30'
+                          : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-indigo-500/15 hover:from-cyan-500/25 hover:via-blue-500/25 hover:to-indigo-500/25 text-blue-600 dark:text-cyan-400 border border-blue-200/80 dark:border-cyan-500/30'
+                        }`}
+                      title={!submissionFiles || submissionFiles.length === 0 ? "AI প্রি-চেক চালাতে প্রথমে ডেলিভারেবল ফাইল আপলোড করুন" : "AI দিয়ে বানান, রেজোলিউশন ও রিকোয়ারমেন্ট চেক করুন"}
                     >
-                      Cancel
+                      <HiSparkles size={14} className={isScannerOpen ? 'text-white' : 'text-amber-400 animate-pulse'} />
+                      <span>{isScannerOpen ? 'AI Inspector Hide' : '✨ AI Quality Pre-Check'}</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles)}
-                      disabled={isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
-                      className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-950/20 flex items-center justify-center gap-2 text-xs disabled:opacity-40"
-                    >
-                      {isSubmittingWork ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      ) : <FiCheckCircle size={15} />}
-                      {isSubmittingWork ? 'Submitting to Review...' : 'Submit Work for Review'}
-                    </button>
+
+                    <div className="flex items-center gap-2.5 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTask(null)}
+                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/70 font-bold rounded-xl transition-colors text-xs"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles)}
+                        disabled={isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
+                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-950/20 flex items-center justify-center gap-2 text-xs disabled:opacity-40 active:scale-95"
+                      >
+                        {isSubmittingWork ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : <FiCheckCircle size={15} />}
+                        {isSubmittingWork ? 'Submitting to Review...' : 'Submit Work for Review'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (

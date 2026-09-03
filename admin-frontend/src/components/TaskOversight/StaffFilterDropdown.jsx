@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiChevronDown, FiSearch } from 'react-icons/fi';
+import { FiChevronDown, FiSearch, FiUser, FiX } from 'react-icons/fi';
 
 export const StaffFilterDropdown = ({ value, onChange, staff, apiBase }) => {
   const [open, setOpen] = React.useState(false);
@@ -26,32 +26,52 @@ export const StaffFilterDropdown = ({ value, onChange, staff, apiBase }) => {
   };
 
   const selectedStaffObj = staff.find(s => s.name === selectedName);
+  const isSelected = selectedName && selectedName !== 'all';
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative flex-shrink-0">
       {/* Trigger */}
       <button
         type="button"
         onClick={() => { setOpen(o => !o); setSearch(''); }}
-        className={`flex items-center gap-2.5 px-4 h-11 rounded-2xl border transition-all outline-none text-left bg-white dark:bg-slate-800 shadow-sm flex-shrink-0
-          ${open ? 'border-blue-500 ring-2 ring-blue-500/20' : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'}`}
+        className={`flex items-center gap-1.5 px-3 h-10 rounded-xl border transition-all outline-none text-left text-xs font-semibold shadow-xs flex-shrink-0
+          ${open 
+            ? 'border-blue-500 ring-2 ring-blue-500/15 bg-blue-50/50 dark:bg-slate-800 text-blue-600 dark:text-blue-400' 
+            : isSelected
+              ? 'bg-blue-50/70 dark:bg-blue-900/30 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300'
+              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 text-slate-700 dark:text-slate-200'}`}
       >
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Staff:</span>
-        <div className="flex items-center gap-2">
+        <FiUser size={13} className={`${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-emerald-500'} flex-shrink-0`} />
+        <span className="font-bold text-slate-400 uppercase text-[10px] tracking-wider">Staff:</span>
+        <div className="flex items-center gap-1.5 min-w-0">
           {selectedStaffObj?.profile_picture ? (
             <img
               src={`${apiBase}${selectedStaffObj.profile_picture}`}
               alt={selectedName}
-              className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+              className="w-4 h-4 rounded-full object-cover flex-shrink-0"
             />
-          ) : selectedName !== 'all' && selectedName !== 'unassigned' ? (
-            <div className="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[9px] uppercase flex-shrink-0">
+          ) : isSelected && selectedName !== 'unassigned' ? (
+            <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[8px] uppercase flex-shrink-0">
               {selectedName.charAt(0)}
             </div>
           ) : null}
-          <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{getLabel()}</span>
+          <span className="font-bold truncate max-w-[100px] sm:max-w-[120px]">{getLabel()}</span>
         </div>
-        <FiChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+
+        {isSelected ? (
+          <span
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange('all');
+            }}
+            className="p-0.5 rounded-md hover:bg-blue-200 dark:hover:bg-blue-800 text-slate-400 hover:text-blue-700 dark:hover:text-white transition-colors ml-0.5"
+            title="Clear staff filter"
+          >
+            <FiX size={12} />
+          </span>
+        ) : (
+          <FiChevronDown size={13} className={`text-slate-400 transition-transform flex-shrink-0 ${open ? 'rotate-180 text-blue-500' : ''}`} />
+        )}
       </button>
 
       {/* Dropdown panel */}

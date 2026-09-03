@@ -9,13 +9,13 @@ export const DateFilterBar = ({ filter, setFilter, customRange, setCustomRange }
   ];
 
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-2xl px-1.5 h-11 flex items-center gap-1.5 border border-slate-200 dark:border-slate-700 shadow-sm w-fit">
+    <div className="bg-white dark:bg-slate-800 rounded-xl px-1 h-10 flex items-center gap-1 border border-slate-200 dark:border-slate-700 shadow-xs w-fit overflow-x-auto no-scrollbar flex-shrink-0">
       {options.map(opt => (
         <button
           key={opt.id}
           onClick={() => setFilter(opt.id)}
-          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === opt.id
-            ? 'bg-blue-600 text-white shadow-sm'
+          className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${filter === opt.id
+            ? 'bg-blue-600 text-white shadow-xs'
             : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
             }`}
         >

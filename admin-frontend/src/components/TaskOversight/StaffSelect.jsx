@@ -6,11 +6,20 @@ export const StaffSelect = ({ value, onChange, staff, apiBase, workloads = {} })
     const [search, setSearch] = React.useState('');
     const ref = React.useRef(null);
 
+    // Only active employees can be assigned new tasks
+    const activeStaff = React.useMemo(() => {
+        return (staff || []).filter(s => {
+            const emp = (s.employment_status || 'active').toLowerCase();
+            const acc = (s.status || 'active').toLowerCase();
+            return emp !== 'resigned' && emp !== 'terminated' && emp !== 'inactive' && emp !== 'suspended' && acc === 'active';
+        });
+    }, [staff]);
+
     const selected = value === 'unassigned'
         ? { id: 'unassigned', name: 'Unassigned (Save for Later)', profile_picture: null, designation: 'Task Pool' }
         : staff.find(s => String(s.id) === String(value) || String(s.user_id) === String(value) || (s.name && String(s.name).toLowerCase() === String(value).toLowerCase()));
 
-    const filtered = staff.filter(s =>
+    const filtered = activeStaff.filter(s =>
         (s.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (s.designation || '').toLowerCase().includes(search.toLowerCase()) ||
         (s.email || '').toLowerCase().includes(search.toLowerCase())

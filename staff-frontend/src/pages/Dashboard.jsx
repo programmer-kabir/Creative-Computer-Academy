@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { FiCheckCircle, FiClock, FiList, FiAlertCircle, FiXCircle, FiPlayCircle, FiPauseCircle, FiEye, FiAward, FiStar, FiTarget, FiArrowRight } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import TiffinTimer from '../components/TiffinTimer';
+import AnimatedCounter from '../components/AnimatedCounter';
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
@@ -106,15 +107,21 @@ const Dashboard = () => {
           </div>
           <div className="bg-white/10 dark:bg-slate-800/10 backdrop-blur-md border border-white/10 rounded-3xl p-4 sm:p-5 flex items-center gap-3 sm:gap-6 shadow-2xl">
             <div className="text-center px-2 sm:px-4 border-r border-white/10">
-              <p className="text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm">{completedTasks.length}</p>
+              <p className="text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm">
+                <AnimatedCounter value={completedTasks.length} />
+              </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-primary-200 mt-1">Completed</p>
             </div>
             <div className="text-center px-2 sm:px-4 border-r border-white/10">
-              <p className="text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm">{reviewTasks.length}</p>
+              <p className="text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm">
+                <AnimatedCounter value={reviewTasks.length} />
+              </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-primary-200 mt-1">In Review</p>
             </div>
             <div className="text-center px-2 sm:px-4">
-              <p className={`text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm ${rejectedTasks.length > 0 ? 'text-rose-400' : ''}`}>{rejectedTasks.length}</p>
+              <p className={`text-3xl sm:text-4xl font-black tracking-tight drop-shadow-sm ${rejectedTasks.length > 0 ? 'text-rose-400' : ''}`}>
+                <AnimatedCounter value={rejectedTasks.length} />
+              </p>
               <p className="text-[10px] font-bold uppercase tracking-widest text-primary-200 mt-1">Rejected</p>
             </div>
           </div>
@@ -130,26 +137,26 @@ const Dashboard = () => {
         {/* Attendance Card */}
         <div 
           onClick={() => navigate('/attendance')}
-          className="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-between hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-300 cursor-pointer group relative overflow-hidden"
+          className="glass-card glass-card-hover p-6 rounded-3xl flex items-center justify-between cursor-pointer group relative overflow-hidden"
         >
           <div className="absolute -right-6 -top-6 w-32 h-32 bg-emerald-50 dark:bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-100 dark:group-hover:bg-emerald-500/20 transition-colors pointer-events-none"></div>
           <div className="relative z-10">
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1.5">Today's Status</p>
             {attendance ? (
               <>
-                <p className={`text-2xl font-black mt-1 tracking-tight ${attendance.status === 'Late' ? 'text-amber-500' : 'text-emerald-500'}`}>
+                <p className="text-2xl font-black mt-1 tracking-tight text-emerald-600 dark:text-emerald-400">
                   {attendance.status}
                 </p>
-                <p className="text-xs text-slate-400 font-medium mt-1">In: <span className="text-slate-600 dark:text-slate-400 font-bold">{attendance.check_in}</span></p>
+                <p className="text-xs text-slate-400 font-medium mt-1">In: <span className="text-slate-700 dark:text-slate-300 font-bold">{attendance.check_in || '-'}</span></p>
               </>
             ) : (
               <>
-                <p className="text-xl font-black text-slate-300 mt-1 tracking-tight">Not Checked In</p>
-                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest mt-1.5 bg-rose-50 inline-block px-2 py-0.5 rounded-full">Action Required</p>
+                <p className="text-xl font-black text-slate-400 dark:text-slate-500 mt-1 tracking-tight">Not Checked In</p>
+                <p className="text-[10px] text-rose-500 dark:text-rose-400 font-bold uppercase tracking-widest mt-1.5 bg-rose-50 dark:bg-rose-500/10 inline-block px-2 py-0.5 rounded-full border border-rose-200 dark:border-rose-800/30">Action Required</p>
               </>
             )}
           </div>
-          <div className={`relative z-10 p-4 rounded-2xl ${attendance ? (attendance.status === 'Late' ? 'bg-amber-50 dark:bg-amber-500/20 text-amber-500 shadow-inner shadow-amber-500/10 dark:shadow-none' : 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-500 shadow-inner shadow-emerald-500/10 dark:shadow-none') : 'bg-slate-50 dark:bg-slate-900/50 text-slate-300 dark:text-slate-500'} group-hover:scale-110 transition-transform duration-300`}>
+          <div className={`relative z-10 p-4 rounded-2xl ${attendance ? 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-500 shadow-inner shadow-emerald-500/10 dark:shadow-none' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'} group-hover:scale-110 transition-transform duration-300`}>
             {attendance ? <FiCheckCircle size={28} strokeWidth={2.5} /> : <FiAlertCircle size={28} strokeWidth={2.5} />}
           </div>
         </div>

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useMemo } from 'react';
 import { toast } from 'sonner';
 
-export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingComment, setNewComment, setCommentImage, setCommentImagePreview, commentsEndRef, setCommentsLoading, setHistoryTask, setIsHistoryOpen, setLoadingHistory, setActiveHistoryLogs, setEditingCommentId, editCommentText, setEditCommentText, setSelectedTask, setSelectedTab, setEditContent, setEditTaskId, setEditingTaskId, setTasks, setStaff, setDepartments, setWorkloads, setLoading, newTask, setNewTask, setActionLoading, setIsCreateOpen, departments, EMPTY_TASK_FORM, staff, editTask, setEditTask, setIsEditOpen, taskToDelete, setTaskToDelete, setIsDetailsOpen, setDetailsTask, tasks, dateFilter, customDateRange, searchTerm, selectedDeptFilter, selectedStaffFilter, groupBy, rejectTask, setRejectTask, rejectReason, setRejectReason }) => {
+export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingComment, setNewComment, setCommentImage, setCommentImagePreview, commentsEndRef, setCommentsLoading, setHistoryTask, setIsHistoryOpen, setLoadingHistory, setActiveHistoryLogs, setEditingCommentId, editCommentText, setEditCommentText, setSelectedTask, setSelectedTab, setEditContent, setEditTaskId, setEditingTaskId, setTasks, setStaff, setDepartments, setWorkloads, setLoading, newTask, setNewTask, setActionLoading, setIsCreateOpen, departments, EMPTY_TASK_FORM, staff, editTask, setEditTask, setIsEditOpen, taskToDelete, setTaskToDelete, setIsDetailsOpen, setDetailsTask, tasks, dateFilter, customDateRange, searchTerm, selectedDeptFilter, selectedCategoryFilter, selectedSubcategoryFilter, selectedChildCategoryFilter, selectedStaffFilter, groupBy, rejectTask, setRejectTask, rejectReason, setRejectReason }) => {
 
     const handleDeleteComment = async (commentId) => {
         if (!window.confirm('Delete this comment?')) return;
@@ -275,6 +275,10 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             title: task.title || '',
             description: task.description || '',
             category: task.category || 'Design',
+            category_path: task.category_path || task.category || 'Design',
+            category_id: task.category_id || null,
+            subcategory_id: task.subcategory_id || null,
+            child_category_id: task.child_category_id || null,
             assigned_to: matchedStaff ? matchedStaff.id : '',
             assign_date: task.assign_date || new Date().toISOString().split('T')[0],
             deadline: task.deadline || '',
@@ -472,8 +476,57 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             }
         }
 
-        if (selectedDeptFilter !== 'all') {
-            result = result.filter(t => t.category === selectedDeptFilter);
+        // ─── 3-Level Cascading Category Filters ───
+        if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
+            const catLow = selectedCategoryFilter.toLowerCase().trim();
+            result = result.filter(t => {
+                const mainName = (t.main_category_name || '').toLowerCase().trim();
+                const catName = (t.category_name || '').toLowerCase().trim();
+                const directCat = (t.category || '').toLowerCase().trim();
+                const catPath = (t.category_path || '').toLowerCase().trim();
+                
+                return mainName === catLow ||
+                       directCat === catLow ||
+                       catPath.startsWith(catLow) ||
+                       catPath.includes(catLow) ||
+                       catName === catLow;
+            });
+        }
+
+        if (selectedSubcategoryFilter && selectedSubcategoryFilter !== 'all') {
+            const subLow = selectedSubcategoryFilter.toLowerCase().trim();
+            result = result.filter(t => {
+                const subName = (t.sub_category_name || '').toLowerCase().trim();
+                const directCat = (t.category || '').toLowerCase().trim();
+                const catPath = (t.category_path || '').toLowerCase().trim();
+
+                return subName === subLow ||
+                       directCat === subLow ||
+                       catPath.includes(subLow);
+            });
+        }
+
+        if (selectedChildCategoryFilter && selectedChildCategoryFilter !== 'all') {
+            const childLow = selectedChildCategoryFilter.toLowerCase().trim();
+            result = result.filter(t => {
+                const childName = (t.child_category_name || '').toLowerCase().trim();
+                const directCat = (t.category || '').toLowerCase().trim();
+                const catPath = (t.category_path || '').toLowerCase().trim();
+
+                return childName === childLow ||
+                       directCat === childLow ||
+                       catPath.includes(childLow);
+            });
+        }
+
+        // Backward compatibility for selectedDeptFilter
+        if (selectedDeptFilter && selectedDeptFilter !== 'all' && (!selectedCategoryFilter || selectedCategoryFilter === 'all')) {
+            const filterLow = selectedDeptFilter.toLowerCase();
+            result = result.filter(t => 
+                t.category === selectedDeptFilter ||
+                (t.category_path && t.category_path.toLowerCase().includes(filterLow)) ||
+                (t.category && t.category.toLowerCase().includes(filterLow))
+            );
         }
 
         if (searchTerm.trim() !== '') {
@@ -482,12 +535,16 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 (t.title || '').toLowerCase().includes(term) ||
                 (t.description || '').toLowerCase().includes(term) ||
                 (t.category || '').toLowerCase().includes(term) ||
+                (t.main_category_name || '').toLowerCase().includes(term) ||
+                (t.sub_category_name || '').toLowerCase().includes(term) ||
+                (t.child_category_name || '').toLowerCase().includes(term) ||
+                (t.category_path || '').toLowerCase().includes(term) ||
                 (t.assigned_to_name || '').toLowerCase().includes(term)
             );
         }
 
         return result;
-    }, [tasks, dateFilter, customDateRange, selectedStaffFilter, selectedDeptFilter, searchTerm]);
+    }, [tasks, dateFilter, customDateRange, selectedStaffFilter, selectedDeptFilter, selectedCategoryFilter, selectedSubcategoryFilter, selectedChildCategoryFilter, searchTerm]);
 
     const stats = useMemo(() => {
         return {

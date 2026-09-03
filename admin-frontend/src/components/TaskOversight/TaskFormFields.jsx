@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-import { FiClock, FiLink, FiPlus, FiX, FiEdit2, FiChevronDown, FiCalendar, FiTarget, FiImage, FiTrash, FiFlag, FiList, FiType, FiTag, FiUsers } from 'react-icons/fi';
+import { FiClock, FiLink, FiPlus, FiX, FiEdit2, FiChevronDown, FiCalendar, FiTarget, FiImage, FiTrash, FiFlag, FiList, FiType, FiTag, FiUsers, FiLayers } from 'react-icons/fi';
 import { CategorySelect } from './CategorySelect';
 import { StaffSelect } from './StaffSelect';
 import JoditEditor from 'jodit-react';
@@ -25,16 +25,64 @@ export const TaskFormFields = ({ formData, setFormData, editorRef, staff, worklo
                 />
             </div>
 
+            {/* Department (Dedicated Selector) */}
+            <div className="group">
+                <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 group-focus-within:text-blue-600 transition-colors">
+                    <FiLayers size={12} /> Department
+                </label>
+                <div className="relative">
+                    <select
+                        value={formData.department_id || ''}
+                        onChange={e => setFormData({ ...formData, department_id: e.target.value ? Number(e.target.value) : null })}
+                        className="w-full bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 pl-11 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all font-semibold text-slate-800 dark:text-slate-100 appearance-none text-sm cursor-pointer hover:border-blue-300"
+                    >
+                        <option value="">Select Department (Optional)</option>
+                        {Array.isArray(departments) && departments.map(d => (
+                            <option key={d.id} value={d.id}>
+                                {d.name}
+                            </option>
+                        ))}
+                    </select>
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <FiLayers size={14} />
+                    </div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                        <FiChevronDown size={16} />
+                    </div>
+                </div>
+            </div>
+
             {/* Category */}
             <div className="group">
                 <label className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 group-focus-within:text-blue-600 transition-colors">
-                    <FiTag size={12} /> Category <span className="text-red-500">*</span>
+                    <FiTag size={12} /> Category & Classification <span className="text-red-500">*</span>
                 </label>
                 <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 hover:border-blue-300 dark:hover:border-blue-500/50 transition-colors">
                     <CategorySelect
                         value={formData.category}
-                        onChange={val => setFormData({ ...formData, category: val })}
+                        onChange={(val, meta) => {
+                            setFormData(prev => ({
+                                ...prev,
+                                category: val,
+                                category_id: meta?.category_id || prev.category_id,
+                                subcategory_id: meta?.subcategory_id || prev.subcategory_id,
+                                child_category_id: meta?.child_category_id || prev.child_category_id
+                            }));
+                        }}
+                        onTemplateSelect={(tpl) => {
+                            if (tpl?.checklists && tpl.checklists.length > 0) {
+                                const formatted = tpl.checklists.map(c => typeof c === 'string' ? { title: c, is_completed: false } : c);
+                                setFormData(prev => {
+                                    const existing = Array.isArray(prev.checklists) ? prev.checklists.filter(c => c.title?.trim()) : [];
+                                    return {
+                                        ...prev,
+                                        checklists: existing.length > 0 ? existing : formatted
+                                    };
+                                });
+                            }
+                        }}
                         departments={departments}
+                        apiBase={apiBase}
                     />
                 </div>
             </div>

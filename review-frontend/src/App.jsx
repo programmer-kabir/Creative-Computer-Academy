@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import ReviewerLayout from './layouts/ReviewerLayout';
 import Login from './pages/Login';
@@ -13,18 +14,26 @@ import RejectedReviews from './pages/RejectedReviews';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import BrandResources from './pages/BrandResources';
 import NotFound from './pages/NotFound';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
           <Route path="/" element={
             <ProtectedRoute>
               <ReviewerLayout><Dashboard /></ReviewerLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/brand-resources" element={
+            <ProtectedRoute>
+              <ReviewerLayout><BrandResources /></ReviewerLayout>
             </ProtectedRoute>
           } />
 
@@ -87,6 +96,7 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
 

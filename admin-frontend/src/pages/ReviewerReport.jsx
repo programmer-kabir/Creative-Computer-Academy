@@ -317,7 +317,7 @@ const ReviewerReport = () => {
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500"></div>
               <p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><FiLayers /> Total Received</p>
-              <h3 className="text-3xl font-black text-slate-850 dark:text-slate-100">{reviewerReport.summary.total_received}</h3>
+              <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">{reviewerReport.summary.total_received}</h3>
             </div>
 
             <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">

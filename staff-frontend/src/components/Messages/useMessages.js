@@ -134,18 +134,40 @@ const useMessages = () => {
     };
 
     // 4. View a staff member's profile
-    const handleViewProfile = async (code) => {
+    const handleViewProfile = async (target) => {
         setSelectedMiniProfile(null);
+        const code = typeof target === 'object' && target ? (target.employee_code || target.id) : target;
         setViewingProfileCode(code);
-        setViewingProfileData(null);
+
+        // Pre-populate immediately if we already have partial profile details
+        if (typeof target === 'object' && target) {
+            setViewingProfileData({
+                info: {
+                    name: target.name,
+                    email: target.email,
+                    phone: target.phone,
+                    role: target.role_name || target.role,
+                    role_display: target.role_display || target.role_name,
+                    profile_picture: target.profile_picture,
+                    employee_code: target.employee_code,
+                    department_name: target.department_name,
+                    status: target.status || 'Active',
+                    last_activity: target.last_activity,
+                    is_online: target.is_online
+                }
+            });
+        } else {
+            setViewingProfileData(null);
+        }
+
         setLoadingProfile(true);
         try {
-            const res = await axios.get(`${API_URL}api/admin/staff/get_staff_profile.php?employee_code=${code}`);
-            if (res.data.status === 'success') {
+            const res = await axios.get(`${API_URL}api/admin/staff/get_staff_profile.php?employee_code=${encodeURIComponent(code)}`);
+            if (res.data.status === 'success' && res.data.data) {
                 setViewingProfileData(res.data.data);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Error fetching staff profile:', err);
         } finally {
             setLoadingProfile(false);
         }

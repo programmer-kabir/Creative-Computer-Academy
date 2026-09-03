@@ -317,11 +317,16 @@ const PendingReviews = () => {
   const [deliverySelectedTags, setDeliverySelectedTags] = useState(['⚡ Fast Delivery', '🎯 High Accuracy']);
 
   const smartMacros = [
-    { icon: '📏', label: "Alignment", text: "Please fix the alignment and spacing issues across the main layout. Ensure margins are consistent." },
-    { icon: '🎨', label: "Colors", text: "The color contrast is too low on some elements. Please adjust to meet standards." },
-    { icon: '📁', label: "Missing Files", text: "Some requested assets/files are missing from the submission. Please include them." },
-    { icon: '📝', label: "Typos", text: "There are spelling or grammatical errors in the copy. Please review and correct them." },
-    { icon: '📱', label: "Responsive", text: "The design/code is breaking on smaller screen sizes. Ensure it is fully responsive." },
+    { icon: '🔤', label: "Spelling / Typos", text: "There are spelling or grammatical mistakes in the text copy. Please proofread carefully and fix all typos." },
+    { icon: '📐', label: "Wrong Dimensions / DPI", text: "Canvas dimensions, aspect ratio, or DPI resolution do not match the required specifications. Please correct the sizing (300 DPI for print, 72-150 DPI for web)." },
+    { icon: '📏', label: "Alignment & Spacing", text: "Please fix the alignment, padding, and spacing issues across the layout. Ensure margins, grids, and elements are balanced." },
+    { icon: '🎨', label: "Color / Contrast", text: "Color harmony or contrast is too low on key elements. Please adjust colors to improve readability and visual hierarchy." },
+    { icon: '📁', label: "Missing Files / Assets", text: "Requested source files (PSD/AI/EPS/Fonts) or assets are missing from the submission. Please attach all required deliverables." },
+    { icon: '🖼️', label: "Low Quality / Blurry", text: "Images or graphical elements appear low resolution or pixelated. Please replace them with crisp, high-resolution vector/raw assets." },
+    { icon: '🏷️', label: "Logo & Brand Rules", text: "Brand guidelines or logo usage rules are not followed (safe clear space, aspect ratio distortion, or incorrect colors). Please adhere to brand specs." },
+    { icon: '✂️', label: "Bleed & Safe Area", text: "Print bleed margins (0.125\") or inner safe area cut-lines are missing/incorrect. Please ensure proper bleed and safe margins." },
+    { icon: '📱', label: "Responsive Issue", text: "The layout breaks on mobile/tablet viewports. Please test and ensure it is fully responsive across all device sizes." },
+    { icon: '📋', label: "Incomplete Checklist", text: "Some specific requirements or checklist deliverables from the task instructions were not fulfilled. Please review the checklist." },
   ];
 
   const [selectedTasks, setSelectedTasks] = useState([]);
@@ -841,9 +846,18 @@ const PendingReviews = () => {
                   transition={{ duration: 0.25 }}
                   key={t.task_id}
                   onClick={() => selectTaskForReview(t)}
-                  className={`glass rounded-2xl p-5 border hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[170px] relative group ${selectedTasks.includes(t.task_id) ? 'border-brand-500 shadow-[0_0_15px_rgba(var(--brand-500-rgb),0.2)] bg-brand-500/5' : 'border-white/5 hover:border-brand-500/20'
-                    }`}
+                  className={`group relative glass rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[175px] overflow-hidden ${
+                    selectedTasks.includes(t.task_id) 
+                      ? 'border-brand-500 shadow-[0_0_20px_rgba(var(--brand-500-rgb),0.25)] bg-brand-500/10 ring-2 ring-brand-500/20' 
+                      : 'border-white/10 dark:border-white/5 hover:border-brand-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-500/15 bg-white dark:bg-dark-900'
+                  }`}
+                  style={{
+                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.04)'
+                  }}
                 >
+                  {/* Subtle top light sheen on hover */}
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
                   {/* Checkbox for Bulk Action */}
                   <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity data-[checked=true]:opacity-100" data-checked={selectedTasks.includes(t.task_id)}>
                     <input
@@ -851,7 +865,7 @@ const PendingReviews = () => {
                       checked={selectedTasks.includes(t.task_id)}
                       onChange={(e) => toggleTaskSelection(e, t.task_id)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-white/20 bg-dark-900/50 text-brand-500 focus:ring-0 cursor-pointer shadow-lg"
+                      className="w-4 h-4 rounded border-white/20 bg-dark-900/50 text-brand-500 focus:ring-0 cursor-pointer shadow-lg active:scale-90 transition-transform"
                     />
                   </div>
 
@@ -859,59 +873,60 @@ const PendingReviews = () => {
                     {/* Top row: Profile & Priority */}
                     <div className="flex items-center justify-between gap-3 mb-3">
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border border-white/10">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-white/10 shadow-2xs">
                           {t.staff_avatar
                             ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
-                            : <span className="w-full h-full flex items-center justify-center text-xs font-bold text-white/50">{t.staff_name?.[0]}</span>
+                            : <span className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-700 dark:text-white/50">{t.staff_name?.[0]}</span>
                           }
                         </div>
                         <div className="min-w-0">
-                          <p className="text-white text-xs font-semibold truncate leading-tight">{t.staff_name}</p>
-                          <p className="text-white/40 text-[9px] truncate mt-0.5">{t.department_name}</p>
+                          <p className="text-white font-bold text-xs truncate leading-tight">{t.staff_name}</p>
+                          <p className="text-white/50 text-[9px] font-semibold truncate mt-0.5">{t.department_name}</p>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0">
                         {(Number(t.is_self_created) === 1 || t.is_self_created === true) && (
-                          <span className="px-2 py-0.5 rounded-full border text-[9px] font-semibold text-rose-400 border-rose-500/30 bg-rose-500/10 flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full border text-[9px] font-bold text-rose-500 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 flex items-center gap-1 shadow-2xs">
                             <HiSparkles size={10} className="text-amber-400" /> Self-Task
                           </span>
                         )}
-                        <span className="text-white/30 font-bold text-[10px]">#{index + 1}</span>
-                        <span className={`px-2 py-0.5 rounded-full border text-[9px] font-semibold ${t.priority === 'High' ? 'text-red-400 border-red-500/30 bg-red-500/5'
-                            : t.priority === 'Medium' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5'
-                              : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
-                          }`}>{t.priority}</span>
+                        <span className="text-white/40 font-black text-[10px]">#{index + 1}</span>
+                        <span className={`px-2 py-0.5 rounded-full border text-[9px] font-extrabold uppercase tracking-wider shadow-2xs ${
+                          t.priority === 'High' ? 'text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10'
+                            : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                              : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
+                        }`}>{t.priority}</span>
                       </div>
                     </div>
 
                     {/* Task Title */}
-                    <h3 className="text-white font-semibold text-sm line-clamp-2 mt-1 leading-snug group-hover:text-brand-400 transition-colors">
+                    <h3 className="text-white font-black text-sm line-clamp-2 mt-1 leading-snug group-hover:text-brand-400 transition-colors">
                       {t.title}
                     </h3>
                   </div>
 
                   {/* Bottom row: submitted date & CTA */}
-                  <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-4 text-[10px]">
-                    <span className="text-white/35 flex items-center gap-1">
-                      <FiCalendar size={11} /> {fmtRelativeTime(t.submitted_at)}
+                  <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-3 text-[10px]">
+                    <span className="text-white/50 font-bold flex items-center gap-1">
+                      <FiCalendar size={11} className="text-white/40" /> {fmtRelativeTime(t.submitted_at)}
                     </span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); triggerReject(t.task_id); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all border border-red-500/30 shadow-sm"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20 transition-all border border-red-500/30 shadow-2xs active:scale-90"
                         title="Quick Reject (Shift+R)"
                       >
                         <FiX size={12} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setRatingModalTask(t); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/30 shadow-sm"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/30 shadow-2xs active:scale-90"
                         title="Rate & Approve Task"
                       >
                         <FiCheck size={12} />
                       </button>
-                      <span className="text-brand-400 font-semibold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform ml-1 border-l border-white/10 pl-2">
+                      <span className="text-brand-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform ml-1 border-l border-white/10 pl-2">
                         Inspect <FiEye size={12} />
                       </span>
                     </div>
@@ -993,14 +1008,14 @@ const PendingReviews = () => {
                     type="button"
                     onClick={() => setModalTab('submission')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${modalTab === 'submission'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/10'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                   >
-                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-400' : 'text-white/40'} />
+                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-600 dark:text-emerald-400' : 'text-white/40'} />
                     <span>Submitted Deliverables</span>
                     {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/30 text-emerald-200">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/25 text-emerald-900 dark:text-emerald-200">
                         {activeReviewTask.submissions.length}
                       </span>
                     )}
@@ -1010,11 +1025,11 @@ const PendingReviews = () => {
                     type="button"
                     onClick={() => setModalTab('instructions')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${modalTab === 'instructions'
-                        ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm shadow-brand-500/10'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                        ? 'bg-brand-500/15 text-brand-800 dark:text-brand-300 border border-brand-500/40 shadow-xs'
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
                       }`}
                   >
-                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-400' : 'text-white/40'} />
+                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-600 dark:text-brand-400' : 'text-white/40'} />
                     <span>Task Brief & Instructions</span>
                   </button>
                 </div>
@@ -1100,25 +1115,25 @@ const PendingReviews = () => {
                 <div className="flex items-center gap-3 w-full sm:w-auto">
                   <button
                     onClick={() => setActiveReviewTask(null)}
-                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-white/70 text-xs font-semibold transition-all"
+                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl border border-white/10 bg-dark-800 hover:bg-dark-700 text-white/80 text-xs font-semibold transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => triggerReject(activeReviewTask.task_id)}
-                    className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-red-950/20 border border-red-500/20 hover:bg-red-950/40 text-red-400 text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                    className="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold flex items-center justify-center gap-2 transition-all"
                   >
                     <FiX size={15} /> Reject
                   </button>
                   <button
                     onClick={() => triggerFinalDelivery(activeReviewTask)}
-                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-950/30"
+                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20"
                   >
                     <HiSparkles size={16} className="text-amber-300" /> Upload Stock Final Version
                   </button>
                   <button
                     onClick={() => setRatingModalTask(activeReviewTask)}
-                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-emerald-950/20"
+                    className="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20"
                   >
                     <FiCheck size={15} /> Rate & Approve
                   </button>
@@ -1140,98 +1155,123 @@ const PendingReviews = () => {
           />
 
           {/* Modal Container */}
-          <div className="relative z-10 glass rounded-2xl border border-red-500/20 max-w-md w-full p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
-              <h3 className="text-red-400 font-bold text-base flex items-center gap-2">
-                <FiX className="bg-red-500/10 p-1 rounded-lg" size={24} /> Reject Submission
+          <div className="relative z-10 rounded-3xl border border-white/10 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-4 shadow-2xl animate-fade-in bg-dark-900 text-white">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3.5">
+              <h3 className="text-red-500 font-bold text-base flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center">
+                  <FiX size={18} />
+                </div>
+                Reject Submission
               </h3>
               <button
+                type="button"
                 onClick={() => { setRejectModalOpen(false); setRejectTaskId(null); }}
-                className="text-white/40 hover:text-white transition-colors"
+                className="text-white/40 hover:text-white transition-colors p-1"
               >
                 <FiX size={18} />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
-                <label className="text-white/60 text-xs font-semibold uppercase tracking-wider block mb-2">Smart Macros</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-2">
+                  Smart Macros / Quick Reasons
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
                   {smartMacros.map(macro => (
                     <button
                       key={macro.label}
+                      type="button"
                       onClick={() => setRejectComment(prev => prev ? prev + '\n\n' + macro.text : macro.text)}
-                      className="text-[10px] px-2.5 py-1.5 rounded-lg border border-red-500/20 bg-red-500/5 text-red-300 hover:bg-red-500/15 hover:border-red-500/40 transition-all flex items-center gap-1.5"
+                      className="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-300 hover:bg-red-500/20 hover:border-red-500/40 transition-all flex items-center gap-1.5 shadow-2xs"
                     >
-                      <span className="opacity-70">{macro.icon}</span> {macro.label}
+                      <span>{macro.icon}</span> {macro.label}
                     </button>
                   ))}
                 </div>
               </div>
-              <textarea
-                value={rejectComment}
-                onChange={e => setRejectComment(e.target.value)}
-                placeholder="Describe the issue / reason for rejection..."
-                className="w-full h-32 bg-white/5 border border-white/10 text-white placeholder-white/25 rounded-xl p-3 text-xs outline-none focus:border-red-500/40 transition-all resize-none"
-              />
 
-              <div
-                className={`border-2 border-dashed rounded-xl p-4 text-center transition-all relative overflow-hidden ${isDragging ? 'border-red-500 bg-red-500/10 scale-[1.02]' : 'border-white/10 hover:border-red-500/50 bg-white/5'}`}
-                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  const file = e.dataTransfer.files[0];
-                  if (file && file.type.startsWith('image/')) {
-                    setRejectScreenshot(file);
-                    setRejectScreenshotPreview(URL.createObjectURL(file));
-                  }
-                }}
-              >
-                {rejectScreenshotPreview ? (
-                  <div className="relative inline-block w-full h-32 group">
-                    <img src={rejectScreenshotPreview} alt="Screenshot preview" className="w-full h-full object-contain rounded-lg" />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setRejectScreenshot(null); setRejectScreenshotPreview(null); }}
-                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <FiX size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <label className="flex flex-col items-center justify-center cursor-pointer h-32 w-full">
-                    <FiImage className="text-white/30 mb-2" size={24} />
-                    <span className="text-white/60 text-xs font-medium">Click or Drag & Drop screenshot</span>
-                    <span className="text-white/40 text-[10px] mt-1">(Or press Ctrl+V to paste)</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          setRejectScreenshot(file);
-                          setRejectScreenshotPreview(URL.createObjectURL(file));
-                        }
-                      }}
-                    />
-                  </label>
-                )}
+              <div>
+                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
+                  Rejection Reason / Feedback <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={rejectComment}
+                  onChange={e => setRejectComment(e.target.value)}
+                  placeholder="Describe the issue / reason for rejection in detail..."
+                  className="w-full h-28 bg-dark-950/70 border border-white/10 text-white placeholder-white/30 rounded-xl p-3 text-xs outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/30 transition-all resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
+                  Attachment / Screenshot (Optional)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-2xl p-3.5 text-center transition-all relative overflow-hidden ${
+                    isDragging 
+                      ? 'border-red-500 bg-red-500/10 scale-[1.01]' 
+                      : 'border-white/10 hover:border-red-400/50 bg-dark-950/50'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDragging(false);
+                    const file = e.dataTransfer.files[0];
+                    if (file && file.type.startsWith('image/')) {
+                      setRejectScreenshot(file);
+                      setRejectScreenshotPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                >
+                  {rejectScreenshotPreview ? (
+                    <div className="relative inline-block w-full h-28 group">
+                      <img src={rejectScreenshotPreview} alt="Screenshot preview" className="w-full h-full object-contain rounded-xl" />
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setRejectScreenshot(null); setRejectScreenshotPreview(null); }}
+                        className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <FiX size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center cursor-pointer h-24 w-full">
+                      <FiImage className="text-white/30 mb-1" size={22} />
+                      <span className="text-white/80 text-xs font-semibold">Click or Drag & Drop screenshot</span>
+                      <span className="text-white/40 text-[10px] mt-0.5">(Or press Ctrl+V to paste)</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setRejectScreenshot(file);
+                            setRejectScreenshotPreview(URL.createObjectURL(file));
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => { setRejectModalOpen(false); setRejectTaskId(null); }}
-                className="flex-1 py-3 px-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.06] text-white/70 text-xs font-semibold transition-all"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-white/10 bg-dark-800 hover:bg-dark-700 text-white/80 text-xs font-semibold transition-all"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={submitRejection}
                 disabled={!rejectComment.trim()}
-                className="flex-1 py-3 px-4 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:hover:bg-red-600 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-red-950/20"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/20"
               >
                 <FiSend size={14} /> Submit Rejection
               </button>

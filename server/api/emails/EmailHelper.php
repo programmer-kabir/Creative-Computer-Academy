@@ -43,7 +43,7 @@ class EmailHelper {
                 )
             );
 
-            $mail->setFrom(self::$username, self::$fromName);
+            $mail->setFrom($username, $fromName);
             $mail->addAddress($toEmail, $toName);
 
             // Content

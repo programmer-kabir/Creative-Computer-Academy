@@ -18,8 +18,8 @@ const ChatInput = ({
   API_URL,
 }) => {
   return (
-    <div className="p-3 sm:p-4 md:px-6 md:pb-5 bg-gradient-to-t from-slate-100/90 via-slate-100/50 to-transparent dark:from-slate-900/90 dark:via-slate-900/50 relative z-10 w-full flex-shrink-0">
-      <div className="bg-white/95 dark:bg-slate-850/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-slate-950/50 rounded-2xl sm:rounded-3xl p-2 mx-auto w-full relative flex flex-col transition-all">
+    <div className="p-3 sm:p-4 md:px-6 md:pb-5 bg-gradient-to-t from-slate-100/90 via-slate-100/50 to-transparent dark:from-[#070b14] dark:via-[#070b14]/80 relative z-10 w-full flex-shrink-0">
+      <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-2xl border border-slate-200/90 dark:border-slate-700/80 shadow-lg shadow-slate-200/50 dark:shadow-black/50 rounded-2xl sm:rounded-3xl p-2 mx-auto w-full relative flex flex-col transition-all">
         {/* Replying Banner */}
         {replyingTo && (
           <div className="mb-2 p-2.5 mx-1.5 mt-1 bg-indigo-50/80 dark:bg-indigo-950/50 rounded-xl border-l-4 border-indigo-600 flex items-center justify-between text-xs font-semibold text-slate-700 dark:text-slate-200 animate-in slide-in-from-bottom-2 duration-150">

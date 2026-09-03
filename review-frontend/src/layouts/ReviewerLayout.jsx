@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/NotificationBell';
 import ThemeToggle from '../components/ThemeToggle';
 import {
-  FiHome, FiUsers, FiAward, FiLogOut, FiMenu, FiX, FiShield, FiClock, FiUser, FiSettings, FiCheckCircle, FiPieChart, FiAlertOctagon
+  FiHome, FiUsers, FiAward, FiLogOut, FiMenu, FiX, FiShield, FiClock, FiUser, FiSettings, FiCheckCircle, FiPieChart, FiAlertOctagon, FiSidebar, FiLayers
 } from 'react-icons/fi';
 import { Toaster, toast } from 'sonner';
 import Pusher from 'pusher-js';
@@ -13,15 +13,16 @@ import Pusher from 'pusher-js';
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const navItems = [
-  { to: '/',            icon: FiHome,          label: 'Dashboard' },
-  { to: '/pending',     icon: FiClock,         label: 'Pending Reviews' },
-  { to: '/completed',   icon: FiCheckCircle,   label: 'Completed Reviews' },
-  { to: '/rejected',    icon: FiAlertOctagon,  label: 'Rejected' },
-  { to: '/reports',     icon: FiPieChart,      label: 'Reports' },
-  { to: '/team',        icon: FiUsers,         label: 'My Team' },
-  { to: '/leaderboard', icon: FiAward,         label: 'Leaderboard' },
-  { to: '/profile',     icon: FiUser,          label: 'Profile' },
-  { to: '/settings',    icon: FiSettings,      label: 'Settings' },
+  { to: '/',                 icon: FiHome,          label: 'Dashboard' },
+  { to: '/brand-resources',  icon: FiLayers,        label: 'Brand Resources' },
+  { to: '/pending',          icon: FiClock,         label: 'Pending Reviews' },
+  { to: '/completed',        icon: FiCheckCircle,   label: 'Completed Reviews' },
+  { to: '/rejected',         icon: FiAlertOctagon,  label: 'Rejected' },
+  { to: '/reports',          icon: FiPieChart,      label: 'Reports' },
+  { to: '/team',             icon: FiUsers,         label: 'My Team' },
+  { to: '/leaderboard',      icon: FiAward,         label: 'Leaderboard' },
+  { to: '/profile',          icon: FiUser,          label: 'Profile' },
+  { to: '/settings',         icon: FiSettings,      label: 'Settings' },
 ];
 
 const ReviewerLayout = ({ children }) => {
@@ -29,6 +30,38 @@ const ReviewerLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Sidebar toggle state (persisted in localStorage)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cca_reviewer_sidebar_open');
+      return saved !== null ? JSON.parse(saved) : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('cca_reviewer_sidebar_open', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   React.useEffect(() => {
     if (!currentUser) return;
@@ -66,9 +99,7 @@ const ReviewerLayout = ({ children }) => {
       {/* Logo */}
       <div className="px-6 py-5 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/10 backdrop-blur-md flex items-center justify-center p-1.5 shadow-md shrink-0">
-            <img src="/cca_logo.png" alt="CCA Logo" className="w-full h-full object-contain drop-shadow-xs" />
-          </div>
+          <img src="/logo.png" alt="CCA Logo" className="w-9 h-9 object-contain shrink-0" />
           <div>
             <p className="text-white font-bold text-sm leading-tight">CCA Review</p>
             <p className="text-white/40 text-xs font-medium">Work Portal</p>
@@ -142,8 +173,14 @@ const ReviewerLayout = ({ children }) => {
       <div className="absolute top-[40%] right-[20%] w-64 h-64 bg-purple-600/5 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-60 bg-dark-900/40 backdrop-blur-3xl border-r border-white/5 fixed inset-y-0 left-0 z-30 shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
-        <SidebarContent />
+      <aside
+        className={`hidden lg:flex flex-col bg-dark-900/40 backdrop-blur-3xl border-r border-white/5 fixed inset-y-0 left-0 z-30 shadow-[4px_0_24px_rgba(0,0,0,0.2)] transition-all duration-300 ease-in-out overflow-hidden ${
+          isSidebarOpen ? 'w-60 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full pointer-events-none'
+        }`}
+      >
+        <div className="w-60 h-full flex flex-col shrink-0">
+          <SidebarContent />
+        </div>
       </aside>
 
       {/* Mobile overlay */}
@@ -157,12 +194,34 @@ const ReviewerLayout = ({ children }) => {
       )}
 
       {/* Main content */}
-      <div className="flex-1 lg:pl-60 relative z-10 h-screen overflow-y-auto overflow-x-hidden">
+      <div className={`flex-1 relative z-10 h-screen overflow-y-auto overflow-x-hidden transition-all duration-300 ease-in-out ${
+        isSidebarOpen ? 'lg:pl-60' : 'lg:pl-0'
+      }`}>
         {/* Top Header */}
         <div className="flex items-center justify-between px-4 lg:px-6 py-3.5 bg-dark-900/60 backdrop-blur-2xl border-b border-white/5 sticky top-0 z-50 shadow-sm">
           <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(true)} className="lg:hidden text-white/60 hover:text-white transition-colors cursor-pointer">
-              <FiMenu size={22} />
+            {/* Sidebar Toggle Button (Desktop & Mobile) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (window.innerWidth < 1024) {
+                  setMobileOpen(prev => !prev);
+                } else {
+                  toggleSidebar();
+                }
+              }}
+              className={`p-2 rounded-xl border transition-all duration-200 flex items-center justify-center shrink-0 shadow-xs cursor-pointer active:scale-95 group ${
+                isSidebarOpen
+                  ? 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+                  : 'bg-brand-600/20 text-brand-400 border-brand-500/30 hover:bg-brand-600/30 ring-2 ring-brand-500/20'
+              }`}
+              title={isSidebarOpen ? 'Close sidebar (Ctrl+B)' : 'Open sidebar (Ctrl+B)'}
+              aria-label="Toggle Sidebar"
+            >
+              <FiSidebar
+                size={18}
+                className={`transition-transform duration-300 ${!isSidebarOpen ? 'rotate-180 text-brand-400' : 'text-white/70 group-hover:text-white'}`}
+              />
             </button>
             <span className="text-white font-bold text-sm tracking-wide">CCA Review Portal</span>
           </div>

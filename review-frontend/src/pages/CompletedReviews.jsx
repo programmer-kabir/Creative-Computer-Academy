@@ -586,14 +586,14 @@ const CompletedReviews = () => {
                     onClick={() => setModalTab('submission')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       modalTab === 'submission'
-                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm shadow-emerald-500/10'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-400' : 'text-white/40'} />
+                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-600 dark:text-emerald-400' : 'text-white/40'} />
                     <span>Submitted Deliverables</span>
                     {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/30 text-emerald-200">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/25 text-emerald-900 dark:text-emerald-200">
                         {activeReviewTask.submissions.length}
                       </span>
                     )}
@@ -604,11 +604,11 @@ const CompletedReviews = () => {
                     onClick={() => setModalTab('instructions')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       modalTab === 'instructions'
-                        ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40 shadow-sm shadow-brand-500/10'
-                        : 'text-white/50 hover:text-white hover:bg-white/5'
+                        ? 'bg-brand-500/15 text-brand-800 dark:text-brand-300 border border-brand-500/40 shadow-xs'
+                        : 'text-white/60 hover:text-white hover:bg-white/5'
                     }`}
                   >
-                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-400' : 'text-white/40'} />
+                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-600 dark:text-brand-400' : 'text-white/40'} />
                     <span>Task Brief & Instructions</span>
                   </button>
                 </div>

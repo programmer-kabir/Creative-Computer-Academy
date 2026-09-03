@@ -11,7 +11,12 @@ import TaskDetailsModal from './Tasks/TaskDetailsModal';
 import ClaimTaskModal from './Tasks/ClaimTaskModal';
 import CreateSelfTaskModal from './Tasks/CreateSelfTaskModal';
 import StaffTaskSkeletonGrid from '../components/TaskSkeletonGrid';
+import CascadingCategoryFilter from '../components/CascadingCategoryFilter';
+import DailyProgressBar from '../components/DailyProgressBar';
+import EmptyState from '../components/EmptyState';
+import Toast from '../components/Toast';
 import { useLocation } from 'react-router-dom';
+import { useSearch } from '../context/SearchContext';
 
 const stripHtml = (html) => {
   if (!html) return '';
@@ -289,8 +294,6 @@ const DescriptionRenderer = React.memo(({ htmlContent, onImageClick }) => {
   );
 });
 
-import Toast from '../components/Toast';
-
 const Tasks = () => {
   const { currentUser } = useAuth();
   const location = useLocation();
@@ -313,6 +316,7 @@ const Tasks = () => {
   // Self-Initiated Creative Task Modal State
   const [isCreateSelfModalOpen, setIsCreateSelfModalOpen] = useState(false);
   const [selfCreateToast, setSelfCreateToast] = useState(null);
+  const [actionToast, setActionToast] = useState({ show: false, title: '', message: '', type: 'error' });
 
   // Comments state
   const [comments, setComments] = useState([]);
@@ -338,10 +342,26 @@ const Tasks = () => {
     setZoomPos({ x: 50, y: 50 });
   };
 
-  // Filters state
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('All');
+  const { searchTerm, setSearchTerm } = useSearch();
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
+  const [selectedSubcategoryFilter, setSelectedSubcategoryFilter] = useState('all');
+  const [selectedChildCategoryFilter, setSelectedChildCategoryFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+
+  const handleCategoryFilterChange = (cat) => {
+    setSelectedCategoryFilter(cat);
+    setSelectedSubcategoryFilter('all');
+    setSelectedChildCategoryFilter('all');
+  };
+
+  const handleSubcategoryFilterChange = (sub) => {
+    setSelectedSubcategoryFilter(sub);
+    setSelectedChildCategoryFilter('all');
+  };
+
+  const handleChildCategoryFilterChange = (child) => {
+    setSelectedChildCategoryFilter(child);
+  };
   // Live Timer Tick
   const [tick, setTick] = useState(0);
   useEffect(() => {
@@ -633,11 +653,30 @@ const Tasks = () => {
 
       if (response.data.status === 'success') {
         fetchTasks();
+        setActionToast({
+          show: true,
+          title: 'Task Started',
+          message: 'Task is now in progress and timer is active.',
+          type: 'success'
+        });
+        setTimeout(() => setActionToast(prev => ({ ...prev, show: false })), 4000);
       } else {
-        alert(response.data.message);
+        setActionToast({
+          show: true,
+          title: 'Action Restricted',
+          message: response.data.message || 'Cannot start this task while another task is in progress.',
+          type: 'error'
+        });
+        setTimeout(() => setActionToast(prev => ({ ...prev, show: false })), 6000);
       }
     } catch (err) {
-      alert('Failed to update task status.');
+      setActionToast({
+        show: true,
+        title: 'Error',
+        message: err.response?.data?.message || 'Failed to update task status.',
+        type: 'error'
+      });
+      setTimeout(() => setActionToast(prev => ({ ...prev, show: false })), 5000);
     }
   };
 
@@ -683,16 +722,70 @@ const Tasks = () => {
     setTimeout(() => setSelfCreateToast(null), 6000);
   };
 
-  const categories = ['All', ...new Set(tasks.map(t => t.category))];
-
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.title.toLowerCase().includes(search.toLowerCase()) ||
-      (task.description && task.description.toLowerCase().includes(search.toLowerCase()));
-    const matchesCategory = categoryFilter === 'All' || task.category === categoryFilter;
+    // 1. Search Query Filter (Driven by Header Search Bar)
+    if (searchTerm && searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase().trim();
+      const matchesSearch =
+        (task.title || '').toLowerCase().includes(term) ||
+        (task.description && task.description.toLowerCase().includes(term)) ||
+        (task.category || '').toLowerCase().includes(term) ||
+        (task.main_category_name || '').toLowerCase().includes(term) ||
+        (task.sub_category_name || '').toLowerCase().includes(term) ||
+        (task.child_category_name || '').toLowerCase().includes(term) ||
+        (task.category_path || '').toLowerCase().includes(term);
+      if (!matchesSearch) return false;
+    }
+
+    // 2. 3-Level Cascading Category Filters
+    if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
+      const catLow = selectedCategoryFilter.toLowerCase().trim();
+      const mainName = (task.main_category_name || '').toLowerCase().trim();
+      const catName = (task.category_name || '').toLowerCase().trim();
+      const directCat = (task.category || '').toLowerCase().trim();
+      const catPath = (task.category_path || '').toLowerCase().trim();
+
+      const matchesCat =
+        mainName === catLow ||
+        directCat === catLow ||
+        catPath.startsWith(catLow) ||
+        catPath.includes(catLow) ||
+        catName === catLow;
+      if (!matchesCat) return false;
+    }
+
+    if (selectedSubcategoryFilter && selectedSubcategoryFilter !== 'all') {
+      const subLow = selectedSubcategoryFilter.toLowerCase().trim();
+      const subName = (task.sub_category_name || '').toLowerCase().trim();
+      const directCat = (task.category || '').toLowerCase().trim();
+      const catPath = (task.category_path || '').toLowerCase().trim();
+
+      const matchesSub =
+        subName === subLow ||
+        directCat === subLow ||
+        catPath.includes(subLow);
+      if (!matchesSub) return false;
+    }
+
+    if (selectedChildCategoryFilter && selectedChildCategoryFilter !== 'all') {
+      const childLow = selectedChildCategoryFilter.toLowerCase().trim();
+      const childName = (task.child_category_name || '').toLowerCase().trim();
+      const directCat = (task.category || '').toLowerCase().trim();
+      const catPath = (task.category_path || '').toLowerCase().trim();
+
+      const matchesChild =
+        childName === childLow ||
+        directCat === childLow ||
+        catPath.includes(childLow);
+      if (!matchesChild) return false;
+    }
+
+    // 3. Date Filter
     const taskDate = task.assign_date || task.created_at;
     const matchesDate = !dateFilter || task.status === 'Unassigned' || (taskDate && taskDate.startsWith(dateFilter));
+    if (!matchesDate) return false;
 
-    return matchesSearch && matchesCategory && matchesDate;
+    return true;
   });
 
   const columns = {
@@ -807,34 +900,16 @@ const Tasks = () => {
             <span>+ New Creative Task</span>
           </button>
 
-          {/* Search Pill */}
-          <div className="relative group w-full sm:w-auto sm:flex-1 xl:w-[280px]">
-            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10" size={16} />
-            <input
-              type="text"
-              placeholder="Search tasks..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-full shadow-sm hover:shadow-md focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500/50 transition-all text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder-slate-500"
-            />
-          </div>
-
-          {/* Category Pill */}
-          <div className="relative group w-full sm:w-auto">
-            <FiFilter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary-600 transition-colors z-10" size={14} />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full sm:w-[160px] pl-10 pr-10 py-2.5 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 rounded-full shadow-sm hover:shadow-md focus:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500/50 text-sm font-medium text-slate-700 dark:text-slate-200 appearance-none cursor-pointer transition-all"
-            >
-              {categories.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          </div>
+          {/* Cascading Category Filters (3-tier) */}
+          <CascadingCategoryFilter
+            category={selectedCategoryFilter}
+            subcategory={selectedSubcategoryFilter}
+            childCategory={selectedChildCategoryFilter}
+            onCategoryChange={handleCategoryFilterChange}
+            onSubcategoryChange={handleSubcategoryFilterChange}
+            onChildCategoryChange={handleChildCategoryFilterChange}
+            apiBase={API_BASE}
+          />
 
           {/* Date Pill */}
           <div className="relative group w-full sm:w-auto">
@@ -848,9 +923,15 @@ const Tasks = () => {
           </div>
 
           {/* Clear Action */}
-          <div className={`overflow-hidden transition-all duration-300 origin-left ${search || categoryFilter !== 'All' || dateFilter ? 'w-full sm:w-auto opacity-100 scale-100' : 'w-0 opacity-0 scale-50'}`}>
+          <div className={`overflow-hidden transition-all duration-300 origin-left ${Boolean((searchTerm && searchTerm.trim()) || selectedCategoryFilter !== 'all' || selectedSubcategoryFilter !== 'all' || selectedChildCategoryFilter !== 'all' || dateFilter) ? 'w-full sm:w-auto opacity-100 scale-100' : 'w-0 opacity-0 scale-50'}`}>
             <button
-              onClick={() => { setSearch(''); setCategoryFilter('All'); setDateFilter(''); }}
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategoryFilter('all');
+                setSelectedSubcategoryFilter('all');
+                setSelectedChildCategoryFilter('all');
+                setDateFilter('');
+              }}
               className="w-full px-5 py-2.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 border border-red-100/50 dark:border-red-500/20 rounded-full transition-all font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm"
             >
               <FiX size={14} /> Clear
@@ -861,13 +942,26 @@ const Tasks = () => {
 
 
 
+      {/* DAILY PROGRESS & MOTIVATION GOAL BAR (Synced to active date & filters) */}
+      <DailyProgressBar tasks={filteredTasks} />
+
       {/* TABS NAVIGATION */}
       <TaskTabs columns={columns} activeTab={activeTab} onTabChange={setActiveTab} />
       {/* TAB CONTENT GRID */}
       {columns[activeTab].length === 0 ? (
-        <div className="flex flex-col items-center justify-center min-h-[300px] bg-slate-50/50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-700 border-dashed">
-          <p className="text-slate-500 dark:text-slate-400 font-bold mt-4">No tasks in {activeTab}</p>
-        </div>
+        <EmptyState
+          activeTab={activeTab}
+          hasFilter={Boolean((searchTerm && searchTerm.trim()) || selectedCategoryFilter !== 'all' || selectedSubcategoryFilter !== 'all' || selectedChildCategoryFilter !== 'all' || dateFilter)}
+          onClearFilter={() => {
+            setSearchTerm('');
+            setSelectedCategoryFilter('all');
+            setSelectedSubcategoryFilter('all');
+            setSelectedChildCategoryFilter('all');
+            setDateFilter('');
+          }}
+          onSwitchTab={setActiveTab}
+          onCreateTask={() => setIsCreateSelfModalOpen(true)}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
           {columns[activeTab].map(task => (
@@ -948,6 +1042,15 @@ const Tasks = () => {
         onSuccess={handleSelfTaskCreated}
         currentUser={currentUser}
         API_BASE={API_BASE}
+      />
+
+      {/* Action Notification Toast */}
+      <Toast
+        show={actionToast.show}
+        title={actionToast.title}
+        message={actionToast.message}
+        type={actionToast.type}
+        onClose={() => setActionToast(prev => ({ ...prev, show: false }))}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { FiStar, FiX, FiCheck, FiMessageSquare, FiTag, FiZap, FiAward } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
+import { soundFx } from '../utils/soundFx';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
@@ -48,7 +49,8 @@ const ApprovalRatingModal = ({ isOpen, onClose, task, onConfirm }) => {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      // Trigger festive celebration confetti
+      // Trigger festive celebration confetti & audio chime
+      soundFx.playSuccess();
       try {
         confetti({
           particleCount: 80,

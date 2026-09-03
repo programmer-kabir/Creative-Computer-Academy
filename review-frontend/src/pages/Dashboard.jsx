@@ -7,7 +7,9 @@ import {
   FiUsers, FiCheckCircle, FiClock, FiAlertCircle,
   FiRefreshCw, FiStar, FiChevronRight, FiList, FiEye, FiActivity
 } from 'react-icons/fi';
+import { motion } from 'framer-motion';
 import ActivityHeatmap from '../components/ActivityHeatmap';
+import AnimatedCounter from '../components/AnimatedCounter';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -22,16 +24,21 @@ const StatCard = ({ icon: Icon, label, value, sub, color = 'brand' }) => {
   };
   const cls = colorMap[color];
   return (
-    <div className={`glass rounded-2xl p-5 bg-gradient-to-br border ${cls} flex items-start gap-4`}>
+    <motion.div 
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
+      className={`glass rounded-2xl p-5 bg-gradient-to-br border ${cls} flex items-start gap-4 transition-all`}
+    >
       <div className={`p-2.5 rounded-xl ${cls.split(' ')[3]}/10`}>
         <Icon size={20} className={cls.split(' ')[3]} />
       </div>
       <div>
         <p className="text-white/40 text-xs font-semibold uppercase tracking-wide">{label}</p>
-        <p className="text-white text-2xl font-bold mt-0.5">{value}</p>
+        <p className="text-white text-2xl font-bold mt-0.5">
+          <AnimatedCounter value={value} />
+        </p>
         {sub && <p className="text-white/40 text-xs mt-1">{sub}</p>}
       </div>
-    </div>
+    </motion.div>
   );
 };
 

@@ -1,9 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 
 $database = new Database();
@@ -42,11 +38,11 @@ try {
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
         $row['id'] = intval($row['id']);
         
-        // Evaluate online status
+        // Evaluate online status (active within last 5 minutes = 300 seconds)
         $online = false;
         if ($row['last_activity']) {
             $last_act_ts = strtotime($row['last_activity']);
-            if ((time() - $last_act_ts) <= 30) {
+            if ((time() - $last_act_ts) <= 300) {
                 $online = true;
             }
         }

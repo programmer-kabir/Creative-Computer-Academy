@@ -154,25 +154,25 @@ export default function TaskDeliverablesViewer({
       {totalTimeSpent !== null && totalTimeSpent !== undefined && Number(totalTimeSpent) > 0 && (
         <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 flex-wrap ${
           isInstantSubmit 
-            ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 shadow-lg shadow-amber-950/20' 
-            : 'bg-blue-500/15 border-blue-500/30 text-blue-300'
+            ? 'bg-amber-500/10 dark:bg-amber-500/15 border-amber-500/40 text-amber-950 dark:text-amber-200 shadow-sm' 
+            : 'bg-blue-500/10 dark:bg-blue-500/15 border-blue-500/30 text-blue-950 dark:text-blue-200'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl shrink-0 ${isInstantSubmit ? 'bg-amber-500/30 text-amber-300' : 'bg-blue-500/30 text-blue-300'}`}>
+            <div className={`p-2.5 rounded-xl shrink-0 ${isInstantSubmit ? 'bg-amber-500/25 text-amber-800 dark:text-amber-300' : 'bg-blue-500/25 text-blue-800 dark:text-blue-300'}`}>
               {isInstantSubmit ? <FiZap size={20} className="animate-bounce" /> : <FiClock size={20} />}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <p className="text-xs font-bold uppercase tracking-wider">
+                <p className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
                   {isInstantSubmit ? '⚡ Instant / Fast Submission' : '⏱️ Staff Working Duration'}
                 </p>
                 {isInstantSubmit && (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/30 text-[10px] font-black uppercase text-amber-200 border border-amber-500/40 animate-pulse">
+                  <span className="px-2 py-0.5 rounded-full bg-amber-500/25 text-[10px] font-black uppercase text-amber-900 dark:text-amber-200 border border-amber-500/40 animate-pulse">
                     Fast Track
                   </span>
                 )}
               </div>
-              <p className="text-lg font-black tracking-tight mt-0.5">
+              <p className="text-lg font-black tracking-tight mt-0.5 text-amber-950 dark:text-amber-100">
                 {formatDuration(totalTimeSpent)}
               </p>
             </div>
@@ -180,8 +180,8 @@ export default function TaskDeliverablesViewer({
 
           {submittedAt && (
             <div className="text-right text-xs">
-              <span className="text-white/40 block text-[10px] uppercase font-bold">Submission Timestamp</span>
-              <span className="font-semibold text-white/80">
+              <span className="text-white/60 dark:text-white/40 block text-[10px] uppercase font-bold">Submission Timestamp</span>
+              <span className="font-bold text-white">
                 {new Date(submittedAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -456,15 +456,15 @@ export default function TaskDeliverablesViewer({
 
       {/* 4. External Folder Link */}
       {submissionLink && (
-        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl flex items-center gap-3">
-          <FiLink className="text-emerald-400 shrink-0" size={18} />
+        <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl flex items-center gap-3">
+          <FiLink className="text-emerald-600 dark:text-emerald-400 shrink-0" size={18} />
           <div className="min-w-0 flex-1">
-            <p className="text-emerald-300 text-[10px] uppercase font-bold tracking-wider">External Folder / Cloud Proof Link</p>
+            <p className="text-emerald-800 dark:text-emerald-300 text-[10px] uppercase font-bold tracking-wider">External Folder / Cloud Proof Link</p>
             <a
               href={submissionLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-400 hover:underline text-xs truncate block mt-0.5 font-medium"
+              className="text-blue-600 dark:text-blue-400 hover:underline text-xs truncate block mt-0.5 font-bold"
             >
               {submissionLink}
             </a>
@@ -473,7 +473,7 @@ export default function TaskDeliverablesViewer({
             href={submissionLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-emerald-300 hover:bg-emerald-500/20 rounded-xl transition-colors shrink-0"
+            className="p-2 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 rounded-xl transition-colors shrink-0"
           >
             <FiExternalLink size={15} />
           </a>

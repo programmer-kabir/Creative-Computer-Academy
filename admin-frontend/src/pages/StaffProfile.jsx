@@ -82,6 +82,58 @@ const StaffProfile = () => {
     );
   }
 
+  const calculateTenure = (startDate, endDate) => {
+    if (!startDate) return null;
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : new Date();
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end < start) return null;
+
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 30) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+    }
+    const months = Math.floor(diffDays / 30.4375);
+    const years = Math.floor(months / 12);
+    const remMonths = months % 12;
+
+    if (years === 0) {
+      return `${months} month${months > 1 ? 's' : ''}`;
+    }
+    if (remMonths === 0) {
+      return `${years} year${years > 1 ? 's' : ''}`;
+    }
+    return `${years} yr${years > 1 ? 's' : ''}, ${remMonths} mo${remMonths > 1 ? 's' : ''}`;
+  };
+
+  const tenure = staff ? calculateTenure(staff.joining_date, staff.resignation_date) : null;
+  const empStatus = (staff?.employment_status || 'active').toLowerCase();
+
+  const getStatusBadge = () => {
+    if (empStatus === 'probation') {
+      return { label: 'Probation', class: 'bg-purple-500 text-white' };
+    }
+    if (empStatus === 'resigned') {
+      return { label: 'Resigned', class: 'bg-amber-500 text-white' };
+    }
+    if (empStatus === 'terminated') {
+      return { label: 'Terminated', class: 'bg-rose-500 text-white' };
+    }
+    if (empStatus === 'on_leave' || empStatus === 'on leave') {
+      return { label: 'On Leave', class: 'bg-sky-500 text-white' };
+    }
+    if (empStatus === 'suspended') {
+      return { label: 'Suspended', class: 'bg-orange-500 text-white' };
+    }
+    if (empStatus === 'inactive' || staff?.status === 'inactive') {
+      return { label: 'Inactive', class: 'bg-slate-500 text-white' };
+    }
+    return { label: 'Active', class: 'bg-emerald-500 text-white' };
+  };
+
+  const statusBadge = getStatusBadge();
+
   return (
     <>
       <style>{`
@@ -131,8 +183,8 @@ const StaffProfile = () => {
                   </div>
                 )}
               </div>
-              <div className={`absolute -bottom-2 -right-2 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg border-2 border-white dark:border-slate-800 ${staff?.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-                {staff?.status === 'active' ? 'Active' : 'Suspended'}
+              <div className={`absolute -bottom-2 -right-2 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg border-2 border-white dark:border-slate-800 ${statusBadge.class}`}>
+                {statusBadge.label}
               </div>
             </div>
 
@@ -154,6 +206,11 @@ const StaffProfile = () => {
                   <span className="text-slate-700 dark:text-slate-200 font-bold flex items-center gap-1.5 bg-white/90 dark:bg-slate-900/80 px-3 py-1 rounded-full text-sm shadow-sm border border-slate-200 dark:border-slate-700 backdrop-blur-md">
                     <FiMapPin className="text-slate-400 dark:text-slate-400" size={14} />
                     {staff.department_name}
+                  </span>
+                )}
+                {staff?.status === 'inactive' && (
+                  <span className="text-rose-600 dark:text-rose-400 font-bold flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/50 px-3 py-1 rounded-full text-xs shadow-sm border border-rose-200 dark:border-rose-800">
+                    <FiXCircle size={14} /> Account Blocked
                   </span>
                 )}
               </div>
@@ -204,7 +261,7 @@ const StaffProfile = () => {
                   <span className="w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <FiBriefcase size={14} />
                   </span>
-                  Employment
+                  Employment Details
                 </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700/50">
@@ -221,7 +278,7 @@ const StaffProfile = () => {
                       {staff?.shift_start?.slice(0,5)} - {staff?.shift_end?.slice(0,5)}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700/50">
                     <div className="flex items-center gap-2.5 text-slate-500 dark:text-slate-400 text-sm">
                       <FiCalendar className="text-slate-400 dark:text-slate-500" /> Date Joined
                     </div>
@@ -229,6 +286,26 @@ const StaffProfile = () => {
                       {staff?.joining_date ? new Date(staff.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                     </span>
                   </div>
+                  {staff?.resignation_date && (
+                    <div className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700/50">
+                      <div className="flex items-center gap-2.5 text-rose-500 dark:text-rose-400 text-sm">
+                        <FiCalendar className="text-rose-400" /> Release / End Date
+                      </div>
+                      <span className="font-bold text-rose-600 dark:text-rose-400">
+                        {new Date(staff.resignation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                    </div>
+                  )}
+                  {tenure && (
+                    <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center gap-2.5 text-slate-500 dark:text-slate-400 text-sm">
+                        <FiClock className="text-slate-400 dark:text-slate-500" /> Service Tenure
+                      </div>
+                      <span className="font-extrabold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2.5 py-1 rounded-lg text-xs">
+                        {tenure} {staff?.resignation_date ? '(Completed)' : '(Active)'}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,10 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
+require_once '../../../config/cors.php';
 
 require_once '../../../config/database.php';
 $database = new Database();
@@ -25,10 +20,25 @@ $role            = isset($data->role)             ? trim($data->role)           
 $department_id   = isset($data->department_id)    ? intval($data->department_id)  : null;
 $designation     = isset($data->designation)      ? trim($data->designation)      : null;
 $employment_type = isset($data->employment_type)  ? trim($data->employment_type)  : null;
+$employment_status = isset($data->employment_status) ? trim($data->employment_status) : null;
 $status          = isset($data->status)           ? trim($data->status)           : null;
 $new_password    = isset($data->password) && trim($data->password) !== '' ? $data->password : null;
 
+// If employment_status is resigned or terminated, automatically make account status inactive if not specified
+if ($employment_status && in_array(strtolower($employment_status), ['resigned', 'terminated', 'inactive']) && !$status) {
+    $status = 'inactive';
+}
+
 try {
+    // Ensure column existence & type in employees table safely
+    try {
+        $db->exec("ALTER TABLE `employees` ADD COLUMN `resignation_date` DATE NULL DEFAULT NULL AFTER `joining_date`");
+    } catch (Exception $colEx) {}
+
+    try {
+        $db->exec("ALTER TABLE `employees` MODIFY COLUMN `employment_status` VARCHAR(50) NOT NULL DEFAULT 'Active'");
+    } catch (Exception $colEx) {}
+
     $db->beginTransaction();
 
     // ── Update users table ───────────────────────────────────────────────────
@@ -140,10 +150,18 @@ try {
         $emp_fields[] = 'employment_type = :employment_type';
         $emp_params[':employment_type'] = trim($data->employment_type) !== '' ? trim($data->employment_type) : 'Full-time';
     }
+    if (isset($data->employment_status)) {
+        $emp_fields[] = 'employment_status = :employment_status';
+        $emp_params[':employment_status'] = trim($data->employment_status) !== '' ? trim($data->employment_status) : 'active';
+    }
 
     if (isset($data->joining_date)) {
         $emp_fields[] = 'joining_date = :joining_date';
         $emp_params[':joining_date'] = trim($data->joining_date) !== '' ? trim($data->joining_date) : null;
+    }
+    if (isset($data->resignation_date)) {
+        $emp_fields[] = 'resignation_date = :resignation_date';
+        $emp_params[':resignation_date'] = trim($data->resignation_date) !== '' ? trim($data->resignation_date) : null;
     }
     if (isset($data->shift_start)) {
         $emp_fields[] = 'shift_start = :shift_start';

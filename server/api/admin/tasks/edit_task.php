@@ -1,89 +1,154 @@
 <?php
-require_once '../../../config/cors.php';
-
-require_once '../../../config/database.php';
+require_once __DIR__ . '/../../../config/cors.php';
+require_once __DIR__ . '/../../../config/database.php';
 
 $database = new Database();
 $db = $database->getConnection();
 
+if (!$db) {
+    echo json_encode(["status" => "error", "message" => "Database connection failed."]);
+    exit;
+}
+
 $data = json_decode(file_get_contents("php://input"));
 
-if (!isset($data->task_id) || !isset($data->title) || !isset($data->category)) {
-    echo json_encode(["status" => "error", "message" => "Task ID, Title, and Category are required."]);
+if (!isset($data->task_id) || !isset($data->title)) {
+    echo json_encode(["status" => "error", "message" => "Task ID and Title are required."]);
     exit;
 }
 
 try {
-    $stmt_old = $db->prepare("SELECT assigned_to, creation_mode FROM tasks WHERE id = :id");
+    $stmt_old = $db->prepare("SELECT assigned_to, creation_mode, department_id FROM tasks WHERE id = :id");
     $stmt_old->execute([':id' => $data->task_id]);
     $old_task = $stmt_old->fetch(PDO::FETCH_ASSOC);
     $old_employee_id = $old_task['assigned_to'] ?? null;
     $old_creation_mode = $old_task['creation_mode'] ?? 'manual';
+    $old_dept_id = $old_task['department_id'] ?? null;
 
-    // If assigned_to (user_id) is provided, look up the employee id
+    // If assigned_to (user_id) is provided, look up the employee id and department
     $employee_id = null;
-    if (isset($data->assigned_to) && !empty($data->assigned_to)) {
-        $stmt_emp = $db->prepare("SELECT id FROM employees WHERE user_id = :user_id LIMIT 1");
+    $emp_dept_id = null;
+    if (isset($data->assigned_to) && !empty($data->assigned_to) && $data->assigned_to !== 'unassigned') {
+        $stmt_emp = $db->prepare("SELECT id, department_id FROM employees WHERE user_id = :user_id LIMIT 1");
         $stmt_emp->execute([':user_id' => $data->assigned_to]);
-        $employee_id = $stmt_emp->fetchColumn();
+        $emp_row = $stmt_emp->fetch(PDO::FETCH_ASSOC);
 
-        if (!$employee_id) {
+        if (!$emp_row) {
             echo json_encode(["status" => "error", "message" => "The selected staff member does not have an employee profile."]);
             exit;
         }
+        $employee_id = (int)$emp_row['id'];
+        $emp_dept_id = !empty($emp_row['department_id']) ? (int)$emp_row['department_id'] : null;
     }
 
     $title       = $data->title;
     $description = isset($data->description) ? $data->description : null;
-    $category    = $data->category;
-    $department_id = isset($data->department_id) ? $data->department_id : null;
-    $task_id     = $data->task_id;
-    $assign_date = isset($data->assign_date) ? $data->assign_date : null;
+    $task_id     = (int)$data->task_id;
+    $assign_date = !empty($data->assign_date) ? $data->assign_date : null;
 
-    // ref_links may arrive as a PHP array or a JSON string — always store as JSON string.
+    // Category hierarchy fields
+    $category_id       = !empty($data->category_id) ? (int)$data->category_id : null;
+    $subcategory_id    = !empty($data->subcategory_id) ? (int)$data->subcategory_id : null;
+    $child_category_id = !empty($data->child_category_id) ? (int)$data->child_category_id : null;
+    $category_name_log = !empty($data->category) ? trim($data->category) : 'General';
+
+    // Intelligent department_id resolution
+    $department_id = (!empty($data->department_id) && $data->department_id !== 'null') ? (int)$data->department_id : null;
+
+    if (!$department_id && $emp_dept_id) {
+        $department_id = $emp_dept_id;
+    }
+
+    if (!$department_id && !empty($category_id)) {
+        try {
+            $stmt_cat_dept = $db->prepare("SELECT department_id FROM task_categories WHERE id = :cid LIMIT 1");
+            $stmt_cat_dept->execute([':cid' => $category_id]);
+            $cat_dept = $stmt_cat_dept->fetchColumn();
+            if ($cat_dept) {
+                $department_id = (int)$cat_dept;
+            }
+        } catch (\Throwable $th) {}
+    }
+
+    if (!$department_id && $old_dept_id) {
+        $department_id = (int)$old_dept_id;
+    }
+
+    // ref_links
     $raw_links = isset($data->ref_links) ? $data->ref_links : null;
     if (is_array($raw_links)) {
         $ref_links = json_encode(array_values(array_filter($raw_links)));
-    } else {
+    } elseif (is_string($raw_links) && !empty(trim($raw_links))) {
         $ref_links = $raw_links;
+    } else {
+        $ref_links = json_encode([]);
     }
 
-    // ref_image may arrive as a PHP array or a JSON string — always store as JSON string.
+    // ref_image
     $raw_images = isset($data->ref_image) ? $data->ref_image : null;
     if (is_array($raw_images)) {
         $ref_image = json_encode(array_values(array_filter($raw_images)));
-    } else {
+    } elseif (is_string($raw_images) && !empty(trim($raw_images))) {
         $ref_image = $raw_images;
+    } else {
+        $ref_image = json_encode([]);
     }
 
-    // visual_image processing
+    // visual_image
     $raw_visual = isset($data->visual_image) ? $data->visual_image : null;
     if (is_array($raw_visual)) {
         $visual_image = json_encode(array_values(array_filter($raw_visual)));
-    } else {
+    } elseif (is_string($raw_visual) && !empty(trim($raw_visual))) {
         $visual_image = $raw_visual;
+    } else {
+        $visual_image = json_encode([]);
     }
 
-    $deadline      = isset($data->deadline) && $data->deadline !== '' ? $data->deadline : null;
-    $deadline_time = isset($data->deadline_time) && $data->deadline_time !== '' ? $data->deadline_time : null;
+    $deadline      = (!empty($data->deadline) && $data->deadline !== '') ? $data->deadline : null;
+    $deadline_time = (!empty($data->deadline_time) && $data->deadline_time !== '') ? $data->deadline_time : null;
 
-    // Decode JWT to get admin name for history
+    // Extract admin name safely
     $updated_by_name = 'Admin';
-    if(isset($headers['Authorization'])){
-        $authHeader = $headers['Authorization'];
-        $token = str_replace('Bearer ', '', $authHeader);
-        try {
-            $decoded = JWT::decode($token, new Key($secret_key, 'HS256'));
-            $updated_by_name = $decoded->data->name ?? 'Admin';
-        } catch(Exception $e) {}
-    }
+    try {
+        $headers = function_exists('getallheaders') ? getallheaders() : [];
+        if (isset($headers['Authorization']) || isset($headers['authorization'])) {
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'];
+            $token = str_replace('Bearer ', '', $authHeader);
+            $token_parts = explode('.', $token);
+            if (count($token_parts) === 3) {
+                $payload = json_decode(base64_decode(str_replace(['-', '_'], ['+', '/'], $token_parts[1])), true);
+                if (!empty($payload['data']['name'])) {
+                    $updated_by_name = $payload['data']['name'];
+                }
+            }
+        }
+    } catch (\Throwable $e) {}
 
     // Auto-ensure columns exist in tasks table
     try {
-        $db->exec("ALTER TABLE tasks ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'");
-    } catch (Exception $e) {}
+        if (file_exists(__DIR__ . '/../../categories/category_helper.php')) {
+            require_once __DIR__ . '/../../categories/category_helper.php';
+            ensureCategoryTableExists($db);
+        }
+        
+        $needed_columns = [
+            'category_id'       => "ALTER TABLE `tasks` ADD COLUMN `category_id` INT NULL",
+            'subcategory_id'    => "ALTER TABLE `tasks` ADD COLUMN `subcategory_id` INT NULL",
+            'child_category_id' => "ALTER TABLE `tasks` ADD COLUMN `child_category_id` INT NULL",
+            'creation_mode'     => "ALTER TABLE `tasks` ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'"
+        ];
 
-    // An agentic task must ALWAYS stay agentic and never convert into manual on edit
+        foreach ($needed_columns as $col => $sql) {
+            try {
+                $chk = $db->query("SHOW COLUMNS FROM `tasks` LIKE '$col'")->fetch();
+                if (!$chk) {
+                    $db->exec($sql);
+                }
+            } catch (\Throwable $th) {}
+        }
+    } catch (\Throwable $e) {}
+
+    // An agentic task must ALWAYS stay agentic
     if ($old_creation_mode === 'agentic' || (!empty($data->creation_mode) && $data->creation_mode === 'agentic') || !empty($data->blueprint_variants) || !empty($data->blueprint_data)) {
         $creation_mode = 'agentic';
     } else {
@@ -91,7 +156,7 @@ try {
     }
 
     $priority = $data->priority ?? 'Medium';
-    $checklists_val = isset($data->checklists) ? (is_string($data->checklists) ? $data->checklists : json_encode($data->checklists)) : null;
+    $checklists_val = isset($data->checklists) ? (is_string($data->checklists) ? $data->checklists : json_encode($data->checklists, JSON_UNESCAPED_UNICODE)) : null;
 
     $submission_link = isset($data->submission_link) ? trim($data->submission_link) : null;
 
@@ -99,7 +164,7 @@ try {
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
                       creation_mode = :creation_mode,
-                      category = :category, department_id = :department_id, assigned_to = :assigned_to,
+                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, department_id = :department_id, assigned_to = :assigned_to,
                       status = IF(status = 'Unassigned', 'To-Do', status),
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
@@ -107,13 +172,12 @@ try {
                       updated_at = NOW()
                   WHERE id = :task_id";
         $stmt = $db->prepare($query);
-        $stmt->bindParam(':assigned_to', $employee_id);
+        $stmt->bindParam(':assigned_to',     $employee_id);
     } else {
-        // Keep existing assigned_to if not provided
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
                       creation_mode = :creation_mode,
-                      category = :category, department_id = :department_id,
+                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, department_id = :department_id,
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
                       submission_link = :submission_link,
@@ -122,21 +186,23 @@ try {
         $stmt = $db->prepare($query);
     }
 
-    $stmt->bindParam(':title',           $title);
-    $stmt->bindParam(':description',     $description);
-    $stmt->bindParam(':priority',        $priority);
-    $stmt->bindParam(':checklists',      $checklists_val);
-    $stmt->bindParam(':ref_links',       $ref_links);
-    $stmt->bindParam(':ref_image',       $ref_image);
-    $stmt->bindParam(':visual_image',    $visual_image);
-    $stmt->bindParam(':creation_mode',   $creation_mode);
-    $stmt->bindParam(':category',        $category);
-    $stmt->bindParam(':department_id',   $department_id);
-    $stmt->bindParam(':assign_date',     $assign_date);
-    $stmt->bindParam(':deadline',        $deadline);
-    $stmt->bindParam(':deadline_time',   $deadline_time);
-    $stmt->bindParam(':submission_link', $submission_link);
-    $stmt->bindParam(':task_id',         $task_id);
+    $stmt->bindParam(':title',             $title);
+    $stmt->bindParam(':description',       $description);
+    $stmt->bindParam(':priority',          $priority);
+    $stmt->bindParam(':checklists',        $checklists_val);
+    $stmt->bindParam(':ref_links',         $ref_links);
+    $stmt->bindParam(':ref_image',         $ref_image);
+    $stmt->bindParam(':visual_image',      $visual_image);
+    $stmt->bindParam(':creation_mode',     $creation_mode);
+    $stmt->bindParam(':category_id',       $category_id);
+    $stmt->bindParam(':subcategory_id',    $subcategory_id);
+    $stmt->bindParam(':child_category_id', $child_category_id);
+    $stmt->bindParam(':department_id',     $department_id);
+    $stmt->bindParam(':assign_date',       $assign_date);
+    $stmt->bindParam(':deadline',          $deadline);
+    $stmt->bindParam(':deadline_time',     $deadline_time);
+    $stmt->bindParam(':submission_link',   $submission_link);
+    $stmt->bindParam(':task_id',           $task_id);
 
     if ($stmt->execute()) {
         // Sync blueprint variants if provided in edit request
@@ -199,51 +265,63 @@ try {
                         }
                     }
                 }
-            } catch (Exception $e) {}
+            } catch (\Throwable $e) {}
         }
 
-        require_once '../../tasks/task_history_helper.php';
-        $logger = new TaskHistoryLogger($db);
-        $logger->logHistory($task_id, "Task Updated", $updated_by_name);
+        try {
+            if (file_exists(__DIR__ . '/../../tasks/task_history_helper.php')) {
+                require_once __DIR__ . '/../../tasks/task_history_helper.php';
+                $logger = new TaskHistoryLogger($db);
+                $logger->logHistory($task_id, "Task Updated", $updated_by_name);
+            }
+        } catch (\Throwable $e) {}
 
-        if (isset($data->assigned_to) && !empty($data->assigned_to)) {
-            require_once '../../notifications/notification_helper.php';
-            NotificationHelper::sendToUser(
-                $db,
-                $data->assigned_to,
-                null,
-                "Task Updated: " . $title,
-                "The task '{$title}' assigned to you has been updated by Admin.",
-                "task_updated",
-                "staff",
-                "/tasks",
-                "normal",
-                ["task_id" => $task_id]
-            );
-
-            // Send Email only if assigned to a NEW person (or previously unassigned)
-            if ($employee_id && $old_employee_id !== $employee_id) {
-                require_once '../../emails/EmailHelper.php';
-                $stmt_user = $db->prepare("SELECT name, email FROM users WHERE id = :id LIMIT 1");
-                $stmt_user->execute([':id' => $data->assigned_to]);
-                $user_data = $stmt_user->fetch(PDO::FETCH_ASSOC);
-
-                if ($user_data && !empty($user_data['email'])) {
-                    $stmt_tpl = $db->prepare("SELECT subject, body FROM email_templates WHERE event_name = 'task_assigned'");
-                    $stmt_tpl->execute();
-                    if ($tpl = $stmt_tpl->fetch(PDO::FETCH_ASSOC)) {
-                        $subject = str_replace('{{task_title}}', $title ?? 'Task', $tpl['subject']);
-                        $body = $tpl['body'];
-                        $body = str_replace('{{staff_name}}', $user_data['name'], $body);
-                        $body = str_replace('{{task_title}}', $title ?? 'Task', $body);
-                        $body = str_replace('{{task_category}}', $category ?? 'N/A', $body);
-                        
-                        $actionUrl = 'https://staff.creativecomputeracademy.com/tasks?taskId=' . $task_id;
-                        $htmlBody = EmailHelper::getHtmlTemplate($subject, $body, $actionUrl, 'View Task');
-                        
-                        EmailHelper::sendEmail($user_data['email'], $user_data['name'], $subject, $htmlBody);
-                    }
+        if (isset($data->assigned_to) && !empty($data->assigned_to) && $data->assigned_to !== 'unassigned') {
+            try {
+                if (file_exists(__DIR__ . '/../../notifications/notification_helper.php')) {
+                    require_once __DIR__ . '/../../notifications/notification_helper.php';
+                    NotificationHelper::sendToUser(
+                        $db,
+                        $data->assigned_to,
+                        null,
+                        "Task Updated: " . $title,
+                        "The task '{$title}' assigned to you has been updated by Admin.",
+                        "task_updated",
+                        "staff",
+                        "/tasks",
+                        "normal",
+                        ["task_id" => $task_id]
+                    );
                 }
+            } catch (\Throwable $e) {}
+
+            // Send Email only if assigned to a NEW person
+            if ($employee_id && $old_employee_id !== $employee_id) {
+                try {
+                    if (file_exists(__DIR__ . '/../../emails/EmailHelper.php')) {
+                        require_once __DIR__ . '/../../emails/EmailHelper.php';
+                        $stmt_user = $db->prepare("SELECT name, email FROM users WHERE id = :id LIMIT 1");
+                        $stmt_user->execute([':id' => $data->assigned_to]);
+                        $user_data = $stmt_user->fetch(PDO::FETCH_ASSOC);
+
+                        if ($user_data && !empty($user_data['email'])) {
+                            $stmt_tpl = $db->prepare("SELECT subject, body FROM email_templates WHERE event_name = 'task_assigned'");
+                            $stmt_tpl->execute();
+                            if ($tpl = $stmt_tpl->fetch(PDO::FETCH_ASSOC)) {
+                                $subject = str_replace('{{task_title}}', $title ?? 'Task', $tpl['subject']);
+                                $body = $tpl['body'];
+                                $body = str_replace('{{staff_name}}', $user_data['name'], $body);
+                                $body = str_replace('{{task_title}}', $title ?? 'Task', $body);
+                                $body = str_replace('{{task_category}}', $category_name_log, $body);
+                                
+                                $actionUrl = 'https://staff.creativecomputeracademy.com/tasks?taskId=' . $task_id;
+                                $htmlBody = EmailHelper::getHtmlTemplate($subject, $body, $actionUrl, 'View Task');
+                                
+                                EmailHelper::sendEmail($user_data['email'], $user_data['name'], $subject, $htmlBody);
+                            }
+                        }
+                    }
+                } catch (\Throwable $e) {}
             }
         }
 
@@ -252,7 +330,11 @@ try {
         echo json_encode(["status" => "error", "message" => "Failed to update task."]);
     }
 
-} catch (PDOException $e) {
-    echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+} catch (\PDOException $e) {
+    http_response_code(500);
+    echo json_encode(["status" => "error", "message" => "Database error: " . $e->getMessage()]);
+} catch (\Throwable $e) {
+    http_response_code(500);
+    echo json_encode(["status" => "error", "message" => "Server error: " . $e->getMessage()]);
 }
 ?>

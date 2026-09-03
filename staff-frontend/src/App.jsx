@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import React, { Suspense } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { SearchProvider } from './context/SearchContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import AuthenticatedLayout from './layouts/AuthenticatedLayout';
 
@@ -14,13 +15,15 @@ const Leave = React.lazy(() => import('./pages/Leave'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const BrandKit = React.lazy(() => import('./pages/BrandKit'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-slate-500 font-bold">Loading...</div>}>
+        <SearchProvider>
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen text-slate-500 font-bold">Loading...</div>}>
           <Routes>
             <Route path="/login" element={<Login />} />
 
@@ -89,10 +92,19 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/brand-kit" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <BrandKit />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+
             {/* 404 Catch-All Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
+        </SearchProvider>
       </Router>
     </AuthProvider>
   );

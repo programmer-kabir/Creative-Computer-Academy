@@ -1,11 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
-
+require_once '../../../config/cors.php';
 require_once '../../../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
@@ -29,12 +23,24 @@ $phone           = isset($data->phone)            ? trim($data->phone)          
 $department_id   = isset($data->department_id)    ? intval($data->department_id)  : null;
 $designation     = isset($data->designation)      ? trim($data->designation)      : null;
 $employment_type = isset($data->employment_type)  ? trim($data->employment_type)  : 'Full-time';
+$employment_status = isset($data->employment_status) && trim($data->employment_status) !== '' ? trim($data->employment_status) : 'active';
+$status          = isset($data->status) && trim($data->status) !== '' ? trim($data->status) : 'active';
 $join_date       = isset($data->joining_date) && trim($data->joining_date) !== '' ? trim($data->joining_date) : null;
+$resignation_date = isset($data->resignation_date) && trim($data->resignation_date) !== '' ? trim($data->resignation_date) : null;
 $shift_start     = isset($data->shift_start) && trim($data->shift_start) !== '' ? trim($data->shift_start) : '09:00:00';
 $shift_end       = isset($data->shift_end) && trim($data->shift_end) !== '' ? trim($data->shift_end) : '17:00:00';
 $allocated_break_minutes = isset($data->allocated_break_minutes) ? intval($data->allocated_break_minutes) : 60;
 
 try {
+    // Ensure column existence safely
+    try {
+        $db->exec("ALTER TABLE `employees` ADD COLUMN `resignation_date` DATE NULL DEFAULT NULL AFTER `joining_date`");
+    } catch (Exception $colEx) {}
+
+    try {
+        $db->exec("ALTER TABLE `employees` MODIFY COLUMN `employment_status` VARCHAR(50) NOT NULL DEFAULT 'Active'");
+    } catch (Exception $colEx) {}
+
     // ── Check if email already exists ────────────────────────────────────────
     $check_stmt = $db->prepare("SELECT id FROM users WHERE email = :email LIMIT 1");
     $check_stmt->bindParam(':email', $email);
@@ -50,13 +56,14 @@ try {
     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
     $user_stmt = $db->prepare(
         "INSERT INTO users (name, email, password, phone, status) 
-         VALUES (:name, :email, :password, :phone, 'active')"
+         VALUES (:name, :email, :password, :phone, :status)"
     );
     $user_stmt->execute([
         ':name'     => $name,
         ':email'    => $email,
         ':password' => $hashed_password,
         ':phone'    => $phone,
+        ':status'   => $status,
     ]);
     $user_id = $db->lastInsertId();
 
@@ -92,15 +99,17 @@ try {
 
     // ── 4. Create employee record (Insert first with temporary code) ──────────
     $emp_stmt = $db->prepare(
-        "INSERT INTO employees (user_id, employee_code, designation, department_id, employment_type, employment_status, joining_date, shift_start, shift_end, allocated_break_minutes)
-         VALUES (:user_id, 'TEMP', :designation, :department_id, :employment_type, 'active', :joining_date, :shift_start, :shift_end, :allocated_break_minutes)"
+        "INSERT INTO employees (user_id, employee_code, designation, department_id, employment_type, employment_status, joining_date, resignation_date, shift_start, shift_end, allocated_break_minutes)
+         VALUES (:user_id, 'TEMP', :designation, :department_id, :employment_type, :employment_status, :joining_date, :resignation_date, :shift_start, :shift_end, :allocated_break_minutes)"
     );
     $emp_stmt->execute([
         ':user_id'          => $user_id,
         ':designation'      => $designation,
         ':department_id'    => $department_id ?: null,
         ':employment_type'  => $employment_type,
+        ':employment_status' => $employment_status,
         ':joining_date'     => $join_date,
+        ':resignation_date' => $resignation_date,
         ':shift_start'      => $shift_start,
         ':shift_end'        => $shift_end,
         ':allocated_break_minutes' => $allocated_break_minutes,

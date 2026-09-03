@@ -1,7 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-
+require_once '../../../config/cors.php';
 require_once '../../../config/database.php';
 
 $database = new Database();
@@ -12,8 +10,9 @@ try {
         SELECT 
             u.id, u.name, u.email, u.phone, u.status, u.profile_picture, u.cover_picture,
             ur.role,
-            e.employee_code, e.designation, e.employment_status, e.employment_type,
-            e.joining_date, e.shift_start, e.shift_end, e.allocated_break_minutes, e.has_tiffin_break,
+            e.employee_code, e.department_id, e.designation, e.employment_status, e.employment_type,
+            e.joining_date, e.resignation_date, e.shift_start, e.shift_end, e.allocated_break_minutes,
+            e.has_tiffin_break, e.tiffin_start_time, e.tiffin_end_time, e.tiffin_duration_minutes,
             d.name AS department_name
         FROM users u
         INNER JOIN user_roles ur ON u.id = ur.user_id

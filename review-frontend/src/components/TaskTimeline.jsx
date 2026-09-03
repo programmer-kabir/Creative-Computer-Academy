@@ -42,7 +42,7 @@ const TaskTimeline = ({ logs, loading }) => {
 
   return (
     <div className="space-y-4 bg-dark-900/30 p-5 rounded-2xl border border-white/5">
-      <h4 className="text-white/40 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
+      <h4 className="text-white/70 dark:text-white/40 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-brand-500 animate-pulse"></span> Audit Trail
       </h4>
       
@@ -69,7 +69,7 @@ const TaskTimeline = ({ logs, loading }) => {
               
               <div className="-mt-1 pb-2">
                 <p className="text-white text-xs font-bold">{statusText}</p>
-                <p className="text-white/40 text-[9px] uppercase font-bold tracking-wide mt-1">
+                <p className="text-white/70 dark:text-white/50 text-[10px] uppercase font-bold tracking-wide mt-1">
                   BY {actor} &bull; {timeText}
                 </p>
               </div>

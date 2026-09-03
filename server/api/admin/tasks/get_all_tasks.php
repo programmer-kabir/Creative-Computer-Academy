@@ -11,15 +11,22 @@ $database = new Database();
 $db = $database->getConnection();
 
 try {
-    // 1. Fetch main task list with assigned user details
+    // 1. Fetch main task list with assigned user details and category names
     $query = "
         SELECT 
             t.*,
+            COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') as category_name,
+            tc_main.name as main_category_name,
+            tc_sub.name as sub_category_name,
+            tc_child.name as child_category_name,
             u.name as assigned_to_name,
             u.profile_picture as assigned_to_avatar
         FROM tasks t
         LEFT JOIN employees e ON t.assigned_to = e.id
         LEFT JOIN users u ON e.user_id = u.id
+        LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
+        LEFT JOIN task_categories tc_sub ON t.subcategory_id = tc_sub.id
+        LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
         ORDER BY FIELD(t.status, 'In Review', 'In Progress', 'To-Do', 'Completed'), COALESCE(t.assign_date, t.created_at) DESC
     ";
 
@@ -97,6 +104,9 @@ try {
             $row['final_delivery'] = $del_by_task[$t_id] ?? null;
             $row['blueprint_variants'] = $bv_by_task[$t_id] ?? [];
             $row['review'] = $rev_by_task[$t_id] ?? null;
+            if (empty($row['category'])) {
+                $row['category'] = $row['category_name'] ?? '';
+            }
 
             // Decode Checklists
             if (!empty($row['checklists']) && is_string($row['checklists'])) {

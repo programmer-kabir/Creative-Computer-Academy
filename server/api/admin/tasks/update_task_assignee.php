@@ -15,7 +15,12 @@ if (!isset($data->task_id) || !isset($data->assigned_to)) {
 
 try {
     // Get current task details before update
-    $stmt_task = $db->prepare("SELECT title, category, status FROM tasks WHERE id = :id");
+    $stmt_task = $db->prepare("
+        SELECT t.title, COALESCE(tc.name, 'General') as category, t.status 
+        FROM tasks t 
+        LEFT JOIN task_categories tc ON t.category_id = tc.id 
+        WHERE t.id = :id
+    ");
     $stmt_task->execute([':id' => $data->task_id]);
     $task_details = $stmt_task->fetch(PDO::FETCH_ASSOC);
 

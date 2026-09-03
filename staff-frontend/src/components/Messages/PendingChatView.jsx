@@ -1,5 +1,6 @@
 import React from 'react';
 import { FiPaperclip, FiSend } from 'react-icons/fi';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 const PendingChatView = ({
   pendingChatTarget,
@@ -13,10 +14,13 @@ const PendingChatView = ({
 }) => {
   if (!pendingChatTarget) return null;
 
+  const online = isUserOnline(pendingChatTarget);
+  const lastSeenText = formatLastSeen(pendingChatTarget.last_activity, online);
+
   return (
     <>
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md">
+      <div className="px-4 py-3 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-800/50 backdrop-blur-md flex items-center gap-3">
         <div style={{ width: '40px', height: '40px', minWidth: '40px', borderRadius: '12px', overflow: 'hidden' }}>
           {pendingChatTarget.profile_picture ? (
             <img
@@ -33,8 +37,8 @@ const PendingChatView = ({
         <div>
           <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">{pendingChatTarget.name}</h3>
           <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 flex items-center gap-1.5 mt-0.5">
-            <span className="inline-block rounded-full" style={{ width: '6px', height: '6px', backgroundColor: pendingChatTarget.is_online ? '#10b981' : '#cbd5e1' }}></span>
-            <span>{pendingChatTarget.is_online ? 'Active Now' : 'Offline'}</span>
+            <span className="inline-block rounded-full" style={{ width: '6px', height: '6px', backgroundColor: online ? '#10b981' : '#cbd5e1' }}></span>
+            <span className={online ? 'text-emerald-500 font-bold' : ''}>{online ? 'Active Now' : lastSeenText}</span>
             <span className="text-slate-300 dark:text-slate-600">|</span>
             <span>Admin</span>
           </p>

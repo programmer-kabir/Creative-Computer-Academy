@@ -19,8 +19,11 @@ import MessageInfoModal from '../components/Messages/MessageInfoModal';
 import LightboxModal from '../components/Messages/LightboxModal';
 import FullProfileModal from '../components/Messages/FullProfileModal';
 import PendingChatView from '../components/Messages/PendingChatView';
+import { ChatBgProvider, useChatBg } from '../context/ChatBgContext';
 
-const Messages = () => {
+// Inner component that consumes ChatBgContext
+const MessagesInner = () => {
+  const { getChatBg, isPinned } = useChatBg();
   const navigate = useNavigate();
   const {
     chats, setChats,
@@ -189,7 +192,8 @@ const Messages = () => {
         searchChat={searchChat}
         setSearchChat={setSearchChat}
         loadingChats={loadingChats}
-        filteredChats={filteredChats}
+        filteredChats={[...filteredChats].sort((a, b) => (isPinned(b.id) ? 1 : 0) - (isPinned(a.id) ? 1 : 0))}
+        isPinned={isPinned}
         getDirectRecipient={getDirectRecipient}
         getChatTitle={getChatTitle}
         getChatSub={getChatSub}
@@ -210,10 +214,19 @@ const Messages = () => {
               API_URL={API_URL}
               setIsGroupInfoOpen={setIsGroupInfoOpen}
               getChatSub={getChatSub}
+              setSelectedMiniProfile={setSelectedMiniProfile}
+              currentUser={currentUser}
+              messages={messages}
+              handleReact={handleReact}
+              fetchMessages={fetchMessages}
+              fetchChats={fetchChats}
             />
 
-            {/* Messages logs area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-slate-50/30 dark:bg-slate-900/30 backdrop-blur-[2px] custom-scrollbar min-h-0">
+            {/* Messages logs area — dynamic background */}
+            <div
+              className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 custom-scrollbar min-h-0 transition-all duration-500"
+              style={getChatBg(activeChat?.id)?.style || { background: undefined }}
+            >
               {loadingMessages ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2">
                   <div className="animate-spin h-6 w-6 border-2 border-primary-600 border-t-transparent rounded-full"></div>
@@ -230,7 +243,7 @@ const Messages = () => {
               ) : (
                 messages.map((msg, index) => (
                   <MessageBubble
-                    key={msg.id || index}
+                    key={`msg-${msg.id || 'temp'}-${index}`}
                     msg={msg}
                     index={index}
                     currentUser={currentUser}
@@ -296,6 +309,10 @@ const Messages = () => {
               setShowEmojiPickerId={setShowEmojiPickerId}
               emojis={emojis}
               isSending={isSending}
+              messages={messages}
+              currentUser={currentUser}
+              handleReact={handleReact}
+              activeChat={activeChat}
             />
           </>
         ) : pendingChatTarget ? (
@@ -449,5 +466,12 @@ const Messages = () => {
     </div>
   );
 };
+
+// Outer wrapper with ChatBgProvider
+const Messages = () => (
+  <ChatBgProvider>
+    <MessagesInner />
+  </ChatBgProvider>
+);
 
 export default Messages;

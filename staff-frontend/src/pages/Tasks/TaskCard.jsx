@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiCode, FiFlag, FiPlayCircle, FiCheckSquare, FiPauseCircle, FiImage, FiStar } from 'react-icons/fi';
+import { FiCode, FiFlag, FiPlayCircle, FiCheckSquare, FiPauseCircle, FiImage, FiStar, FiCalendar, FiClock } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 
 const stripHtml = (html) => {
@@ -15,27 +15,34 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
   const isDelayed = task.is_delayed;
   
   // Dynamic styling based on status
-  let borderClass = 'border-slate-100 hover:shadow-slate-500/10 dark:border-slate-700';
+  let borderClass = 'border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700';
   let gradientClass = 'from-slate-300 to-slate-500 dark:from-slate-600 dark:to-slate-700';
+  let glowColor = 'hover:shadow-slate-500/10';
   
   if (isDelayed && task.status === 'To-Do') {
-    borderClass = 'border-red-200 hover:shadow-red-500/10 dark:border-red-900/50';
+    borderClass = 'border-red-200/80 hover:border-red-400 dark:border-red-900/60';
     gradientClass = 'from-red-400 to-red-600';
+    glowColor = 'hover:shadow-red-500/15';
   } else if (task.status === 'In Progress') {
-    borderClass = 'border-blue-50 hover:border-blue-200 hover:shadow-blue-500/20 dark:border-blue-900/50';
+    borderClass = 'border-blue-200/80 hover:border-blue-400 dark:border-blue-800/60';
     gradientClass = 'from-blue-400 to-indigo-600';
+    glowColor = 'hover:shadow-blue-500/20';
   } else if (task.status === 'In Review') {
-    borderClass = 'border-amber-50 hover:border-amber-200 hover:shadow-amber-500/20 dark:border-amber-900/50';
+    borderClass = 'border-amber-200/80 hover:border-amber-400 dark:border-amber-800/60';
     gradientClass = 'from-amber-400 to-orange-500';
+    glowColor = 'hover:shadow-amber-500/20';
   } else if (task.status === 'Rejected') {
-    borderClass = 'border-red-50 hover:border-red-200 hover:shadow-red-500/20 dark:border-red-900/50';
-    gradientClass = 'from-red-400 to-rose-600';
+    borderClass = 'border-rose-200/80 hover:border-rose-400 dark:border-rose-800/60';
+    gradientClass = 'from-rose-400 to-red-600';
+    glowColor = 'hover:shadow-rose-500/20';
   } else if (task.status === 'Completed') {
-    borderClass = 'border-emerald-50 hover:border-emerald-200 hover:shadow-emerald-500/20 dark:border-emerald-900/50';
+    borderClass = 'border-emerald-200/80 hover:border-emerald-400 dark:border-emerald-800/60';
     gradientClass = 'from-emerald-400 to-teal-500';
+    glowColor = 'hover:shadow-emerald-500/20';
   } else if (task.status === 'Unassigned') {
-    borderClass = 'border-indigo-50 border-dashed hover:border-indigo-300 hover:shadow-indigo-500/20 dark:border-indigo-900/50';
-    gradientClass = 'from-indigo-400 to-indigo-600';
+    borderClass = 'border-indigo-200/80 border-dashed hover:border-indigo-400 dark:border-indigo-800/60';
+    gradientClass = 'from-indigo-400 to-purple-600';
+    glowColor = 'hover:shadow-indigo-500/20';
   }
 
   const getCoverImage = () => {
@@ -66,106 +73,107 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
   return (
     <div 
       onClick={() => onSelect(task)} 
-      className={`cursor-pointer group bg-white dark:bg-slate-800 rounded-[16px] shadow-sm hover:shadow-xl border ${borderClass} hover:-translate-y-1 transition-all duration-300 relative overflow-hidden flex flex-col min-h-[320px]`}
+      className={`cursor-pointer group bg-white dark:bg-slate-850 rounded-2xl border ${borderClass} hover:-translate-y-1.5 shadow-xs hover:shadow-2xl ${glowColor} transition-all duration-300 relative overflow-hidden flex flex-col min-h-[340px]`}
+      style={{
+        boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.04), 0 12px 24px -6px rgba(0, 0, 0, 0.03)'
+      }}
     >
-      <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${gradientClass} z-10`}></div>
+      {/* 3D Vertical Accent Bar */}
+      <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${gradientClass} z-10`} />
       
-      {/* Cover Image Area */}
-      <div className="w-full h-44 bg-slate-50/80 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700/50 relative overflow-hidden flex items-center justify-center shrink-0">
+      {/* Top Subtle Light Reflection on Hover */}
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-current to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none text-blue-500" />
+
+      {/* Cover Image Area with 3D Depth */}
+      <div className="w-full h-44 bg-slate-100 dark:bg-slate-900 border-b border-slate-200/70 dark:border-slate-800 relative overflow-hidden flex items-center justify-center shrink-0">
         <img 
           src={coverImageUrl} 
           alt={task.title} 
-          className={`w-full h-full ${coverImageUrl === '/no-image-placeholder.jpg' ? 'object-cover' : 'object-contain'} group-hover:scale-[1.03] transition-transform duration-500 ease-out`}
+          className={`w-full h-full ${coverImageUrl === '/no-image-placeholder.jpg' ? 'object-cover opacity-80' : 'object-contain'} group-hover:scale-[1.04] transition-transform duration-500 ease-out`}
           onError={(e) => { 
             e.target.src = '/no-image-placeholder.jpg'; 
-            e.target.className = 'w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out';
+            e.target.className = 'w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500 ease-out opacity-80';
           }}
         />
-        
-        {/* Very subtle inner shadow/border overlay to make it pop */}
-        <div className="absolute inset-0 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)] pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
       </div>
 
       {/* Card Content */}
-      <div className="p-4 flex flex-col flex-1">
+      <div className="p-4 sm:p-5 flex flex-col flex-1">
       
-      <div className="flex justify-between items-start mb-2">
-        <div className="flex flex-wrap gap-1.5">
-          <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
-            task.status === 'In Progress' ? 'text-blue-700 bg-blue-50/80 dark:bg-blue-900/50 dark:text-blue-300' :
-            task.status === 'In Review' ? 'text-amber-700 bg-amber-50/80 dark:bg-amber-900/50 dark:text-amber-300' :
-            task.status === 'Rejected' ? 'text-red-700 bg-red-50/80 dark:bg-red-900/50 dark:text-red-300' :
-            task.status === 'Completed' ? 'text-emerald-700 bg-emerald-50/80 dark:bg-emerald-900/50 dark:text-emerald-300' :
-            'text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-700/80'
-          }`}>{task.category}</span>
+      {/* Badges Row */}
+      <div className="flex justify-between items-start mb-2.5 gap-1.5">
+        <div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
+          {task.category && (
+            <span className={`inline-block text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-2xs ${
+              task.status === 'In Progress' ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border-blue-200/70 dark:border-blue-800/60' :
+              task.status === 'In Review' ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-800/60' :
+              task.status === 'Rejected' ? 'text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 border-rose-200/70 dark:border-rose-800/60' :
+              task.status === 'Completed' ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60' :
+              'text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+            }`}>
+              {task.category.replace(/ > /g, ' › ')}
+            </span>
+          )}
 
           {(Number(task.is_self_created) === 1 || task.is_self_created === true) && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50 shadow-2xs">
               <HiSparkles size={11} className="text-amber-500" /> Self Task
             </span>
           )}
 
           {(task.creation_mode === 'agentic' || Boolean(task.blueprint_data) || (Array.isArray(task.blueprint_variants) && task.blueprint_variants.length > 0)) && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg text-blue-600 dark:text-blue-300 bg-gradient-to-r from-blue-500/10 to-indigo-500/15 border border-blue-200/80 dark:border-blue-800/60 shadow-2xs">
               <HiSparkles size={11} className="text-amber-400" /> AI Blueprint
             </span>
           )}
 
-          {task.final_delivery && (
-            <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20">
-              <HiSparkles size={11} className="text-amber-500" /> Stock-Ready
-            </span>
-          )}
-          
           {task.priority && (
-            <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${
-              task.priority === 'High' ? 'text-red-700 dark:text-red-300 bg-red-100/80 dark:bg-red-900/50' : 
-              task.priority === 'Medium' ? 'text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/50' : 
-              'text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/50'
+            <span className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-lg border shadow-2xs ${
+              task.priority === 'High' ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40 border-red-200/70 dark:border-red-800/60' : 
+              task.priority === 'Medium' ? 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border-amber-200/70 dark:border-amber-800/60' : 
+              'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60'
             }`}>
               <FiFlag size={10} /> {task.priority}
             </span>
           )}
         </div>
-        {isDelayed && task.status === 'To-Do' && <span className="inline-block text-[9px] font-black uppercase tracking-widest text-red-600 dark:text-red-400 bg-red-100/80 dark:bg-red-900/30 px-2 py-1 rounded-md animate-pulse">Delayed</span>}
+
+        {isDelayed && task.status === 'To-Do' && (
+          <span className="inline-block text-[10px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-lg border border-red-200 dark:border-red-800 animate-pulse flex-shrink-0">
+            Delayed
+          </span>
+        )}
       </div>
       
-      <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm leading-snug transition-colors line-clamp-2">{task.title}</h4>
+      {/* Title */}
+      <h4 className="font-black text-slate-800 dark:text-slate-100 text-sm leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
+        {task.title}
+      </h4>
       
+      {/* Contextual Feedback / Description */}
       {task.status === 'Rejected' ? (
-        <div className="mt-2 p-2.5 bg-red-50/50 dark:bg-red-900/20 border border-red-100/50 dark:border-red-900/50 rounded-xl mb-auto">
-          <p className="text-[9px] font-black uppercase tracking-widest text-red-800/70 dark:text-red-400/70 mb-1">Feedback</p>
-          <p className="text-[11px] text-red-700 dark:text-red-300 line-clamp-3 leading-relaxed font-medium">{task.admin_note || 'No specific reason provided.'}</p>
+        <div className="mt-2.5 p-2.5 bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/80 dark:border-rose-900/60 rounded-xl mb-auto">
+          <p className="text-[9px] font-black uppercase tracking-widest text-rose-700 dark:text-rose-400 mb-0.5">Rejection Feedback</p>
+          <p className="text-xs text-rose-700 dark:text-rose-300 line-clamp-2 leading-relaxed font-medium">{task.admin_note || task.rejection_reason || 'Needs revision based on review feedback.'}</p>
         </div>
       ) : task.status === 'Completed' && (task.review || task.rating || task.feedback_notes) ? (
         (() => {
           const rev = task.review || { rating: task.rating, feedback_notes: task.feedback_notes, tags: task.tags || [] };
           return (
-            <div className="mt-2 p-2.5 bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-900/50 rounded-xl mb-auto space-y-1.5">
+            <div className="mt-2.5 p-2.5 bg-amber-50/70 dark:bg-amber-950/25 border border-amber-200/70 dark:border-amber-900/50 rounded-xl mb-auto space-y-1.5 shadow-2xs">
               <div className="flex items-center justify-between gap-1">
                 <span className="text-[9px] font-black uppercase tracking-widest text-amber-800/80 dark:text-amber-400/80 flex items-center gap-1">
                   <HiSparkles size={11} className="text-amber-500" /> Reviewer Rating
                 </span>
                 {rev.rating && (
                   <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2 py-0.5 rounded-lg border border-amber-300/40">
-                    <FiStar className="fill-amber-500 text-amber-500" size={11} /> {rev.rating}/5
+                    <FiStar className="fill-amber-500 text-amber-500" size={10} /> {rev.rating}/5
                   </span>
                 )}
               </div>
-              {Array.isArray(rev.tags) && rev.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {rev.tags.slice(0, 2).map((tg, i) => (
-                    <span key={i} className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-amber-200/50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
-                      {tg}
-                    </span>
-                  ))}
-                  {rev.tags.length > 2 && (
-                    <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400">+{rev.tags.length - 2}</span>
-                  )}
-                </div>
-              )}
               {rev.feedback_notes && (
-                <p className="text-[11px] text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed italic font-medium">
+                <p className="text-xs text-slate-700 dark:text-slate-300 line-clamp-2 leading-relaxed italic font-medium">
                   "{rev.feedback_notes}"
                 </p>
               )}
@@ -173,17 +181,23 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
           );
         })()
       ) : stripHtml(task.description).trim().startsWith('{') || stripHtml(task.description).trim().startsWith('[') ? (
-        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-700/50 px-2.5 py-1.5 rounded-lg border border-slate-100 dark:border-slate-600 w-fit mb-auto">
-          <FiCode size={14} className="text-primary-500" /> Structured Data Attached
+        <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-widest bg-indigo-50/70 dark:bg-indigo-950/30 px-2.5 py-1.5 rounded-xl border border-indigo-200/60 dark:border-indigo-900/40 w-fit mb-auto">
+          <FiCode size={12} className="text-indigo-500" /> Structured Blueprint
         </div>
       ) : (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed font-medium mb-auto">{stripHtml(task.description)}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2 leading-relaxed font-medium mb-auto">
+          {stripHtml(task.description) || 'No description provided.'}
+        </p>
       )}
       
-      <div className="mt-3 pt-3 border-t border-slate-50 dark:border-slate-700 grid grid-cols-2 gap-2">
+      {/* Date & Deadline Row */}
+      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2">
         <div className="flex flex-col gap-0.5 justify-center">
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Assigned</p>
-          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">{new Date(task.assign_date || task.created_at).toLocaleDateString('en-GB', {day:'2-digit', month:'short'})}</p>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Assigned Date</p>
+          <div className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+            <FiCalendar size={11} className="text-slate-400" />
+            <span>{new Date(task.assign_date || task.created_at).toLocaleDateString('en-GB', {day:'2-digit', month:'short'})}</span>
+          </div>
         </div>
         {task.deadline && (
           <div className="flex flex-col gap-0.5 justify-center items-end text-right">
@@ -192,26 +206,30 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
                 task.deadline_status === 'due_today' ? 'text-orange-500' :
                 'text-amber-500'
               }`}>Due Deadline</p>
-            <p className={`text-xs font-bold ${
-                task.deadline_status === 'overdue' ? 'text-red-700 dark:text-red-400' :
-                task.deadline_status === 'due_today' ? 'text-orange-700 dark:text-orange-400' :
-                'text-amber-700 dark:text-amber-400'
+            <div className={`flex items-center gap-1 text-xs font-bold ${
+                task.deadline_status === 'overdue' ? 'text-red-600 dark:text-red-400' :
+                task.deadline_status === 'due_today' ? 'text-orange-600 dark:text-orange-400' :
+                'text-amber-600 dark:text-amber-400'
               }`}>
-              {new Date(task.deadline).toLocaleDateString('en-GB', {day:'2-digit', month:'short'})} 
-            </p>
+              <FiClock size={11} />
+              <span>{new Date(task.deadline).toLocaleDateString('en-GB', {day:'2-digit', month:'short'})}</span>
+            </div>
           </div>
         )}
       </div>
       
+      {/* Action Trigger Buttons (3D Tactile Styling) */}
       {(task.status === 'To-Do' || task.status === 'Rejected') && onStart && (
-        <div className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="mt-3">
           <button
             onClick={(e) => { e.stopPropagation(); onStart(e, task.id); }}
-            className={`w-full flex justify-center items-center gap-2 text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl hover:shadow-lg transition-all ${
-              task.status === 'Rejected' ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/20' : 'bg-slate-900 dark:bg-slate-700 text-white hover:bg-slate-800 dark:hover:bg-slate-600'
+            className={`w-full flex justify-center items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl shadow-md transition-all active:scale-95 ${
+              task.status === 'Rejected' 
+                ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-500/25' 
+                : 'bg-slate-900 dark:bg-slate-750 hover:bg-slate-800 text-white shadow-slate-900/20'
             }`}
           >
-            <FiPlayCircle size={14} /> {task.status === 'Rejected' ? 'Restart Task' : 'Start Task'}
+            <FiPlayCircle size={14} /> {task.status === 'Rejected' ? 'Restart & Fix Task' : 'Start Task Now'}
           </button>
         </div>
       )}
@@ -220,7 +238,7 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
         <div className="mt-3">
           <button
             onClick={(e) => { e.stopPropagation(); onClaim(e, task); }}
-            className="w-full flex justify-center items-center gap-2 text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl hover:shadow-lg transition-all bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20"
+            className="w-full flex justify-center items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all active:scale-95 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/25"
           >
             <FiCheckSquare size={14} /> Claim Task
           </button>
@@ -231,16 +249,16 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
         <div className="mt-3">
           <button
             onClick={(e) => { e.stopPropagation(); onToggleTimer(e, task); }}
-            className={`w-full flex justify-center items-center gap-2 text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl transition-all ${
+            className={`w-full flex justify-center items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all active:scale-95 ${
               task.timer_status === 'Running' 
-              ? 'text-white bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:from-blue-600 hover:to-indigo-700' 
-              : 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-blue-600 dark:hover:text-blue-400'
+              ? 'text-white bg-gradient-to-r from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:from-blue-600 hover:to-indigo-700 ring-2 ring-blue-400/20' 
+              : 'text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
             {task.timer_status === 'Running' ? (
-              <><FiPauseCircle size={14} className="animate-pulse" /> {formatTimeSpent(task)}</>
+              <><FiPauseCircle size={14} className="animate-pulse text-amber-300" /> {formatTimeSpent(task)} (Running)</>
             ) : (
-              <><FiPlayCircle size={14} /> Resume Timer</>
+              <><FiPlayCircle size={14} className="text-blue-500" /> Resume Timer</>
             )}
           </button>
         </div>
@@ -248,8 +266,8 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
 
       {task.status === 'In Review' && (
         <div className="mt-3">
-          <div className="w-full flex justify-center items-center gap-2 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-800 text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl">
-            <FiCheckSquare size={14} /> Under Review
+          <div className="w-full flex justify-center items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/60 text-xs font-bold px-3 py-2 rounded-xl">
+            <FiCheckSquare size={14} /> Submitted & In Review
           </div>
         </div>
       )}

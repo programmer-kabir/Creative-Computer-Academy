@@ -1,9 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 
 $database = new Database();
@@ -64,23 +60,27 @@ try {
         
         $participants = [];
         $is_online = false;
+        $other_last_activity = null;
         while ($p = $part_stmt->fetch(PDO::FETCH_ASSOC)) {
             $p['id'] = intval($p['id']);
             
-            // Check if participant is online (active within last 30 seconds)
+            // Check if participant is online (active within last 5 minutes = 300 seconds)
             $online = false;
             if ($p['last_activity']) {
                 $last_act_ts = strtotime($p['last_activity']);
-                if ((time() - $last_act_ts) <= 30) {
+                if ((time() - $last_act_ts) <= 300) {
                     $online = true;
                 }
             }
             $p['is_online'] = $online;
             $p['is_admin'] = (isset($p['is_admin']) && $p['is_admin'] == 1) ? true : false;
             
-            // For direct chat, check if the other user is online
-            if ($p['id'] !== $user_id && $online) {
-                $is_online = true;
+            // For direct chat, check if the other user is online and capture their last activity
+            if ($p['id'] !== $user_id) {
+                if ($online) {
+                    $is_online = true;
+                }
+                $other_last_activity = $p['last_activity'];
             }
             
             $participants[] = $p;
@@ -90,6 +90,7 @@ try {
         $row['unread_count'] = intval($row['unread_count']);
         $row['participants'] = $participants;
         $row['is_online'] = $is_online; // Flag representing if other person is online in direct chat
+        $row['last_activity'] = $other_last_activity;
         
         $chats[] = $row;
     }

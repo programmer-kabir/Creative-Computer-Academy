@@ -11,6 +11,7 @@ import {
   FiCheck,
   FiImage,
 } from 'react-icons/fi';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 const GroupInfoDrawer = ({
   isGroupInfoOpen,
@@ -183,11 +184,11 @@ const GroupInfoDrawer = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] font-semibold text-slate-500 truncate max-w-[120px]" title={member.role_name}>
-                          {member.is_online ? (
-                            <span className="text-emerald-500">Active Now</span>
+                        <p className="text-[11px] font-semibold text-slate-500 truncate max-w-[130px]" title={member.role_name}>
+                          {isUserOnline(member) ? (
+                            <span className="text-emerald-500 font-bold">Active Now</span>
                           ) : member.last_activity ? (
-                            'Offline'
+                            <span className="text-slate-400 dark:text-slate-500">{formatLastSeen(member.last_activity, false)}</span>
                           ) : (
                             member.role_name
                           )}

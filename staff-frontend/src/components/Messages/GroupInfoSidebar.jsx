@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiX, FiEdit2, FiUserPlus, FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 const GroupInfoSidebar = ({
   isGroupInfoOpen,
@@ -109,48 +110,58 @@ const GroupInfoSidebar = ({
             {activeChat.participants
               ?.filter(m => m.status !== 'removed')
               ?.filter(m => m.name.toLowerCase().includes(memberSearchQuery.toLowerCase()))
-              ?.map(member => (
-                <div
-                  key={member.id}
-                  onClick={() => setSelectedMiniProfile(member)}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      {member.profile_picture ? (
-                        <img src={`${API_URL}${member.profile_picture}`} alt={member.name} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105" />
-                      ) : (
-                        <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full flex items-center justify-center font-black uppercase transition-transform group-hover:scale-105">
-                          {member.name.charAt(0)}
-                        </div>
-                      )}
-                      {member.is_online && (
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm"></span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[130px]">
-                          {member.name}
-                        </p>
-                        {member.is_admin && (
-                          <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200 px-1.5 py-0.5 rounded flex-shrink-0 uppercase font-black tracking-wider">
-                            Admin
-                          </span>
+              .map((member) => {
+                const memberOnline = isUserOnline(member);
+                const memberLastSeen = formatLastSeen(member.last_activity, memberOnline);
+                return (
+                  <div
+                    key={member.id}
+                    onClick={() => setSelectedMiniProfile(member)}
+                    className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 cursor-pointer transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        {member.profile_picture ? (
+                          <img src={`${API_URL}${member.profile_picture}`} alt={member.name} className="w-10 h-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm transition-transform group-hover:scale-105" />
+                        ) : (
+                          <div className="w-10 h-10 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-400 rounded-full flex items-center justify-center font-black uppercase transition-transform group-hover:scale-105">
+                            {member.name.charAt(0)}
+                          </div>
                         )}
-                        {member.id === currentUser.id && (
-                          <span className="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200 px-1.5 py-0.5 rounded flex-shrink-0 uppercase font-black tracking-wider">
-                            You
-                          </span>
+                        {memberOnline && (
+                          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-slate-800 rounded-full shadow-sm animate-pulse z-10"></span>
                         )}
                       </div>
-                      <p className="text-[11px] font-semibold text-slate-500 truncate max-w-[120px]" title={member.role_name}>
-                        {member.is_online ? <span className="text-emerald-500">Active Now</span> : (member.last_activity ? 'Offline' : member.role_name)}
-                      </p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-800 dark:text-slate-100 truncate max-w-[130px]">
+                            {member.name}
+                          </p>
+                          {member.is_admin && (
+                            <span className="text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-500/30 dark:text-amber-200 px-1.5 py-0.5 rounded flex-shrink-0 uppercase font-black tracking-wider">
+                              Admin
+                            </span>
+                          )}
+                          {member.id === currentUser.id && (
+                            <span className="text-[9px] bg-indigo-100 text-indigo-700 dark:bg-indigo-500/30 dark:text-indigo-200 px-1.5 py-0.5 rounded flex-shrink-0 uppercase font-black tracking-wider">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-semibold text-slate-500 truncate max-w-[130px]" title={member.role_name}>
+                          {memberOnline ? (
+                            <span className="text-emerald-500 font-bold">Active Now</span>
+                          ) : member.last_activity ? (
+                            <span className="text-slate-400 dark:text-slate-500">{memberLastSeen}</span>
+                          ) : (
+                            member.role_name
+                          )}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             {activeChat.participants?.filter(m => m.name.toLowerCase().includes(memberSearchQuery.toLowerCase())).length === 0 && (
               <div className="text-center py-10">
                 <div className="text-4xl mb-2">🔍</div>

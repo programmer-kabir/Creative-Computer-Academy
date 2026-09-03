@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiX, FiMessageSquare, FiUser } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
+import { isUserOnline, formatLastSeen } from '../../utils/presence';
 
 const MiniProfileModal = ({
   selectedMiniProfile,
@@ -13,6 +14,9 @@ const MiniProfileModal = ({
   handleDirectMessage,
   handleViewProfile,
 }) => {
+  const online = isUserOnline(selectedMiniProfile);
+  const lastSeenText = formatLastSeen(selectedMiniProfile?.last_activity, online);
+
   return (
     <AnimatePresence>
       {selectedMiniProfile && (
@@ -45,8 +49,8 @@ const MiniProfileModal = ({
                   {selectedMiniProfile.name?.charAt(0) || 'U'}
                 </div>
               )}
-              {selectedMiniProfile.is_online && (
-                <span className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-slate-800 rounded-full shadow-sm"></span>
+              {online && (
+                <span className="absolute bottom-1 right-1 w-5 h-5 bg-emerald-500 border-4 border-white dark:border-slate-800 rounded-full shadow-sm animate-pulse"></span>
               )}
             </div>
 
@@ -54,6 +58,13 @@ const MiniProfileModal = ({
             <p className="text-sm font-bold text-primary-600 dark:text-primary-400 mb-4">{selectedMiniProfile.role_name}</p>
 
             <div className="w-full bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 mb-5 space-y-2 text-left">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-400 uppercase tracking-wider">Status</span>
+                <span className={`font-semibold flex items-center gap-1.5 ${online ? 'text-emerald-500 font-bold' : 'text-slate-600 dark:text-slate-300'}`}>
+                  <span className={`w-2 h-2 rounded-full ${online ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  {online ? 'Active Now' : lastSeenText}
+                </span>
+              </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="font-bold text-slate-400 uppercase tracking-wider">Email</span>
                 <span className="font-semibold text-slate-700 dark:text-slate-200 truncate ml-2">{selectedMiniProfile.email || 'N/A'}</span>
@@ -94,7 +105,7 @@ const MiniProfileModal = ({
                   <FiMessageSquare size={16} className="transition-transform group-hover/btn:scale-110" /> Message
                 </button>
                 <button
-                  onClick={() => handleViewProfile(selectedMiniProfile.employee_code || selectedMiniProfile.id)}
+                  onClick={() => handleViewProfile(selectedMiniProfile)}
                   className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 group/btn"
                 >
                   <FiUser size={16} className="transition-transform group-hover/btn:scale-110" /> Profile

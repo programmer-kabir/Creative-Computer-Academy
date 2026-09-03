@@ -47,7 +47,7 @@ const MessageBubble = ({
   if (isSystemMessage) {
     const systemText = msg.message.replace('__SYSTEM__:', '');
     return (
-      <div key={msg.id || index} className="flex justify-center my-3 w-full animate-in fade-in zoom-in-95 duration-200">
+      <div className="flex justify-center my-3 w-full animate-in fade-in zoom-in-95 duration-200">
         <div className="bg-slate-200/70 dark:bg-slate-800/80 backdrop-blur-md border border-slate-300/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 text-[11px] font-bold px-3.5 py-1 rounded-full shadow-xs text-center max-w-[85%]">
           {systemText}
         </div>
@@ -57,17 +57,16 @@ const MessageBubble = ({
 
   return (
     <div
-      key={msg.id || index}
       className={`flex gap-2.5 max-w-[85%] sm:max-w-[75%] ${isMe ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
     >
       {/* Avatar (only for other users) */}
       {!isMe && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-xl overflow-hidden shadow-xs ring-1 ring-black/5 dark:ring-white/10 mt-1">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full  shadow-xs ring-1 ring-black/5 dark:ring-white/10 mt-1">
           {msg.sender_profile_picture ? (
             <img
               src={`${API_URL}${msg.sender_profile_picture}`}
               alt="Sender"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover rounded-full"
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-xs font-black uppercase">
@@ -93,7 +92,7 @@ const MessageBubble = ({
           className={`relative p-3.5 rounded-2xl text-sm transition-all shadow-sm ${
             isMe
               ? 'bg-gradient-to-br from-blue-600 via-indigo-600 to-primary-600 text-white rounded-tr-xs shadow-indigo-500/15'
-              : 'bg-white dark:bg-slate-850 text-slate-800 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-800 shadow-slate-200/50 dark:shadow-none'
+              : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-tl-xs border border-slate-200/80 dark:border-slate-700/80 shadow-slate-200/50 dark:shadow-none'
           } ${msg.reactions?.length > 0 ? 'mb-3.5' : ''}`}
         >
           {/* Forwarded Header */}
@@ -248,7 +247,7 @@ const MessageBubble = ({
                   className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${
                     isMe
                       ? 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-750'
+                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700'
                   }`}
                 >
                   <div className="w-9 h-9 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center flex-shrink-0">

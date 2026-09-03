@@ -56,6 +56,21 @@ if(isset($data->task_id) && isset($data->user_id) && isset($data->status)) {
 
             $performed_by = $task['staff_name'];
             
+            // Limit Rule: Only 1 task can be 'In Progress' at a time for a staff member
+            if ($status === 'In Progress' && $old_status !== 'In Progress') {
+                $in_prog_check = "SELECT id, title FROM tasks WHERE assigned_to = :employee_id AND status = 'In Progress' AND id != :task_id LIMIT 1";
+                $in_prog_stmt = $db->prepare($in_prog_check);
+                $in_prog_stmt->execute([':employee_id' => $employee_id, ':task_id' => $task_id]);
+                if ($in_prog_stmt->rowCount() > 0) {
+                    $active_task = $in_prog_stmt->fetch(PDO::FETCH_ASSOC);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "You already have a task in progress (\"" . $active_task['title'] . "\"). Please finish and submit it for review before starting another task."
+                    ]);
+                    exit;
+                }
+            }
+
             // Determine timer update part
             $timerUpdate = "";
             if ($status === 'In Progress') {

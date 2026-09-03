@@ -12,16 +12,18 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const EMPTY_FORM = {
   name: '', email: '', password: '', phone: '',
   role: 'staff', department_id: '', designation: '', employment_type: 'Full-time',
-  joining_date: '', shift_start: '09:00:00', shift_end: '17:00:00', allocated_break_minutes: 60,
+  employment_status: 'active', status: 'active',
+  joining_date: '', resignation_date: '',
+  shift_start: '09:00:00', shift_end: '17:00:00', allocated_break_minutes: 60,
   has_tiffin_break: 1, tiffin_start_time: '13:20', tiffin_end_time: '14:00', tiffin_duration_minutes: 40,
 };
 
 // ── Role badge ───────────────────────────────────────────────────────────────
 const RoleBadge = ({ role }) => {
   const styles = {
-    staff:      'bg-blue-100 text-blue-700',
-    manager:    'bg-violet-100 text-violet-700',
-    instructor: 'bg-amber-100 text-amber-700',
+    staff:      'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+    manager:    'bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300',
+    instructor: 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300',
   };
   return (
     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide ${styles[role] || 'bg-slate-100 text-slate-600'}`}>
@@ -30,10 +32,43 @@ const RoleBadge = ({ role }) => {
   );
 };
 
+// ── Status badge ─────────────────────────────────────────────────────────────
+const EmploymentStatusBadge = ({ status, accountStatus }) => {
+  const s = (status || 'active').toLowerCase();
+  let badgeStyle = 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30';
+  let label = 'Active';
+
+  if (s === 'probation') {
+    badgeStyle = 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-500/30';
+    label = 'Probation';
+  } else if (s === 'resigned') {
+    badgeStyle = 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30';
+    label = 'Resigned';
+  } else if (s === 'terminated') {
+    badgeStyle = 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-300 dark:border-rose-500/30';
+    label = 'Terminated';
+  } else if (s === 'on_leave') {
+    badgeStyle = 'bg-sky-100 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-300 dark:border-sky-500/30';
+    label = 'On Leave';
+  } else if (s === 'suspended') {
+    badgeStyle = 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-500/30';
+    label = 'Suspended';
+  } else if (s === 'inactive' || accountStatus === 'inactive' || accountStatus === 'suspended') {
+    badgeStyle = 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600';
+    label = s === 'inactive' ? 'Inactive' : 'Suspended';
+  }
+
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${badgeStyle}`}>
+      {label}
+    </span>
+  );
+};
+
 // ── Input helper ─────────────────────────────────────────────────────────────
 const Field = ({ label, icon: Icon, children }) => (
   <div>
-    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">{label}</label>
+    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">{label}</label>
     <div className="relative">
       {Icon && <Icon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />}
       {children}
@@ -48,18 +83,18 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-slate-100 dark:border-slate-700">
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 dark:border-slate-700">
           <div>
-            <h2 className="text-2xl font-black text-slate-900">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">
               {isEdit ? 'Edit Staff Member' : 'Add New Staff Member'}
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
-              {isEdit ? 'Update staff details below.' : 'Fill in the details to create a new staff account.'}
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              {isEdit ? 'Update staff profile, job status, and tenure.' : 'Fill in the details to create a new staff account.'}
             </p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-slate-700 transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
             <FiX size={20} />
           </button>
         </div>
@@ -74,7 +109,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 type="text" required value={formData.name}
                 onChange={e => setFormData({ ...formData, name: e.target.value })}
                 placeholder="John Doe"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </Field>
 
@@ -84,7 +119,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 type="email" required value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john@example.com"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </Field>
 
@@ -96,10 +131,10 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 value={formData.password}
                 onChange={e => setFormData({ ...formData, password: e.target.value })}
                 placeholder={isEdit ? '••••••••' : 'Min 6 characters'}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-10 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-10 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
               <button type="button" onClick={() => setShowPass(p => !p)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                 {showPass ? <FiEyeOff size={14} /> : <FiEye size={14} />}
               </button>
             </Field>
@@ -110,7 +145,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 type="text" value={formData.phone}
                 onChange={e => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+880 1XXXXXXXXX"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </Field>
 
@@ -119,7 +154,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <select
                 required value={formData.role}
                 onChange={e => setFormData({ ...formData, role: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
               >
                 <option value="staff">Staff</option>
                 <option value="manager">Manager</option>
@@ -132,7 +167,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <select
                 value={formData.department_id}
                 onChange={e => setFormData({ ...formData, department_id: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
               >
                 <option value="">— None —</option>
                 {departments.map(d => (
@@ -147,7 +182,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 type="text" value={formData.designation}
                 onChange={e => setFormData({ ...formData, designation: e.target.value })}
                 placeholder="e.g. Senior Designer"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </Field>
 
@@ -156,7 +191,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <select
                 value={formData.employment_type}
                 onChange={e => setFormData({ ...formData, employment_type: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
               >
                 <option>Full-time</option>
                 <option>Part-time</option>
@@ -165,12 +200,59 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               </select>
             </Field>
 
+            {/* Employment Status */}
+            <Field label="Employment Status">
+              <select
+                value={formData.employment_status || 'active'}
+                onChange={e => {
+                  const val = e.target.value;
+                  const sLower = val.toLowerCase();
+                  const autoInactive = (sLower === 'resigned' || sLower === 'terminated' || sLower === 'inactive' || sLower === 'suspended');
+                  setFormData({
+                    ...formData,
+                    employment_status: val,
+                    status: autoInactive ? 'inactive' : (formData.status === 'inactive' ? 'active' : formData.status)
+                  });
+                }}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+              >
+                <option value="Active">Active (Working)</option>
+                <option value="Probation">Probation (Trial Period)</option>
+                <option value="Resigned">Resigned (Left Job)</option>
+                <option value="Terminated">Terminated (Discharged)</option>
+                <option value="On Leave">On Leave</option>
+                <option value="Suspended">Suspended</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </Field>
+
+            {/* Account Status (Login Access) */}
+            <Field label="Account Login Status">
+              <select
+                value={formData.status || 'active'}
+                onChange={e => setFormData({ ...formData, status: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+              >
+                <option value="active">Active (Can Log In)</option>
+                <option value="inactive">Inactive / Suspended (Login Blocked)</option>
+              </select>
+            </Field>
+
             {/* Joining Date */}
             <Field label="Joining Date">
               <input
-                type="date" value={formData.joining_date}
+                type="date" value={formData.joining_date || ''}
                 onChange={e => setFormData({ ...formData, joining_date: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+              />
+            </Field>
+
+            {/* Resignation / End Date */}
+            <Field label="End Date / Resignation Date">
+              <input
+                type="date" value={formData.resignation_date || ''}
+                onChange={e => setFormData({ ...formData, resignation_date: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
               />
             </Field>
 
@@ -179,7 +261,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <input
                 type="time" value={formData.shift_start}
                 onChange={e => setFormData({ ...formData, shift_start: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
               />
             </Field>
 
@@ -188,7 +270,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <input
                 type="time" value={formData.shift_end}
                 onChange={e => setFormData({ ...formData, shift_end: e.target.value })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all cursor-pointer"
               />
             </Field>
 
@@ -198,7 +280,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
                 type="number" min="0" value={formData.allocated_break_minutes}
                 onChange={e => setFormData({ ...formData, allocated_break_minutes: e.target.value })}
                 placeholder="e.g. 60"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </Field>
 
@@ -207,7 +289,7 @@ const StaffModal = ({ mode, formData, setFormData, departments, onClose, onSubmi
               <select
                 value={formData.has_tiffin_break}
                 onChange={e => setFormData({ ...formData, has_tiffin_break: parseInt(e.target.value) })}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
+                className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none"
               >
                 <option value={1}>Yes</option>
                 <option value={0}>No</option>
@@ -333,11 +415,28 @@ const StaffDirectory = () => {
 
   useEffect(() => { fetchAll(); }, []);
 
-  const filteredStaff = staffList.filter(s =>
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (s.employee_code && s.employee_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredStaff = staffList.filter(s => {
+    const matchSearch =
+      s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.employee_code && s.employee_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (!matchSearch) return false;
+
+    const empStatus = (s.employment_status || 'active').toLowerCase();
+    const accStatus = (s.status || 'active').toLowerCase();
+
+    if (statusFilter === 'all') return true;
+    if (statusFilter === 'active') return empStatus === 'active' && accStatus === 'active';
+    if (statusFilter === 'probation') return empStatus === 'probation';
+    if (statusFilter === 'resigned') return empStatus === 'resigned';
+    if (statusFilter === 'terminated') return empStatus === 'terminated';
+    if (statusFilter === 'on_leave') return empStatus === 'on_leave' || empStatus === 'on leave';
+    if (statusFilter === 'inactive') return empStatus === 'inactive' || empStatus === 'suspended' || accStatus === 'inactive' || accStatus === 'suspended';
+    return true;
+  });
 
   // ── Create ────────────────────────────────────────────────────────────────
   const openCreate = () => { setFormData(EMPTY_FORM); setFormError(''); setCreateOpen(true); };
@@ -376,7 +475,10 @@ const StaffDirectory = () => {
       department_id: staff.department_id || '',
       designation: staff.designation || '',
       employment_type: staff.employment_type || 'Full-time',
+      employment_status: staff.employment_status || 'active',
+      status: staff.status || 'active',
       joining_date: staff.joining_date || '',
+      resignation_date: staff.resignation_date || '',
       shift_start: staff.shift_start || '09:00:00',
       shift_end: staff.shift_end || '17:00:00',
       allocated_break_minutes: staff.allocated_break_minutes !== undefined ? staff.allocated_break_minutes : 60,
@@ -445,16 +547,16 @@ const StaffDirectory = () => {
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Staff Directory</h1>
           <p className="text-slate-500 dark:text-slate-400 mt-1 font-medium">
-            Manage all organizational personnel and their access. <span className="font-bold text-slate-700 dark:text-slate-300">{staffList.length} members</span>
+            Manage all organizational personnel, employment status, and access. <span className="font-bold text-slate-700 dark:text-slate-300">{staffList.length} total members</span>
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text" placeholder="Search staff..."
               value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-64 shadow-sm transition-colors"
+              className="pl-10 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none w-56 md:w-64 shadow-sm transition-colors"
             />
           </div>
           <button
@@ -467,9 +569,37 @@ const StaffDirectory = () => {
         </div>
       </div>
 
+      {/* Status Filter Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-3">
+        {[
+          { id: 'all', label: 'All Staff', count: staffList.length },
+          { id: 'active', label: 'Active', count: staffList.filter(s => (s.employment_status || 'active').toLowerCase() === 'active' && s.status === 'active').length },
+          { id: 'probation', label: 'Probation', count: staffList.filter(s => (s.employment_status || '').toLowerCase() === 'probation').length },
+          { id: 'resigned', label: 'Resigned / Left', count: staffList.filter(s => (s.employment_status || '').toLowerCase() === 'resigned').length },
+          { id: 'terminated', label: 'Terminated', count: staffList.filter(s => (s.employment_status || '').toLowerCase() === 'terminated').length },
+          { id: 'on_leave', label: 'On Leave', count: staffList.filter(s => (s.employment_status || '').toLowerCase() === 'on_leave' || (s.employment_status || '').toLowerCase() === 'on leave').length },
+          { id: 'inactive', label: 'Inactive / Suspended', count: staffList.filter(s => (s.employment_status || '').toLowerCase() === 'inactive' || (s.employment_status || '').toLowerCase() === 'suspended' || s.status === 'inactive' || s.status === 'suspended').length },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setStatusFilter(tab.id)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 active:scale-95 ${
+              statusFilter === tab.id
+                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700 shadow-2xs'
+            }`}
+          >
+            <span>{tab.label}</span>
+            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-black ${statusFilter === tab.id ? 'bg-blue-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Error under form */}
       {formError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm font-medium">
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 px-4 py-3 rounded-2xl text-sm font-medium">
           {formError}
         </div>
       )}
@@ -480,32 +610,40 @@ const StaffDirectory = () => {
           <div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full" />
         </div>
       ) : filteredStaff.length === 0 ? (
-        <div className="py-20 text-center bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div className="py-20 text-center bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700 shadow-xs transition-colors">
           <FiUser className="mx-auto text-slate-300 dark:text-slate-600 mb-3" size={40} />
-          <p className="text-slate-500 dark:text-slate-400 font-semibold">No staff found.</p>
-          <p className="text-slate-400 dark:text-slate-500 text-sm mt-1">Try adjusting your search or add a new member.</p>
+          <p className="text-slate-600 dark:text-slate-300 font-bold">No staff members found.</p>
+          <p className="text-slate-400 dark:text-slate-500 text-xs mt-1">Try adjusting your search or filter options.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredStaff.map((staff) => (
-            <div key={staff.id} onClick={() => navigate('/staff/' + staff.employee_code)} className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-500 transition-all overflow-hidden flex flex-col group cursor-pointer">
+            <div 
+              key={staff.id} 
+              onClick={() => navigate('/staff/' + staff.employee_code)} 
+              className="group relative bg-white dark:bg-slate-800 rounded-3xl border border-slate-200/80 dark:border-slate-700 shadow-xs hover:shadow-2xl hover:shadow-blue-500/10 hover:border-blue-400/50 dark:hover:border-blue-500/40 hover:-translate-y-1.5 transition-all duration-300 overflow-hidden flex flex-col cursor-pointer"
+              style={{
+                boxShadow: '0 2px 8px -2px rgba(0, 0, 0, 0.04), 0 12px 24px -6px rgba(0, 0, 0, 0.03)'
+              }}
+            >
+              {/* Subtle top light sheen on hover */}
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
               {/* Cover */}
               <div
-                className="h-24 bg-cover bg-center relative"
-                style={{ backgroundImage: staff.cover_picture ? `url(${API_BASE}${staff.cover_picture})` : 'linear-gradient(to right, #2563eb, #4338ca)' }}
+                className="h-28 bg-cover bg-center relative"
+                style={{ backgroundImage: staff.cover_picture ? `url(${API_BASE}${staff.cover_picture})` : 'linear-gradient(135deg, #2563eb, #4f46e5)' }}
               >
-                <div className="absolute right-3 top-3">
-                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${staff.status === 'active' ? 'bg-emerald-400 text-emerald-950' : 'bg-rose-400 text-rose-950'}`}>
-                    {staff.status === 'active' ? 'Active' : 'Suspended'}
-                  </span>
+                <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+                <div className="absolute right-3.5 top-3.5 flex items-center gap-1.5 z-10">
+                  <EmploymentStatusBadge status={staff.employment_status} accountStatus={staff.status} />
                 </div>
-                <div className="absolute -bottom-10 left-6">
-                  <div className="w-20 h-20 rounded-full bg-white dark:bg-slate-800 p-1 shadow-md transition-colors">
+                <div className="absolute -bottom-10 left-6 z-10">
+                  <div className="w-20 h-20 rounded-2xl bg-white dark:bg-slate-800 p-1 shadow-xl border border-slate-200/60 dark:border-slate-700 transition-transform group-hover:scale-105 duration-300">
                     {staff.profile_picture ? (
-                      <img src={`${API_BASE}${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover rounded-full" />
+                      <img src={`${API_BASE}${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover rounded-xl" />
                     ) : (
-                      <div className="w-full h-full bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center text-blue-700 dark:text-blue-400 font-black text-2xl uppercase">
+                      <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-2xl uppercase">
                         {staff.name.charAt(0)}
                       </div>
                     )}
@@ -520,38 +658,45 @@ const StaffDirectory = () => {
                     <h3 className="text-lg font-black text-slate-800 dark:text-white tracking-tight leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {staff.name}
                     </h3>
-                    <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mt-0.5">{staff.designation || 'Staff Member'}</p>
-                    <div className="mt-1.5 flex gap-2">
+                    <p className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">{staff.designation || 'Staff Member'}</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       <RoleBadge role={staff.role} />
-                      {staff.has_tiffin_break === 1 ? (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-amber-100 text-amber-700">Auto Tiffin</span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide bg-slate-100 text-slate-500">Manual Break</span>
+                      {staff.status === 'inactive' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-900">
+                          Login Blocked
+                        </span>
                       )}
                     </div>
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); openEdit(staff); }} className="p-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors">
-                    <FiEdit2 size={16} />
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); openEdit(staff); }} 
+                    className="p-2 bg-slate-50 dark:bg-slate-800 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all active:scale-90 shadow-2xs"
+                    title="Edit Profile"
+                  >
+                    <FiEdit2 size={15} />
                   </button>
                 </div>
 
-                <div className="space-y-2 mt-auto">
+                <div className="space-y-2 mt-auto pt-2">
                   {[
                     ['Employee ID', staff.employee_code || 'N/A'],
                     ['Department',  staff.department_name || 'N/A'],
                     ['Type',        staff.employment_type || 'N/A'],
+                    ['Joined',      staff.joining_date ? new Date(staff.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'],
+                    ...(staff.resignation_date ? [['Left / End Date', new Date(staff.resignation_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })]] : []),
                     ['Email',       staff.email],
                     ['Phone',       staff.phone || 'N/A'],
                   ].map(([label, value]) => (
-                    <div key={label} className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500 dark:text-slate-400 font-medium">{label}</span>
-                      <span className="text-slate-800 dark:text-slate-200 font-bold truncate max-w-[160px]" title={value}>{value}</span>
+                    <div key={label} className="flex justify-between items-center text-xs">
+                      <span className="text-slate-400 dark:text-slate-400 font-bold">{label}</span>
+                      <span className="text-slate-700 dark:text-slate-200 font-bold truncate max-w-[170px]" title={value}>{value}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700/50 flex justify-center text-xs font-bold text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors uppercase tracking-wider">
-                  View Full Profile &rarr;
+                <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs font-bold text-slate-400 dark:text-slate-500 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors uppercase tracking-wider">
+                  <span>View Full Profile</span>
+                  <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
               </div>
             </div>

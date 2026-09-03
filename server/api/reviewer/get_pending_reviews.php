@@ -29,7 +29,7 @@ try {
             t.id AS task_id,
             t.title,
             t.description,
-            t.category,
+            COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') AS category,
             t.is_self_created,
             t.priority,
             t.deadline,
@@ -52,6 +52,9 @@ try {
         JOIN employees e ON t.assigned_to = e.id
         JOIN users u ON e.user_id = u.id
         LEFT JOIN departments d ON e.department_id = d.id
+        LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
+        LEFT JOIN task_categories tc_sub ON t.subcategory_id = tc_sub.id
+        LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
         WHERE e.reporting_manager_id = :reviewer_user_id
           AND t.status = 'In Review'
         ORDER BY t.updated_at DESC

@@ -23,6 +23,10 @@ if(isset($data->user_id)) {
 
         // Step 2: Fetch tasks assigned to this employee (only up to today) OR tasks in the Unassigned pool
         $task_query = "SELECT t.*, 
+                              COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') AS category_name,
+                              tc_main.name AS main_category_name,
+                              tc_sub.name AS sub_category_name,
+                              tc_child.name AS child_category_name,
                               tfd.final_file_url,
                               tfd.final_image_url,
                               tfd.fix_notes,
@@ -33,6 +37,9 @@ if(isset($data->user_id)) {
                        FROM tasks t
                        LEFT JOIN task_final_deliveries tfd ON t.id = tfd.task_id
                        LEFT JOIN users u_rev ON tfd.reviewer_id = u_rev.id
+                       LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
+                       LEFT JOIN task_categories tc_sub ON t.subcategory_id = tc_sub.id
+                       LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
                        WHERE (t.assigned_to = :employee_id AND DATE(COALESCE(t.assign_date, t.created_at)) <= CURDATE())
                           OR (t.status = 'Unassigned' OR t.assigned_to IS NULL)
                        ORDER BY COALESCE(t.assign_date, t.created_at) DESC";
@@ -176,6 +183,10 @@ if(isset($data->user_id)) {
                 }
             } catch (Exception $ex) {
                 $row['review'] = null;
+            }
+
+            if (empty($row['category'])) {
+                $row['category'] = $row['category_name'] ?? '';
             }
 
             $tasks[] = $row;
