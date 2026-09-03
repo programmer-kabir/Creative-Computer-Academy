@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { FiSun, FiMoon } from 'react-icons/fi';
 
 const ThemeToggle = () => {
   const [isDark, setIsDark] = useState(() => {
@@ -24,15 +23,41 @@ const ThemeToggle = () => {
     <button
       type="button"
       onClick={() => setIsDark(prev => !prev)}
-      className="p-2 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700/80 transition-all duration-200 shadow-xs cursor-pointer active:scale-95 flex items-center justify-center shrink-0"
-      title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
       aria-label="Toggle Theme"
+      className={`
+        relative flex items-center w-14 h-7 rounded-full p-1 cursor-pointer
+        transition-all duration-500 ease-in-out
+        shadow-inner border
+        focus:outline-none active:scale-95
+        ${isDark
+          ? 'bg-slate-800 border-slate-600 shadow-slate-900/60'
+          : 'bg-amber-50 border-amber-200 shadow-amber-100/60'
+        }
+      `}
     >
-      {isDark ? (
-        <FiSun className="w-4 h-4 text-amber-400 animate-in spin-in-180 duration-300" />
-      ) : (
-        <FiMoon className="w-4 h-4 text-blue-500 animate-in spin-in-180 duration-300" />
-      )}
+      {/* Sun icon — left */}
+      <span className={`absolute left-1.5 text-[13px] transition-all duration-300 ${isDark ? 'opacity-30 scale-75' : 'opacity-100 scale-100'}`}>
+        ☀️
+      </span>
+
+      {/* Moon icon — right */}
+      <span className={`absolute right-1.5 text-[13px] transition-all duration-300 ${isDark ? 'opacity-100 scale-100' : 'opacity-30 scale-75'}`}>
+        🌙
+      </span>
+
+      {/* Sliding pill indicator */}
+      <span
+        className={`
+          relative z-10 w-5 h-5 rounded-full shadow-md
+          transition-all duration-500 ease-in-out
+          flex items-center justify-center
+          ${isDark
+            ? 'translate-x-7 bg-slate-600 shadow-slate-900/80 ring-1 ring-slate-500'
+            : 'translate-x-0 bg-white shadow-amber-200/80 ring-1 ring-amber-200'
+          }
+        `}
+      />
     </button>
   );
 };

@@ -209,6 +209,7 @@ const MessagesInner = () => {
             {/* Chat Header */}
             <ChatHeader
               activeChat={activeChat}
+              setActiveChat={setActiveChat}
               getDirectRecipient={getDirectRecipient}
               getChatTitle={getChatTitle}
               API_URL={API_URL}

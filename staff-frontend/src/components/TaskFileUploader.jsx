@@ -62,7 +62,11 @@ export default function TaskFileUploader({ files = [], setFiles, taskId = 0, use
 
       if (response.data?.status === 'success' && Array.isArray(response.data.files)) {
         setUploadProgress(100);
-        setFiles(prev => [...prev, ...response.data.files]);
+        const mergedFiles = response.data.files.map((f, idx) => {
+          const matchingLocal = Array.from(selectedFiles).find(sf => sf.name === f.name) || selectedFiles[idx] || null;
+          return { ...f, file: matchingLocal };
+        });
+        setFiles(prev => [...prev, ...mergedFiles]);
         toast.success(`${response.data.files.length} file(s) uploaded to Cloudflare R2!`);
       } else {
         toast.error(response.data?.message || 'File upload failed');

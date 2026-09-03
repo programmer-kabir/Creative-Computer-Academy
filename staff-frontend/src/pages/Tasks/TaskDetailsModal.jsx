@@ -84,39 +84,39 @@ const TaskDetailsModal = (props) => {
     <>
       {/* Task Details Modal */}
       {selectedTask && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xl z-50 flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xl z-50 flex items-center justify-center p-0 sm:p-4 lg:p-6 animate-in fade-in duration-200">
           <div
             onMouseDown={(e) => e.stopPropagation()}
             onMouseUp={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
             onContextMenu={(e) => e.stopPropagation()}
-            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 shadow-2xl rounded-3xl w-full max-w-[1500px] max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 select-text text-slate-800 dark:text-slate-100"
+            className="bg-white dark:bg-slate-900 border-0 sm:border border-slate-200 dark:border-white/10 shadow-2xl rounded-none sm:rounded-3xl w-full max-w-[1500px] h-full sm:h-auto sm:max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 select-text text-slate-800 dark:text-slate-100"
           >
             {/* ──────── Modal Header ──────── */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
-                  <FiInfo size={20} />
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
+                  <FiInfo size={18} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-white/50 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-500 dark:text-white/50 bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
                       ID #{selectedTask.id}
                     </span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-white/60 bg-slate-100 dark:bg-white/5 px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
+                    <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-white/60 bg-slate-100 dark:bg-white/5 px-2 sm:px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-white/10">
                       {selectedTask.category || 'General'}
                     </span>
-                    <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md border ${getStatusBadge(selectedTask.status)}`}>
+                    <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-md border ${getStatusBadge(selectedTask.status)}`}>
                       {selectedTask.status}
                     </span>
                     {(Number(selectedTask.is_self_created) === 1 || selectedTask.is_self_created === true) && (
-                      <span className="px-2.5 py-0.5 bg-gradient-to-r from-rose-500/20 to-amber-500/20 text-rose-500 dark:text-rose-300 border border-rose-500/30 text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1">
-                        <HiSparkles size={13} className="text-amber-400" /> Self-Initiated
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-rose-500/20 to-amber-500/20 text-rose-500 dark:text-rose-300 border border-rose-500/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1">
+                        <HiSparkles size={12} className="text-amber-400" /> Self-Initiated
                       </span>
                     )}
                     {(selectedTask?.creation_mode === 'agentic' || Boolean(blueprintData) || (Array.isArray(selectedTask?.blueprint_variants) && selectedTask.blueprint_variants.length > 0)) && (
-                      <span className="px-2.5 py-0.5 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1 font-mono">
-                        <HiSparkles size={13} className="text-amber-400" /> AI Blueprint
+                      <span className="px-2 py-0.5 bg-gradient-to-r from-blue-500/20 to-indigo-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 text-[10px] sm:text-xs font-bold uppercase tracking-wider rounded-md flex items-center gap-1 font-mono">
+                        <HiSparkles size={12} className="text-amber-400" /> AI Blueprint
                       </span>
                     )}
                   </div>
@@ -126,19 +126,19 @@ const TaskDetailsModal = (props) => {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setSelectedTask(null)}
-                  className="p-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-white/40 dark:hover:text-white dark:hover:bg-white/10 rounded-2xl transition-all outline-none"
+                  className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:text-white/40 dark:hover:text-white dark:hover:bg-white/10 rounded-xl sm:rounded-2xl transition-all outline-none cursor-pointer"
                   title="Close (Esc)"
                 >
-                  <FiX size={22} />
+                  <FiX size={20} />
                 </button>
               </div>
             </div>
 
             {/* ──────── Modal Body (Left: Brief/Deliverables, Right: Comments/Activity) ──────── */}
-            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+            <div className="flex flex-col lg:flex-row flex-1 overflow-hidden min-h-0">
 
               {/* ──────── LEFT: MAIN CONTENT ──────── */}
-              <div className="w-full lg:w-[75%] p-6 lg:p-8 overflow-y-auto custom-scrollbar border-r border-slate-200 dark:border-white/10 flex flex-col space-y-6 bg-white dark:bg-transparent">
+              <div className="w-full lg:w-[75%] p-4 sm:p-6 lg:p-8 overflow-y-auto custom-scrollbar border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-white/10 flex flex-col space-y-5 sm:space-y-6 bg-white dark:bg-transparent">
 
                 {/* Title & Rejection Banner */}
                 <div className="space-y-4">
@@ -349,15 +349,79 @@ const TaskDetailsModal = (props) => {
                     </div>
                   </div>
                 ) : taskTab === 'deliverables' ? (
-                  /* ── TAB 2: MY SUBMISSIONS ── */
+                  /* ── TAB 2: MY SUBMISSIONS & DELIVERABLES ── */
                   <div className="space-y-6 animate-in fade-in duration-200">
-                    <TaskDeliverablesViewer
-                      submissions={selectedTask.submissions}
-                      submissionLink={selectedTask.submission_link}
-                      totalTimeSpent={selectedTask.total_time_spent}
-                      submittedAt={selectedTask.submitted_at}
-                      onImageClick={(url) => setLightboxImage(url)}
-                    />
+                    {/* Active Upload & AI Scanner Area for In Progress / Rejected Tasks */}
+                    {(selectedTask.status === 'In Progress' || selectedTask.status === 'Rejected') && (
+                      <div className="space-y-5 p-5 sm:p-6 rounded-3xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10">
+                        <div className="flex items-center justify-between">
+                          <label className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                            <FiUploadCloud className="text-blue-500 dark:text-blue-400" size={17} />
+                            Submit Deliverables & Final Output
+                          </label>
+                          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/30 px-2.5 py-0.5 rounded-full">
+                            Cloudflare R2 Direct
+                          </span>
+                        </div>
+
+                        <TaskFileUploader
+                          files={submissionFiles}
+                          setFiles={setSubmissionFiles}
+                          taskId={selectedTask.id}
+                        />
+
+                        {/* Optional Submission Link Input */}
+                        <div className="space-y-1.5 pt-1">
+                          <label className="text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+                            <FiLink size={13} className="text-blue-500 dark:text-blue-400" />
+                            <span>Optional External Folder / Link (Google Drive, Figma, Proof URL)</span>
+                          </label>
+                          <input
+                            type="url"
+                            placeholder="https://drive.google.com/... or https://figma.com/..."
+                            value={submissionLink || ''}
+                            onChange={(e) => setSubmissionLink(e.target.value)}
+                            className="w-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/30 outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-white/[0.07] transition-all font-mono"
+                          />
+                        </div>
+
+                        {/* Real AI Quality Inspector Deck */}
+                        {isScannerOpen && submissionFiles.length > 0 && (() => {
+                          const previewFileObj = submissionFiles.find(f => {
+                            const name = f?.name || f?.file?.name || (typeof f === 'string' ? f : '');
+                            return /\.(jpg|jpeg|png|webp|gif)$/i.test(name) || (f?.file && f.file.type?.startsWith('image/'));
+                          }) || submissionFiles[0];
+
+                          const previewImageSrc = previewFileObj?.url || (previewFileObj?.file instanceof Blob ? previewFileObj.file : previewFileObj) || null;
+
+                          return (
+                            <AIQualityScanner
+                              isOpen={isScannerOpen}
+                              onClose={() => setIsScannerOpen(false)}
+                              task={selectedTask}
+                              file={previewFileObj?.file || (previewFileObj instanceof Blob ? previewFileObj : null)}
+                              imageUrl={typeof previewImageSrc === 'string' ? previewImageSrc : null}
+                              submissionFiles={submissionFiles}
+                              onProceedSubmit={() => {
+                                setIsScannerOpen(false);
+                                handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
+                              }}
+                            />
+                          );
+                        })()}
+                      </div>
+                    )}
+
+                    {/* Previous Submissions History */}
+                    {selectedTask.submissions && selectedTask.submissions.length > 0 && (
+                      <TaskDeliverablesViewer
+                        submissions={selectedTask.submissions}
+                        submissionLink={selectedTask.submission_link}
+                        totalTimeSpent={selectedTask.total_time_spent}
+                        submittedAt={selectedTask.submitted_at}
+                        onImageClick={(url) => setLightboxImage(url)}
+                      />
+                    )}
                   </div>
                 ) : (
                   /* ── TAB 2: TASK BRIEF & INSTRUCTIONS ── */
@@ -938,163 +1002,119 @@ const TaskDetailsModal = (props) => {
               </div>
             </div>
 
-            {/* ──────── Modal Footer (Dynamic Slim Action Area) ──────── */}
-            <div className="px-6 py-4 border-t border-slate-200 dark:border-white/10 bg-slate-50/90 dark:bg-slate-950/80 backdrop-blur-md">
-              {selectedTask.status === 'In Progress' ? (
-                /* When In Progress: Deliverables Uploader */
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
-                      <FiUploadCloud className="text-blue-500 dark:text-blue-400" size={17} />
-                      Submit Deliverables & Final Output
-                    </label>
-                    <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-300 bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/30 px-2.5 py-0.5 rounded-full">
-                      Cloudflare R2 Direct
-                    </span>
-                  </div>
+            {/* ──────── Modal Footer (Ultra Slim Unified Action Bar) ──────── */}
+            <div className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 border-t border-slate-200 dark:border-white/10 bg-slate-50/95 dark:bg-slate-900/95 backdrop-blur-md shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-4">
+              {/* Left: Working Time & Live Status / Quick Scanner Toggle */}
+              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 flex-wrap">
+                {selectedTask.status === 'In Progress' ? (
+                  <>
+                    <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 px-2.5 sm:px-3 py-1.5 rounded-xl">
+                      <span className="text-[10px] sm:text-[11px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-wider flex items-center gap-1">
+                        <FiClock className="text-purple-500 dark:text-purple-400" size={13} /> Time:
+                      </span>
+                      <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                        {formatTimeSpent(selectedTask)}
+                      </span>
+                      {selectedTask.timer_status === 'Running' && (
+                        <span className="inline-flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-sans font-bold bg-emerald-500/15 px-1.5 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:text-emerald-400 animate-ping"></span> Live
+                        </span>
+                      )}
+                    </div>
 
-                  <TaskFileUploader
-                    files={submissionFiles}
-                    setFiles={setSubmissionFiles}
-                    taskId={selectedTask.id}
-                  />
-
-                  {/* Optional Submission Link Input */}
-                  <div className="space-y-1.5 pt-1">
-                    <label className="text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-1.5">
-                      <FiLink size={13} className="text-blue-500 dark:text-blue-400" />
-                      <span>Optional External Folder / Link (Google Drive, Figma, Proof URL)</span>
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="https://drive.google.com/... or https://figma.com/..."
-                      value={submissionLink || ''}
-                      onChange={(e) => setSubmissionLink(e.target.value)}
-                      className="w-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/30 outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-white/[0.07] transition-all font-mono"
-                    />
-                  </div>
-
-                  {/* Real AI Quality Inspector Deck (Inline Expansion) */}
-                  {isScannerOpen && submissionFiles.length > 0 && (() => {
-                    const previewFileObj = submissionFiles.find(f => {
-                      const name = f?.name || f?.file?.name || (typeof f === 'string' ? f : '');
-                      return /\.(jpg|jpeg|png|webp|gif)$/i.test(name) || (f?.file && f.file.type?.startsWith('image/'));
-                    }) || submissionFiles[0];
-
-                    const previewImageSrc = previewFileObj?.url || (previewFileObj?.file instanceof Blob ? previewFileObj.file : previewFileObj) || null;
-
-                    return (
-                      <AIQualityScanner
-                        isOpen={isScannerOpen}
-                        onClose={() => setIsScannerOpen(false)}
-                        task={selectedTask}
-                        file={previewFileObj?.file || (previewFileObj instanceof Blob ? previewFileObj : null)}
-                        imageUrl={typeof previewImageSrc === 'string' ? previewImageSrc : null}
-                        submissionFiles={submissionFiles}
-                        onProceedSubmit={() => {
-                          setIsScannerOpen(false);
-                          handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
-                        }}
-                      />
-                    );
-                  })()}
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-200 dark:border-white/10">
                     <button
                       type="button"
                       onClick={() => {
-                        if (!submissionFiles || submissionFiles.length === 0) return;
-                        setIsScannerOpen(!isScannerOpen);
+                        setTaskTab('deliverables');
+                        setIsScannerOpen(prev => !prev);
                       }}
-                      disabled={isSubmittingWork || !submissionFiles || submissionFiles.length === 0}
-                      className={`px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs ${isScannerOpen
+                      className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer ${
+                        isScannerOpen
                           ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/30'
-                          : 'bg-gradient-to-r from-cyan-500/15 via-blue-500/15 to-indigo-500/15 hover:from-cyan-500/25 hover:via-blue-500/25 hover:to-indigo-500/25 text-blue-600 dark:text-cyan-400 border border-blue-200/80 dark:border-cyan-500/30'
-                        }`}
-                      title={!submissionFiles || submissionFiles.length === 0 ? "AI প্রি-চেক চালাতে প্রথমে ডেলিভারেবল ফাইল আপলোড করুন" : "AI দিয়ে বানান, রেজোলিউশন ও রিকোয়ারমেন্ট চেক করুন"}
+                          : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30'
+                      }`}
                     >
-                      <HiSparkles size={14} className={isScannerOpen ? 'text-white' : 'text-amber-400 animate-pulse'} />
-                      <span>{isScannerOpen ? 'AI Inspector Hide' : '✨ AI Quality Pre-Check'}</span>
+                      <HiSparkles size={13} className={isScannerOpen ? 'text-white' : 'text-amber-400 animate-pulse'} />
+                      <span>{isScannerOpen ? 'Hide Scanner' : '✨ AI Inspector'}</span>
                     </button>
+                  </>
+                ) : selectedTask.status === 'Rejected' ? (
+                  <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs">
+                    <FiAlertCircle size={13} /> Revision Required
+                  </span>
+                ) : selectedTask.status === 'In Review' ? (
+                  <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs">
+                    <FiClock size={13} /> Awaiting Reviewer
+                  </span>
+                ) : selectedTask.status === 'Completed' ? (
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-2.5 py-1 rounded-xl text-[11px] sm:text-xs">
+                    <FiCheckCircle size={13} /> Completed
+                  </span>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-white/50">
+                    <FiInfo size={13} /> Ready to start
+                  </div>
+                )}
+              </div>
 
-                    <div className="flex items-center gap-2.5 ml-auto">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedTask(null)}
-                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/70 font-bold rounded-xl transition-colors text-xs"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles)}
-                        disabled={isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-950/20 flex items-center justify-center gap-2 text-xs disabled:opacity-40 active:scale-95"
-                      >
-                        {isSubmittingWork ? (
-                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : <FiCheckCircle size={15} />}
-                        {isSubmittingWork ? 'Submitting to Review...' : 'Submit Work for Review'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* For Rejected, In Review, Completed, To-Do, Unassigned */
-                <div className="flex justify-between items-center w-full">
-                  <div className="text-xs text-slate-500 dark:text-white/60">
-                    {selectedTask.status === 'Rejected' && (
-                      <span className="flex items-center gap-2 text-red-600 dark:text-red-400 font-semibold bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 px-3 py-1.5 rounded-xl">
-                        <FiAlertCircle size={14} /> Revision Required — Awaiting Resubmission
-                      </span>
-                    )}
-                    {selectedTask.status === 'In Review' && (
-                      <span className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-3 py-1.5 rounded-xl">
-                        <FiClock size={14} /> Awaiting Reviewer Decision
-                      </span>
-                    )}
-                    {selectedTask.status === 'Completed' && (
-                      <span className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-xl">
-                        <FiCheckCircle size={14} /> Task Completed & Approved
-                      </span>
-                    )}
-                  </div>
+              {/* Right: Actions */}
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedTask(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/70 font-bold rounded-xl transition-colors text-xs"
+                >
+                  Close
+                </button>
 
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedTask(null)}
-                      className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white/80 font-semibold rounded-xl transition-colors text-xs"
-                    >
-                      Close Details
-                    </button>
-                    {selectedTask.status === 'Rejected' && (
-                      <button
-                        onClick={(e) => { handleStartTask(e, selectedTask.id); setSelectedTask(null); }}
-                        className="px-6 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-950/30 flex items-center gap-2 text-xs"
-                      >
-                        <FiPlayCircle size={15} />
-                        <span>Restart & Fix Work</span>
-                      </button>
-                    )}
-                    {selectedTask.status === 'To-Do' && (
-                      <button
-                        onClick={(e) => { handleStartTask(e, selectedTask.id); setSelectedTask(null); }}
-                        className="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-950/20 flex items-center gap-2 text-xs"
-                      >
-                        <FiPlayCircle size={15} /> Start Task
-                      </button>
-                    )}
-                    {selectedTask.status === 'Unassigned' && handleClaimTask && (
-                      <button
-                        onClick={(e) => { handleClaimTask(e, selectedTask); }}
-                        className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 text-xs"
-                      >
-                        <FiCheckSquare size={15} /> Claim Task
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
+                {selectedTask.status === 'In Progress' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (taskTab !== 'deliverables') {
+                        setTaskTab('deliverables');
+                      }
+                      handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
+                    }}
+                    disabled={isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-950/20 flex items-center justify-center gap-2 text-xs disabled:opacity-40 active:scale-95"
+                  >
+                    {isSubmittingWork ? (
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : <FiCheckCircle size={14} />}
+                    <span>{isSubmittingWork ? 'Submitting...' : 'Submit Work for Review'}</span>
+                  </button>
+                ) : selectedTask.status === 'Rejected' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (taskTab !== 'deliverables') {
+                        setTaskTab('deliverables');
+                      } else {
+                        handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
+                      }
+                    }}
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all shadow-md shadow-emerald-950/20 flex items-center gap-2 text-xs"
+                  >
+                    <FiCheckCircle size={14} />
+                    <span>{taskTab === 'deliverables' ? 'Resubmit for Review' : 'Upload Revised Files'}</span>
+                  </button>
+                ) : selectedTask.status === 'To-Do' ? (
+                  <button
+                    onClick={(e) => { handleStartTask(e, selectedTask.id); setSelectedTask(null); }}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-950/20 flex items-center gap-2 text-xs active:scale-95"
+                  >
+                    <FiPlayCircle size={15} /> Start Task
+                  </button>
+                ) : selectedTask.status === 'Unassigned' && handleClaimTask ? (
+                  <button
+                    onClick={(e) => { handleClaimTask(e, selectedTask); }}
+                    className="px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center gap-2 text-xs active:scale-95"
+                  >
+                    <FiCheckSquare size={15} /> Claim Task
+                  </button>
+                ) : null}
+              </div>
             </div>
           </div>
         </div>

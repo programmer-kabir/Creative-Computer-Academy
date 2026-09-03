@@ -1,10 +1,11 @@
 import React from 'react';
-import { FiUsers, FiInfo } from 'react-icons/fi';
+import { FiUsers, FiInfo, FiArrowLeft } from 'react-icons/fi';
 import { isUserOnline, formatLastSeen } from '../../utils/presence';
 import DirectChatDropdown from './DirectChatDropdown';
 
 const ChatHeader = ({
   activeChat,
+  setActiveChat,
   getDirectRecipient,
   getChatTitle,
   API_URL,
@@ -26,14 +27,29 @@ const ChatHeader = ({
 
   return (
     <div
-      className={`px-5 py-3.5 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex items-center justify-between shadow-sm z-10 relative flex-shrink-0 transition-all ${
+      className={`px-3 sm:px-5 py-3 border-b border-slate-200/80 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl flex items-center justify-between shadow-sm z-10 relative flex-shrink-0 transition-all ${
         isGroup ? 'cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-850/80' : ''
       }`}
       onClick={() => isGroup && setIsGroupInfoOpen && setIsGroupInfoOpen(true)}
     >
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+        {/* Mobile Back Button to return to Chat List */}
+        {setActiveChat && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveChat(null);
+            }}
+            className="md:hidden p-2 -ml-1 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+            title="Back to Chats"
+          >
+            <FiArrowLeft size={18} />
+          </button>
+        )}
+
         {/* Avatar */}
-        <div className="relative flex-shrink-0 w-11 h-11 rounded-full shadow-md ring-1 ring-black/5 dark:ring-white/10">
+        <div className="relative flex-shrink-0 w-9 h-9 sm:w-11 sm:h-11 rounded-full shadow-md ring-1 ring-black/5 dark:ring-white/10">
           {isGroup ? (
             activeChat?.group_picture ? (
               <img
@@ -42,7 +58,7 @@ const ChatHeader = ({
                 className="w-full h-full object-cover rounded-full"
               />
             ) : (
-              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white flex items-center justify-center text-base font-black uppercase">
+              <div className="w-full h-full rounded-full bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 text-white flex items-center justify-center text-sm sm:text-base font-black uppercase">
                 {getChatTitle(activeChat).charAt(0)}
               </div>
             )

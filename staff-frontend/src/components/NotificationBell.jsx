@@ -226,9 +226,19 @@ const NotificationBell = ({ portal = 'staff' }) => {
       )}
 
       {isOpen && (
+        <>
+          {/* Mobile backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 z-[99998] sm:hidden"
+            onClick={() => setIsOpen(false)}
+          />
         <div
-          className={`absolute right-0 mt-3 w-80 sm:w-96 rounded-3xl shadow-2xl border overflow-hidden z-[99999] animate-in fade-in zoom-in-95 duration-200 ${isDark
-            ? 'bg-dark-900 border-white/10 text-white shadow-black/80'
+          className={`
+            fixed bottom-0 left-0 right-0 rounded-t-3xl z-[99999] animate-in slide-in-from-bottom-4 duration-300
+            sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96 sm:rounded-3xl sm:animate-in sm:fade-in sm:zoom-in-95 sm:duration-200
+            shadow-2xl border overflow-hidden
+            ${isDark
+            ? 'bg-slate-900 border-white/10 text-white shadow-black/80'
             : 'bg-white border-slate-200 text-slate-900 shadow-slate-300/50'
             }`}
         >
@@ -287,7 +297,7 @@ const NotificationBell = ({ portal = 'staff' }) => {
           </div>
 
           {/* Notifications List */}
-          <div className={`max-h-80 overflow-y-auto divide-y ${isDark ? 'divide-white/5' : 'divide-slate-100'}`}>
+          <div className={`max-h-[60vh] sm:max-h-80 overflow-y-auto divide-y ${isDark ? 'divide-white/5' : 'divide-slate-100'}`}>
             {filteredNotifications.length > 0 ? (
               filteredNotifications.map((n) => (
                 <div
@@ -385,6 +395,7 @@ const NotificationBell = ({ portal = 'staff' }) => {
             </div>
           )}
         </div>
+        </>
       )}
     </div>
   );

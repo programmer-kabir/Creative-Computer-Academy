@@ -118,73 +118,61 @@ Return your evaluation ONLY in the following valid JSON format (do not wrap in m
   ]
 }";
 
-// Call Gemini 1.5 Flash Vision
-$geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" . urlencode($geminiApiKey);
-
-$geminiPayload = [
-    "contents" => [
-        [
-            "parts" => [
-                [
-                    "text" => $systemPrompt
-                ]
-            ]
-        ]
-    ],
-    "generationConfig" => [
-        "temperature" => 0.2,
-        "responseMimeType" => "application/json"
-    ]
+$modelsToTry = [
+    'gemini-3.5-flash',
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.6-flash',
+    'gemini-3.7-flash'
 ];
 
-// Attach image part if available
-if (!empty($rawBase64)) {
-    $geminiPayload['contents'][0]['parts'][] = [
-        "inlineData" => [
-            "mimeType" => $mimeType,
-            "data" => $rawBase64
-        ]
-    ];
-}
+$parsedReport = null;
 
-$ch = curl_init($geminiUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_POST, true);
-curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($geminiPayload));
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+if (!empty($geminiApiKey)) {
+    foreach ($modelsToTry as $m) {
+        $geminiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$m}:generateContent?key=" . urlencode($geminiApiKey);
 
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+        $ch = curl_init($geminiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($geminiPayload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 
-if ($httpCode === 200 && $response) {
-    $resData = json_decode($response, true);
-    $textOutput = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    
-    // Clean up markdown block if present
-    $cleanedJson = trim($textOutput);
-    if (strpos($cleanedJson, '```json') === 0) {
-        $cleanedJson = substr($cleanedJson, 7);
-        if (substr($cleanedJson, -3) === '```') {
-            $cleanedJson = substr($cleanedJson, 0, -3);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode === 200 && $response) {
+            $resData = json_decode($response, true);
+            $textOutput = $resData['candidates'][0]['content']['parts'][0]['text'] ?? '';
+            
+            // Clean up markdown block if present
+            $cleanedJson = trim($textOutput);
+            if (strpos($cleanedJson, '```json') === 0) {
+                $cleanedJson = substr($cleanedJson, 7);
+                if (substr($cleanedJson, -3) === '```') {
+                    $cleanedJson = substr($cleanedJson, 0, -3);
+                }
+            } elseif (strpos($cleanedJson, '```') === 0) {
+                $cleanedJson = substr($cleanedJson, 3);
+                if (substr($cleanedJson, -3) === '```') {
+                    $cleanedJson = substr($cleanedJson, 0, -3);
+                }
+            }
+            
+            $parsedReport = json_decode(trim($cleanedJson), true);
+            if ($parsedReport) {
+                echo json_encode([
+                    "status" => "success",
+                    "source" => $m,
+                    "report" => $parsedReport
+                ]);
+                exit();
+            }
         }
-    } elseif (strpos($cleanedJson, '```') === 0) {
-        $cleanedJson = substr($cleanedJson, 3);
-        if (substr($cleanedJson, -3) === '```') {
-            $cleanedJson = substr($cleanedJson, 0, -3);
-        }
-    }
-    
-    $parsedReport = json_decode(trim($cleanedJson), true);
-    if ($parsedReport) {
-        echo json_encode([
-            "status" => "success",
-            "source" => "gemini-1.5-flash",
-            "report" => $parsedReport
-        ]);
-        exit();
     }
 }
 
