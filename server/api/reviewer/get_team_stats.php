@@ -148,9 +148,27 @@ try {
         $res_s->execute([':uid' => $uid, ':ms' => $month_start, ':me' => $month_end]);
         $resubmitted = intval($res_s->fetch(PDO::FETCH_ASSOC)['resubmitted']);
 
-        // Score: completion 70% - rejection penalty 30%
+        // Average star rating from task_reviews for this period
+        $rat_q = "
+            SELECT AVG(tr.rating) AS avg_rating, COUNT(tr.id) AS rated_count
+            FROM task_reviews tr
+            JOIN tasks t ON tr.task_id = t.id
+            JOIN employees e ON t.assigned_to = e.id
+            WHERE e.user_id = :uid
+              AND tr.created_at BETWEEN :ms AND :me
+              AND tr.rating > 0
+        ";
+        $rat_s = $db->prepare($rat_q);
+        $rat_s->execute([':uid' => $uid, ':ms' => $month_start, ':me' => $month_end]);
+        $rat_row = $rat_s->fetch(PDO::FETCH_ASSOC);
+        $avg_rating = ($rat_row && intval($rat_row['rated_count']) > 0) ? round(floatval($rat_row['avg_rating']), 1) : 5.0;
+        $rated_count = ($rat_row) ? intval($rat_row['rated_count']) : 0;
+
+        // Score: 50% Completion Rate + 50% Quality Star Rating (scaled to 100) - Rejection Penalty
+        $comp_points = $rate * 0.50;
+        $quality_points = ($avg_rating / 5.0) * 100 * 0.50;
         $rej_penalty = $total > 0 ? min(30, round(($rejected / $total) * 30)) : 0;
-        $score = max(0, min(100, round($rate * 0.70 - $rej_penalty)));
+        $score = $total > 0 ? max(0, min(100, round($comp_points + $quality_points - $rej_penalty))) : 0;
 
         $per_person[] = [
             'user_id'     => $uid,
@@ -162,6 +180,8 @@ try {
             'rejected'    => $rejected,
             'resubmitted' => $resubmitted,
             'rate'        => $rate,
+            'avg_rating'  => $avg_rating,
+            'rated_count' => $rated_count,
             'score'       => $score,
         ];
 
@@ -178,6 +198,7 @@ try {
                 'score'           => $score,
                 'completed'       => $done,
                 'total'           => $total,
+                'avg_rating'      => $avg_rating,
             ];
         }
     }

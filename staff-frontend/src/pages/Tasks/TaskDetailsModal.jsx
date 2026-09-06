@@ -9,6 +9,7 @@ import {
   FiPackage, FiFileText, FiAlertTriangle, FiAlertCircle, FiStar, FiAward
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
+import MarketplaceSubmissions from '../../components/MarketplaceSubmissions';
 import TaskFileUploader from '../../components/TaskFileUploader';
 import TaskDeliverablesViewer from '../../components/TaskDeliverablesViewer';
 import AgenticBlueprintViewer from '../../components/AgenticBlueprintViewer';
@@ -237,6 +238,21 @@ const TaskDetailsModal = (props) => {
                         </span>
                       </button>
                     )}
+
+                    {/* 4th Tab: Marketplace Submissions (Completed/In Review only) */}
+                    {(selectedTask.status === 'Completed' || selectedTask.status === 'In Review') && (
+                      <button
+                        type="button"
+                        onClick={() => setTaskTab('markets')}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${taskTab === 'markets'
+                          ? 'bg-violet-500/15 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-500/40 shadow-sm shadow-violet-500/10'
+                          : 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                        }`}
+                      >
+                        <span>📦</span>
+                        <span>Markets</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -348,8 +364,20 @@ const TaskDetailsModal = (props) => {
                       )}
                     </div>
                   </div>
+                ) : taskTab === 'markets' ? (
+                  /* ── TAB: MARKETPLACE SUBMISSIONS ── */
+                  <div className="animate-in fade-in duration-200">
+                    <MarketplaceSubmissions
+                      taskId={selectedTask.id}
+                      userId={currentUser?.id}
+                      addedBy={null}
+                      addedByRole={null}
+                      canManage={false}
+                    />
+                  </div>
                 ) : taskTab === 'deliverables' ? (
                   /* ── TAB 2: MY SUBMISSIONS & DELIVERABLES ── */
+
                   <div className="space-y-6 animate-in fade-in duration-200">
                     {/* Active Upload & AI Scanner Area for In Progress / Rejected Tasks */}
                     {(selectedTask.status === 'In Progress' || selectedTask.status === 'Rejected') && (

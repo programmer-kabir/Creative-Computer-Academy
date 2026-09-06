@@ -23,6 +23,7 @@ import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
 import TaskSkeletonGrid from '../components/TaskOversight/TaskSkeletonGrid';
 import { HiSparkles } from 'react-icons/hi';
+import MarketplaceSubmissions from '../components/MarketplaceSubmissions';
 
 // Helper to strip HTML and decode entities for card previews
 const stripHtml = (html) => {
@@ -1071,6 +1072,17 @@ const TaskOversight = () => {
                     />
                   </div>
                 )}
+
+                {/* Marketplace Submissions Management (Admin has full manage access) */}
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <MarketplaceSubmissions
+                    taskId={detailsTask.id}
+                    userId={detailsTask.assigned_to_user_id || detailsTask.user_id || detailsTask.assigned_to}
+                    addedBy={currentUser?.id}
+                    addedByRole="admin"
+                    canManage={true}
+                  />
+                </div>
 
               </div>
 

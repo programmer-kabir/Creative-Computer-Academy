@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -9,7 +9,7 @@ import {
   FiChevronDown, FiCalendar, FiEye, FiLink, FiDownload,
   FiImage, FiMaximize, FiMinimize, FiCode, FiMessageSquare,
   FiSend, FiPlusCircle, FiAlertCircle, FiFileText, FiPackage, FiExternalLink,
-  FiStar, FiTag
+  FiStar, FiTag, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiLayers
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import TaskTimeline from '../components/TaskTimeline';
@@ -20,8 +20,74 @@ import { downloadFile } from '../utils/fileDownloader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
+const DELIVERY_STAR_LABELS = {
+  1: { label: 'Needs Improvement', desc: 'Minimal acceptable quality, several flaws' },
+  2: { label: 'Below Average', desc: 'Acceptable with minor issues or corrections' },
+  3: { label: 'Good', desc: 'Meets requirements and quality standards' },
+  4: { label: 'Very Good', desc: 'High quality, well structured and polished' },
+  5: { label: 'Outstanding!', desc: 'Exceptional, flawless execution and creative' }
+};
+
+const DELIVERY_SUGGESTED_TAGS = [
+  '⚡ Fast Delivery',
+  '🎯 High Accuracy',
+  '🎨 Creative Design',
+  '🧹 Clean Layers & Files',
+  '💡 Followed Instructions',
+  '✨ Great Typography',
+  '🔥 Pixel Perfect'
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const isColorHex = (str) => typeof str === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(str);
+
+const formatTimeSpent = (seconds) => {
+  const s = parseInt(seconds, 10);
+  if (!s || s <= 0) return null;
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes || 1}m`;
+};
+
+const getChecklistSummary = (checklists) => {
+  if (!Array.isArray(checklists) || checklists.length === 0) return null;
+  const done = checklists.filter(c => c && (c.completed || c.done || c.checked || c.is_completed)).length;
+  return `${done}/${checklists.length} Done`;
+};
+
+const getDeliverablesCount = (t) => {
+  let count = 0;
+  if (Array.isArray(t.submissions) && t.submissions.length > 0) count += t.submissions.length;
+  else if (t.submission_link) count += 1;
+  return count > 0 ? `${count} File${count > 1 ? 's' : ''}` : null;
+};
+
+const getCleanDescriptionSnippet = (htmlOrJson, maxLength = 130) => {
+  if (!htmlOrJson) return null;
+  try {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlOrJson;
+    let rawText = tempDiv.textContent || tempDiv.innerText || '';
+    rawText = rawText.replace(/\u00A0/g, ' ').replace(/&nbsp;/g, ' ').trim();
+    if (rawText.startsWith('{') || rawText.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(rawText);
+        const values = Object.entries(parsed)
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+          .join(' • ');
+        return values.length > maxLength ? values.substring(0, maxLength) + '…' : values;
+      } catch (e) {
+        return null;
+      }
+    }
+    if (!rawText) return null;
+    return rawText.length > maxLength ? rawText.substring(0, maxLength) + '…' : rawText;
+  } catch (e) {
+    return null;
+  }
+};
 
 const DynamicJsonViewer = ({ data, level = 0 }) => {
   if (data === null) return <span className="text-white/40 italic text-xs">null</span>;
@@ -111,7 +177,6 @@ const DescriptionRenderer = ({ htmlContent }) => {
 
 const fmtRelativeTime = (dateStr) => {
   if (!dateStr) return '';
-  // The database returns the timestamp in UTC. Append 'Z' to parse it correctly as UTC.
   const formattedStr = dateStr.replace(' ', 'T') + 'Z';
   const d = new Date(formattedStr);
   const now = new Date();
@@ -207,7 +272,7 @@ const VisualWorkImageRenderer = ({ imgPath }) => {
 
   return (
     <div className="space-y-2">
-      <h4 className="text-emerald-400/70 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+      <h4 className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
         <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
         Staff Uploaded Work Image
       </h4>
@@ -265,42 +330,28 @@ const RefLinksRenderer = ({ linksJson }) => {
   );
 };
 
-const DELIVERY_STAR_LABELS = {
-  1: { label: 'Needs Improvement', desc: 'Minimal acceptable quality, several flaws', color: 'text-amber-500' },
-  2: { label: 'Below Average', desc: 'Acceptable with minor issues or corrections', color: 'text-amber-500 dark:text-amber-400' },
-  3: { label: 'Good', desc: 'Meets requirements and quality standards', color: 'text-yellow-600 dark:text-yellow-400' },
-  4: { label: 'Very Good', desc: 'High quality, well structured and polished', color: 'text-emerald-600 dark:text-emerald-400' },
-  5: { label: 'Outstanding!', desc: 'Exceptional, flawless execution and creative', color: 'text-indigo-600 dark:text-brand-400' }
-};
-
-const DELIVERY_SUGGESTED_TAGS = [
-  '⚡ Fast Delivery',
-  '🎯 High Accuracy',
-  '🎨 Creative Design',
-  '🧹 Clean Layers & Files',
-  '💡 Followed Instructions',
-  '✨ Great Typography',
-  '🔥 Pixel Perfect'
-];
-
 // ── Main Page Component ──────────────────────────────────────────────────────
 const PendingReviews = () => {
   const { currentUser } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeReviewTask, setActiveReviewTask] = useState(null); // Selected task for modal details
-  const [actionLoading, setActionLoading] = useState({});
-  const [taskLogs, setTaskLogs] = useState({});
-  const [loadingLogs, setLoadingLogs] = useState({});
+  const [activeReviewTask, setActiveReviewTask] = useState(null);
+
+  // Rejection modal
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectTaskId, setRejectTaskId] = useState(null);
   const [rejectComment, setRejectComment] = useState('');
   const [rejectScreenshot, setRejectScreenshot] = useState(null);
   const [rejectScreenshotPreview, setRejectScreenshotPreview] = useState(null);
-  const [isDragging, setIsDragging] = useState(false);
+
+  // Approval Rating Modal
   const [ratingModalTask, setRatingModalTask] = useState(null);
 
-  // Reviewer Final Stock Delivery States
+  // Logs & History State
+  const [taskLogs, setTaskLogs] = useState({});
+  const [loadingLogs, setLoadingLogs] = useState({});
+
+  // Final Delivery Modal
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [deliveryTask, setDeliveryTask] = useState(null);
   const [finalFile, setFinalFile] = useState(null);
@@ -308,63 +359,123 @@ const PendingReviews = () => {
   const [finalImage, setFinalImage] = useState(null);
   const [finalImagePreview, setFinalImagePreview] = useState(null);
   const [fixNotes, setFixNotes] = useState('');
-  const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
-  const [deliveryProgress, setDeliveryProgress] = useState(0);
-  const [isDraggingFinal, setIsDraggingFinal] = useState(false);
   const [deliveryRating, setDeliveryRating] = useState(5);
   const [deliveryHoverRating, setDeliveryHoverRating] = useState(0);
   const [deliveryIncludeRating, setDeliveryIncludeRating] = useState(true);
   const [deliverySelectedTags, setDeliverySelectedTags] = useState(['⚡ Fast Delivery', '🎯 High Accuracy']);
+  const [deliveryProgress, setDeliveryProgress] = useState(0);
+  const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false);
 
-  const smartMacros = [
-    { icon: '🔤', label: "Spelling / Typos", text: "There are spelling or grammatical mistakes in the text copy. Please proofread carefully and fix all typos." },
-    { icon: '📐', label: "Wrong Dimensions / DPI", text: "Canvas dimensions, aspect ratio, or DPI resolution do not match the required specifications. Please correct the sizing (300 DPI for print, 72-150 DPI for web)." },
-    { icon: '📏', label: "Alignment & Spacing", text: "Please fix the alignment, padding, and spacing issues across the layout. Ensure margins, grids, and elements are balanced." },
-    { icon: '🎨', label: "Color / Contrast", text: "Color harmony or contrast is too low on key elements. Please adjust colors to improve readability and visual hierarchy." },
-    { icon: '📁', label: "Missing Files / Assets", text: "Requested source files (PSD/AI/EPS/Fonts) or assets are missing from the submission. Please attach all required deliverables." },
-    { icon: '🖼️', label: "Low Quality / Blurry", text: "Images or graphical elements appear low resolution or pixelated. Please replace them with crisp, high-resolution vector/raw assets." },
-    { icon: '🏷️', label: "Logo & Brand Rules", text: "Brand guidelines or logo usage rules are not followed (safe clear space, aspect ratio distortion, or incorrect colors). Please adhere to brand specs." },
-    { icon: '✂️', label: "Bleed & Safe Area", text: "Print bleed margins (0.125\") or inner safe area cut-lines are missing/incorrect. Please ensure proper bleed and safe margins." },
-    { icon: '📱', label: "Responsive Issue", text: "The layout breaks on mobile/tablet viewports. Please test and ensure it is fully responsive across all device sizes." },
-    { icon: '📋', label: "Incomplete Checklist", text: "Some specific requirements or checklist deliverables from the task instructions were not fulfilled. Please review the checklist." },
-  ];
-
+  // Bulk Selection & Action State
   const [selectedTasks, setSelectedTasks] = useState([]);
-  const [sortOrder, setSortOrder] = useState('newest'); // 'newest' | 'oldest'
+  const [actionLoading, setActionLoading] = useState({});
 
-  const [zenMode, setZenMode] = useState(false);
-  const [modalTab, setModalTab] = useState('submission'); // 'submission' | 'instructions'
+  // Image Lightbox & Inspection Modal Modes
   const [selectedImage, setSelectedImage] = useState(null);
+  const [zenMode, setZenMode] = useState(false);
+  const [modalTab, setModalTab] = useState('submission');
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingFinal, setIsDraggingFinal] = useState(false);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [staffList, setStaffList] = useState([]);
+  const [sortOrder, setSortOrder] = useState('newest');
 
-  const getTodayDateString = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-  const [selectedDate, setSelectedDate] = useState(getTodayDateString());
+  // Server-side Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [jumpPageInput, setJumpPageInput] = useState('');
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 50,
+    total_pages: 1,
+    from: 0,
+    to: 0
+  });
 
-  const fetchPending = async () => {
+  const fetchPending = useCallback(async (page = 1, limit = pageSize) => {
+    if (!currentUser?.id) return;
+    setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}api/reviewer/get_pending_reviews.php?reviewer_user_id=${currentUser.id}`);
+      const params = new URLSearchParams({
+        reviewer_user_id: currentUser.id,
+        page: page.toString(),
+        limit: limit.toString(),
+        sort: sortOrder
+      });
+
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (selectedStaff) params.append('staff_name', selectedStaff);
+      if (selectedDate) params.append('date', selectedDate);
+
+      const res = await axios.get(`${API_BASE}api/reviewer/get_pending_reviews.php?${params.toString()}`);
       if (res.data.status === 'success') {
         setTasks(res.data.data || []);
+        if (res.data.pagination) {
+          setPagination(res.data.pagination);
+          setCurrentPage(res.data.pagination.page);
+        }
+        if (res.data.staff_list && res.data.staff_list.length > 0) {
+          setStaffList(res.data.staff_list);
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch pending reviews', e);
     } finally {
       setLoading(false);
     }
+  }, [currentUser, searchQuery, selectedStaff, selectedDate, sortOrder, pageSize]);
+
+  // Fetch when filters, page or pageSize change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchPending(currentPage, pageSize);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [fetchPending, currentPage, pageSize]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.total_pages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
-  useEffect(() => {
-    fetchPending();
-  }, [currentUser]);
+  const handlePageSizeChange = (newSize) => {
+    const sizeNum = parseInt(newSize, 10);
+    if (!isNaN(sizeNum) && sizeNum > 0) {
+      setPageSize(sizeNum);
+      setCurrentPage(1);
+    }
+  };
+
+  const handleJumpPage = (e) => {
+    e.preventDefault();
+    const p = parseInt(jumpPageInput, 10);
+    if (!isNaN(p) && p >= 1 && p <= pagination.total_pages) {
+      handlePageChange(p);
+      setJumpPageInput('');
+    }
+  };
+
+  const getPaginationPages = () => {
+    const total = pagination.total_pages;
+    const current = currentPage;
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   // Handle Paste for Screenshot & Final Delivery Image
   useEffect(() => {
@@ -429,43 +540,6 @@ const PendingReviews = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeReviewTask, rejectModalOpen, deliveryModalOpen]);
 
-  // Extract unique staff names from pending tasks for dropdown filtering
-  const staffList = useMemo(() => {
-    const names = {};
-    tasks.forEach(t => {
-      if (t.staff_name) names[t.staff_name] = true;
-    });
-    return Object.keys(names);
-  }, [tasks]);
-
-  // Filter tasks based on Search, Staff Dropdown, and Date Selector
-  const filteredTasks = useMemo(() => {
-    let result = tasks.filter(t => {
-      const matchSearch = searchQuery.trim() === '' ||
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t.priority || '').toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchStaff = selectedStaff === '' || t.staff_name === selectedStaff;
-
-      let matchDate = true;
-      if (selectedDate !== '') {
-        const taskDatePart = t.submitted_at ? t.submitted_at.split(' ')[0] : '';
-        matchDate = taskDatePart === selectedDate;
-      }
-
-      return matchSearch && matchStaff && matchDate;
-    });
-
-    // Sort the result
-    result.sort((a, b) => {
-      const timeA = new Date(a.submitted_at.replace(' ', 'T') + 'Z').getTime();
-      const timeB = new Date(b.submitted_at.replace(' ', 'T') + 'Z').getTime();
-      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
-    });
-
-    return result;
-  }, [tasks, searchQuery, selectedStaff, selectedDate, sortOrder]);
-
   const selectTaskForReview = async (task) => {
     setActiveReviewTask(task);
     const taskId = task.task_id;
@@ -486,9 +560,9 @@ const PendingReviews = () => {
   };
 
   const advanceToNextTask = (currentTaskId) => {
-    const currentIndex = filteredTasks.findIndex(t => t.task_id === currentTaskId);
-    if (currentIndex >= 0 && currentIndex < filteredTasks.length - 1) {
-      const nextTask = filteredTasks[currentIndex + 1];
+    const currentIndex = tasks.findIndex(t => t.task_id === currentTaskId);
+    if (currentIndex >= 0 && currentIndex < tasks.length - 1) {
+      const nextTask = tasks[currentIndex + 1];
       selectTaskForReview(nextTask);
     } else {
       setActiveReviewTask(null);
@@ -500,13 +574,18 @@ const PendingReviews = () => {
     // Optimistic UI Update: Remove card immediately
     const previousTasks = [...tasks];
     setTasks(prev => prev.filter(t => t.task_id !== taskId));
+    setPagination(prev => ({
+      ...prev,
+      total: Math.max(0, prev.total - 1),
+      to: Math.max(0, prev.to - 1)
+    }));
 
     if (newStatus === 'Completed') {
       confetti({
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#34d399', '#10b981', '#059669', '#047857'] // Emerald colors
+        colors: ['#34d399', '#10b981', '#059669', '#047857']
       });
     }
 
@@ -749,194 +828,369 @@ const PendingReviews = () => {
       {/* Top Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <FiClock className="text-brand-400" /> Pending Reviews
-          </h1>
-          <p className="text-white/40 text-sm mt-1">
-            Tasks waiting for your review today. Click any card to inspect and take action.
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl lg:text-3xl font-black text-white flex items-center gap-3">
+              <FiClock className="text-brand-400" size={28} /> Pending Reviews
+            </h1>
+            {pagination.total > 0 && (
+              <span className="px-3 py-1 rounded-full bg-brand-500/15 border border-brand-500/30 text-brand-400 text-xs font-black shadow-xs">
+                {pagination.total} Total
+              </span>
+            )}
+          </div>
+          <p className="text-white/60 text-sm mt-1 font-medium">
+            Review and evaluate submissions from your supervised team (50 per page).
           </p>
         </div>
+
+        {pagination.total_pages > 1 && (
+          <div className="flex items-center gap-2 text-xs font-bold text-white/50 bg-white/5 px-3.5 py-2 rounded-xl border border-white/5 self-start md:self-auto">
+            <span>Page <strong className="text-brand-400 font-extrabold">{pagination.page}</strong> of {pagination.total_pages}</span>
+          </div>
+        )}
       </div>
 
       {/* Filter and Search Bar Section */}
-      <div className="glass rounded-2xl p-4 border border-white/5 flex flex-col md:flex-row items-center gap-3">
+      <div className="glass rounded-2xl p-4 border border-white/5 flex flex-col md:flex-row items-center gap-3.5">
         {/* Search */}
         <div className="relative w-full md:flex-1">
-          <FiSearch size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+          <FiSearch size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             placeholder="Search by title or priority..."
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all"
+            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white/5 border border-white/10 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-brand-500/50 transition-all font-medium"
           />
         </div>
 
         {/* Staff Filter */}
-        <div className="relative w-full md:w-56">
-          <FiUsers size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-64">
+          <FiUsers size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <select
             value={selectedStaff}
-            onChange={e => setSelectedStaff(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all appearance-none cursor-pointer"
+            onChange={e => { setSelectedStaff(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-brand-500/50 transition-all appearance-none cursor-pointer font-medium"
           >
-            <option value="" className="bg-dark-900 text-white">All Staff Members</option>
+            <option value="">All Staff Members</option>
             {staffList.map(name => (
-              <option key={name} value={name} className="bg-dark-900 text-white">{name}</option>
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          <FiChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+          <FiChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
         </div>
 
         {/* Date Filter */}
-        <div className="relative w-full md:w-48 shrink-0">
-          <FiCalendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-52 shrink-0">
+          <FiCalendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="date"
             value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all cursor-pointer"
+            onChange={e => { setSelectedDate(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-brand-500/50 transition-all cursor-pointer font-medium"
           />
         </div>
 
         {/* Sort Filter */}
-        <div className="relative w-full md:w-40 shrink-0">
-          <FiFilter size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-44 shrink-0">
+          <FiFilter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <select
             value={sortOrder}
-            onChange={e => setSortOrder(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all appearance-none cursor-pointer"
+            onChange={e => { setSortOrder(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-brand-500/50 transition-all appearance-none cursor-pointer font-medium"
           >
-            <option value="newest" className="bg-dark-900 text-white">Newest First</option>
-            <option value="oldest" className="bg-dark-900 text-white">Oldest First</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
           </select>
-          <FiChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+          <FiChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
         </div>
 
         {/* Clear Filters Button */}
         {(searchQuery || selectedStaff || selectedDate || sortOrder !== 'newest') && (
           <button
-            onClick={() => { setSearchQuery(''); setSelectedStaff(''); setSelectedDate(''); setSortOrder('newest'); }}
-            className="w-full md:w-auto shrink-0 px-4 py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+            onClick={() => { setSearchQuery(''); setSelectedStaff(''); setSelectedDate(''); setSortOrder('newest'); setCurrentPage(1); }}
+            className="w-full md:w-auto shrink-0 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            <FiX size={14} /> Clear
+            <FiX size={15} /> Clear
           </button>
         )}
       </div>
 
       {/* Task Cards Grid */}
-      {filteredTasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <div className="glass rounded-2xl p-16 text-center border border-white/5">
           <FiCheck className="mx-auto text-emerald-400 w-12 h-12 bg-emerald-500/10 p-2 rounded-full mb-3" />
           <h2 className="text-white font-bold text-lg">No pending reviews</h2>
           <p className="text-white/40 text-sm mt-1">
-            {tasks.length === 0 ? "You're all caught up! No tasks waiting for review." : "No tasks match your filter criteria."}
+            {pagination.total === 0 ? "You're all caught up! No tasks waiting for review." : "No tasks match your filter criteria on this page."}
           </p>
         </div>
       ) : (
-        <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <AnimatePresence mode="popLayout">
-            {filteredTasks.map((t, index) => {
-              return (
-                <motion.div
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8, filter: 'blur(5px)' }}
-                  transition={{ duration: 0.25 }}
-                  key={t.task_id}
-                  onClick={() => selectTaskForReview(t)}
-                  className={`group relative glass rounded-2xl p-4 sm:p-5 border transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[175px] overflow-hidden ${
-                    selectedTasks.includes(t.task_id) 
-                      ? 'border-brand-500 shadow-[0_0_20px_rgba(var(--brand-500-rgb),0.25)] bg-brand-500/10 ring-2 ring-brand-500/20' 
-                      : 'border-white/10 dark:border-white/5 hover:border-brand-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-500/15 bg-white dark:bg-dark-900'
-                  }`}
-                  style={{
-                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.04)'
-                  }}
-                >
-                  {/* Subtle top light sheen on hover */}
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+        <>
+          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <AnimatePresence mode="popLayout">
+              {tasks.map((t, index) => {
+                const itemNumber = (pagination.from || 1) + index;
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.85, filter: 'blur(4px)' }}
+                    transition={{ duration: 0.2 }}
+                    key={t.task_id}
+                    onClick={() => selectTaskForReview(t)}
+                    className={`group relative glass rounded-2xl p-5 lg:p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[190px] overflow-hidden ${selectedTasks.includes(t.task_id)
+                        ? 'border-brand-500 shadow-[0_0_20px_rgba(var(--brand-500-rgb),0.25)] bg-brand-500/10 ring-2 ring-brand-500/20'
+                        : 'border-white/10 dark:border-white/5 hover:border-brand-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-500/15 bg-white dark:bg-dark-900'
+                      }`}
+                    style={{
+                      boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.04)'
+                    }}
+                  >
+                    {/* Subtle top light sheen on hover */}
+                    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-brand-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
-                  {/* Checkbox for Bulk Action */}
-                  <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity data-[checked=true]:opacity-100" data-checked={selectedTasks.includes(t.task_id)}>
-                    <input
-                      type="checkbox"
-                      checked={selectedTasks.includes(t.task_id)}
-                      onChange={(e) => toggleTaskSelection(e, t.task_id)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-white/20 bg-dark-900/50 text-brand-500 focus:ring-0 cursor-pointer shadow-lg active:scale-90 transition-transform"
-                    />
-                  </div>
+                    {/* Checkbox for Bulk Action */}
+                    <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity data-[checked=true]:opacity-100" data-checked={selectedTasks.includes(t.task_id)}>
+                      <input
+                        type="checkbox"
+                        checked={selectedTasks.includes(t.task_id)}
+                        onChange={(e) => toggleTaskSelection(e, t.task_id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-4 h-4 rounded border-white/20 bg-dark-900/50 text-brand-500 focus:ring-0 cursor-pointer shadow-lg active:scale-90 transition-transform"
+                      />
+                    </div>
 
-                  <div>
-                    {/* Top row: Profile & Priority */}
-                    <div className="flex items-center justify-between gap-3 mb-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-white/10 shadow-2xs">
-                          {t.staff_avatar
-                            ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
-                            : <span className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-700 dark:text-white/50">{t.staff_name?.[0]}</span>
-                          }
+                    <div>
+                      {/* Top row: Profile & Priority */}
+                      <div className="flex items-center justify-between gap-3 mb-3.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-white/10 shadow-2xs">
+                            {t.staff_avatar
+                              ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
+                              : <span className="w-full h-full flex items-center justify-center text-sm font-black text-slate-700 dark:text-white/50">{t.staff_name?.[0]}</span>
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-white font-black text-sm lg:text-[15px] truncate leading-tight">{t.staff_name}</p>
+                            <p className="text-white/50 text-xs font-semibold truncate mt-0.5">{t.department_name}</p>
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-white font-bold text-xs truncate leading-tight">{t.staff_name}</p>
-                          <p className="text-white/50 text-[9px] font-semibold truncate mt-0.5">{t.department_name}</p>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {(Number(t.is_self_created) === 1 || t.is_self_created === true) && (
+                            <span className="px-2.5 py-0.5 rounded-full border text-xs font-bold text-rose-500 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 flex items-center gap-1 shadow-2xs">
+                              <HiSparkles size={11} className="text-amber-400" /> Self-Task
+                            </span>
+                          )}
+                          <span className="text-white/50 font-black text-xs">#{itemNumber}</span>
+                          <span className={`px-2.5 py-0.5 rounded-full border text-xs font-extrabold uppercase tracking-wider shadow-2xs ${t.priority === 'High' ? 'text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10'
+                              : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                                : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
+                            }`}>{t.priority}</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {(Number(t.is_self_created) === 1 || t.is_self_created === true) && (
-                          <span className="px-2 py-0.5 rounded-full border text-[9px] font-bold text-rose-500 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 flex items-center gap-1 shadow-2xs">
-                            <HiSparkles size={10} className="text-amber-400" /> Self-Task
+                      {/* Task Title */}
+                      <h3 className="text-white font-extrabold text-base lg:text-[17px] line-clamp-2 mt-1.5 leading-snug group-hover:text-brand-400 transition-colors">
+                        {t.title}
+                      </h3>
+
+                      {/* Task Description Snippet */}
+                      {getCleanDescriptionSnippet(t.description) && (
+                        <p className="text-white/60 dark:text-white/60 text-xs line-clamp-2 mt-1.5 leading-relaxed font-normal">
+                          {getCleanDescriptionSnippet(t.description)}
+                        </p>
+                      )}
+
+                      {/* Middle Metadata Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                        {t.category && (
+                          <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-white/70 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                            <FiTag size={11} className="text-brand-500" />
+                            <span className="truncate max-w-[120px]">{t.category}</span>
                           </span>
                         )}
-                        <span className="text-white/40 font-black text-[10px]">#{index + 1}</span>
-                        <span className={`px-2 py-0.5 rounded-full border text-[9px] font-extrabold uppercase tracking-wider shadow-2xs ${
-                          t.priority === 'High' ? 'text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10'
-                            : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
-                              : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
-                        }`}>{t.priority}</span>
+
+                        {formatTimeSpent(t.total_time_spent) && (
+                          <span className="px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                            <FiClock size={11} className="text-blue-500" />
+                            <span>{formatTimeSpent(t.total_time_spent)}</span>
+                          </span>
+                        )}
+
+                        {getDeliverablesCount(t) && (
+                          <span className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 text-purple-700 dark:text-purple-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                            <FiPackage size={11} className="text-purple-500" />
+                            <span>{getDeliverablesCount(t)}</span>
+                          </span>
+                        )}
+
+                        {t.blueprint_variants?.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                            <HiSparkles size={11} className="text-amber-500" />
+                            <span>AI Blueprint</span>
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* Task Title */}
-                    <h3 className="text-white font-black text-sm line-clamp-2 mt-1 leading-snug group-hover:text-brand-400 transition-colors">
-                      {t.title}
-                    </h3>
-                  </div>
-
-                  {/* Bottom row: submitted date & CTA */}
-                  <div className="flex items-center justify-between border-t border-white/10 pt-3 mt-3 text-[10px]">
-                    <span className="text-white/50 font-bold flex items-center gap-1">
-                      <FiCalendar size={11} className="text-white/40" /> {fmtRelativeTime(t.submitted_at)}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); triggerReject(t.task_id); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20 transition-all border border-red-500/30 shadow-2xs active:scale-90"
-                        title="Quick Reject (Shift+R)"
-                      >
-                        <FiX size={12} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setRatingModalTask(t); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/30 shadow-2xs active:scale-90"
-                        title="Rate & Approve Task"
-                      >
-                        <FiCheck size={12} />
-                      </button>
-                      <span className="text-brand-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform ml-1 border-l border-white/10 pl-2">
-                        Inspect <FiEye size={12} />
+                    {/* Bottom row: submitted date & CTA */}
+                    <div className="flex items-center justify-between border-t border-white/10 pt-3.5 mt-3.5 text-xs">
+                      <span className="text-white/50 font-bold flex items-center gap-1.5">
+                        <FiCalendar size={13} className="text-white/40" /> {fmtRelativeTime(t.submitted_at)}
                       </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); triggerReject(t.task_id); }}
+                          className="opacity-0 group-hover:opacity-100 p-2 rounded-xl bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-500/20 transition-all border border-red-500/30 shadow-2xs active:scale-90 cursor-pointer"
+                          title="Quick Reject (Shift+R)"
+                        >
+                          <FiX size={14} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setRatingModalTask(t); }}
+                          className="opacity-0 group-hover:opacity-100 p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-all border border-emerald-500/30 shadow-2xs active:scale-90 cursor-pointer"
+                          title="Rate & Approve Task"
+                        >
+                          <FiCheck size={14} />
+                        </button>
+                        <span className="text-brand-400 font-bold flex items-center gap-1.5 group-hover:translate-x-0.5 transition-transform ml-1 border-l border-white/10 pl-2.5">
+                          Inspect <FiEye size={14} />
+                        </span>
+                      </div>
                     </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Modern Premium Server-Side Pagination Bar */}
+          {pagination.total > 0 && (
+            <div className="pagination-container rounded-2xl p-4 lg:p-5 flex flex-col xl:flex-row items-center justify-between gap-4 mt-6">
+              {/* Left Side: Summary & Page Size Selector */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3.5 w-full xl:w-auto">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  <span className="text-slate-600 dark:text-white/70 font-medium">
+                    Showing <strong className="text-slate-900 dark:text-white font-extrabold">{pagination.from}</strong> – <strong className="text-slate-900 dark:text-white font-extrabold">{pagination.to}</strong> of <strong className="text-brand-600 dark:text-brand-400 font-extrabold">{pagination.total}</strong>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-500 dark:text-white/50 font-semibold">Per Page:</span>
+                  <div className="relative">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(e.target.value)}
+                      className="bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl pl-3 pr-7 py-1.5 text-xs font-bold outline-none focus:border-brand-500 cursor-pointer transition-all appearance-none"
+                    >
+                      <option value="5">5 / page</option>
+                      <option value="10">10 / page</option>
+                      <option value="25">25 / page</option>
+                      <option value="50">50 / page</option>
+                      <option value="100">100 / page</option>
+                    </select>
+                    <FiChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white/40 pointer-events-none" />
                   </div>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
-        </motion.div>
+                </div>
+              </div>
+
+              {/* Right Side: Page Navigation Buttons & Quick Jump */}
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full xl:w-auto">
+                {/* Navigation Pills Group */}
+                <div className="pagination-group flex items-center gap-1.5 p-1.5 rounded-2xl shadow-xs">
+                  {/* First Page Button */}
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage <= 1 || loading}
+                    className="pagination-btn p-2 rounded-xl flex items-center justify-center cursor-pointer active:scale-95 shadow-2xs"
+                    title="First Page"
+                  >
+                    <FiChevronsLeft size={15} />
+                  </button>
+
+                  {/* Previous Page Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1 || loading}
+                    className="pagination-btn py-1.5 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-pointer active:scale-95 shadow-2xs"
+                    title="Previous Page"
+                  >
+                    <FiChevronLeft size={15} />
+                    <span className="hidden sm:inline">Prev</span>
+                  </button>
+
+                  <div className="h-4 w-[1px] bg-slate-300 dark:bg-white/10 mx-0.5" />
+
+                  {/* Numbered Page Buttons */}
+                  {getPaginationPages().map((p, idx) => (
+                    typeof p === 'number' ? (
+                      <button
+                        key={idx}
+                        onClick={() => handlePageChange(p)}
+                        className={`min-w-[34px] h-[34px] px-2.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                          currentPage === p
+                            ? 'pagination-btn-active'
+                            : 'pagination-btn shadow-2xs'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ) : (
+                      <span key={idx} className="px-1.5 text-slate-400 dark:text-white/30 text-xs font-bold select-none">
+                        •••
+                      </span>
+                    )
+                  ))}
+
+                  <div className="h-4 w-[1px] bg-slate-300 dark:bg-white/10 mx-0.5" />
+
+                  {/* Next Page Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= pagination.total_pages || loading}
+                    className="pagination-btn py-1.5 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-pointer active:scale-95 shadow-2xs"
+                    title="Next Page"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <FiChevronRight size={15} />
+                  </button>
+
+                  {/* Last Page Button */}
+                  <button
+                    onClick={() => handlePageChange(pagination.total_pages)}
+                    disabled={currentPage >= pagination.total_pages || loading}
+                    className="pagination-btn p-2 rounded-xl flex items-center justify-center cursor-pointer active:scale-95 shadow-2xs"
+                    title="Last Page"
+                  >
+                    <FiChevronsRight size={15} />
+                  </button>
+                </div>
+
+                {/* Quick Jump Input (when more than 3 pages exist) */}
+                {pagination.total_pages > 3 && (
+                  <form onSubmit={handleJumpPage} className="flex items-center gap-1.5 text-xs ml-1">
+                    <span className="text-slate-500 dark:text-white/40 text-[11px] font-semibold hidden md:inline">Go to:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={pagination.total_pages}
+                      placeholder="#"
+                      value={jumpPageInput}
+                      onChange={(e) => setJumpPageInput(e.target.value)}
+                      className="w-12 text-center bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl py-1.5 text-xs font-bold outline-none focus:border-brand-500 transition-all placeholder:text-slate-400 dark:placeholder:text-white/30"
+                    />
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
+
 
       {/* Detailed Review Overlay Modal */}
       {activeReviewTask && createPortal(
@@ -948,10 +1202,10 @@ const PendingReviews = () => {
           />
 
           {/* Modal Container */}
-          <div className={`relative z-10 glass border border-white/5 flex flex-col overflow-hidden shadow-2xl transition-all duration-300 ${zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-6xl max-h-[90vh]'
+          <div className={`relative z-10 glass border border-white/5 flex flex-col overflow-hidden shadow-2xl transition-all duration-300 ${zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-6xl h-[90vh] max-h-[90vh]'
             }`}>
             {/* Modal Header */}
-            <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-dark-900/40">
+            <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-dark-900/40 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border border-white/10">
                   {activeReviewTask.staff_avatar
@@ -975,8 +1229,8 @@ const PendingReviews = () => {
                 )}
 
                 <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${activeReviewTask.priority === 'High' ? 'text-red-400 border-red-500/30 bg-red-500/5'
-                    : activeReviewTask.priority === 'Medium' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5'
-                      : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
+                  : activeReviewTask.priority === 'Medium' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5'
+                    : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
                   }`}>{activeReviewTask.priority} Priority</span>
 
                 <button
@@ -997,25 +1251,27 @@ const PendingReviews = () => {
             </div>
 
             {/* Modal Body (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 space-y-6 overscroll-contain">
               {/* Task Title & Tabs Header */}
               <div className="space-y-4">
                 <h1 className="text-white font-bold text-xl leading-snug">{activeReviewTask.title}</h1>
 
                 {/* 2-Tab Navigation */}
-                <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
                   <button
                     type="button"
                     onClick={() => setModalTab('submission')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${modalTab === 'submission'
-                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
-                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'submission'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
                       }`}
                   >
-                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-600 dark:text-emerald-400' : 'text-white/40'} />
+                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
                     <span>Submitted Deliverables</span>
                     {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/25 text-emerald-900 dark:text-emerald-200">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                        modalTab === 'submission' ? 'bg-white/25 text-white' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                      }`}>
                         {activeReviewTask.submissions.length}
                       </span>
                     )}
@@ -1024,12 +1280,12 @@ const PendingReviews = () => {
                   <button
                     type="button"
                     onClick={() => setModalTab('instructions')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${modalTab === 'instructions'
-                        ? 'bg-brand-500/15 text-brand-800 dark:text-brand-300 border border-brand-500/40 shadow-xs'
-                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'instructions'
+                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 ring-brand-500/30'
+                      : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
                       }`}
                   >
-                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-600 dark:text-brand-400' : 'text-white/40'} />
+                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
                     <span>Task Brief & Instructions</span>
                   </button>
                 </div>
@@ -1208,11 +1464,10 @@ const PendingReviews = () => {
                   Attachment / Screenshot (Optional)
                 </label>
                 <div
-                  className={`border-2 border-dashed rounded-2xl p-3.5 text-center transition-all relative overflow-hidden ${
-                    isDragging 
-                      ? 'border-red-500 bg-red-500/10 scale-[1.01]' 
+                  className={`border-2 border-dashed rounded-2xl p-3.5 text-center transition-all relative overflow-hidden ${isDragging
+                      ? 'border-red-500 bg-red-500/10 scale-[1.01]'
                       : 'border-white/10 hover:border-red-400/50 bg-dark-950/50'
-                  }`}
+                    }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
                   onDrop={(e) => {
@@ -1337,11 +1592,10 @@ const PendingReviews = () => {
 
                 <div className="flex flex-col gap-2">
                   <div
-                    className={`border-2 border-dashed rounded-2xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-between gap-2 relative ${
-                      finalFile 
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-slate-900 dark:text-white' 
+                    className={`border-2 border-dashed rounded-2xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-between gap-2 relative ${finalFile
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-slate-900 dark:text-white'
                         : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/60'
-                    }`}
+                      }`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
@@ -1402,11 +1656,10 @@ const PendingReviews = () => {
                 </label>
 
                 <div
-                  className={`border-2 border-dashed rounded-2xl p-3 text-center transition-all relative overflow-hidden ${
-                    isDraggingFinal 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10' 
+                  className={`border-2 border-dashed rounded-2xl p-3 text-center transition-all relative overflow-hidden ${isDraggingFinal
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
                       : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5'
-                  }`}
+                    }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDraggingFinal(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDraggingFinal(false); }}
                   onDrop={(e) => {
@@ -1463,15 +1716,14 @@ const PendingReviews = () => {
                       className="w-4 h-4 rounded text-indigo-600 focus:ring-0 cursor-pointer accent-indigo-600"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-white flex items-center gap-1.5">
-                      <FiStar className="text-amber-400 fill-amber-400" size={14} /> 
+                      <FiStar className="text-amber-400 fill-amber-400" size={14} />
                       Give Staff Rating & Recognition
                     </span>
                   </label>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    deliveryIncludeRating 
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${deliveryIncludeRating
                       ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
                       : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40'
-                  }`}>
+                    }`}>
                     {deliveryIncludeRating ? `${deliveryRating} Stars` : 'No Stars'}
                   </span>
                 </div>
@@ -1494,11 +1746,10 @@ const PendingReviews = () => {
                             >
                               <FiStar
                                 size={24}
-                                className={`${
-                                  isAct
+                                className={`${isAct
                                     ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
                                     : 'text-slate-200 dark:text-white/20'
-                                } transition-colors duration-150`}
+                                  } transition-colors duration-150`}
                               />
                             </button>
                           );
@@ -1522,11 +1773,10 @@ const PendingReviews = () => {
                               key={tag}
                               type="button"
                               onClick={() => handleDeliveryTagToggle(tag)}
-                              className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${
-                                isSel
+                              className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${isSel
                                   ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-brand-500/20 dark:border-brand-500/40 dark:text-brand-300 shadow-xs'
-                                  : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/50 dark:hover:text-white'
-                              }`}
+                                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/[0.06]'
+                                }`}
                             >
                               {tag}
                             </button>

@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import {
   FiClock, FiCheck, FiX, FiCode, FiLink, FiChevronDown,
   FiAlertCircle, FiMessageSquare, FiSend, FiPlusCircle,
-  FiSearch, FiCalendar, FiUsers, FiFileText, FiEye, FiFilter, FiCheckCircle, FiPackage, FiExternalLink, FiDownload, FiStar, FiTag, FiAward
+  FiSearch, FiCalendar, FiUsers, FiFileText, FiEye, FiFilter, FiCheckCircle, FiPackage, FiExternalLink, FiDownload, FiStar, FiTag, FiAward,
+  FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
+import MarketplaceSubmissions from '../components/MarketplaceSubmissions';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
 import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
 import { downloadFile } from '../utils/fileDownloader';
@@ -16,6 +18,48 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const isColorHex = (str) => typeof str === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(str);
+
+const formatTimeSpent = (seconds) => {
+  const s = parseInt(seconds, 10);
+  if (!s || s <= 0) return null;
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h`;
+  return `${minutes || 1}m`;
+};
+
+const getDeliverablesCount = (t) => {
+  let count = 0;
+  if (Array.isArray(t.submissions) && t.submissions.length > 0) count += t.submissions.length;
+  else if (t.submission_link) count += 1;
+  return count > 0 ? `${count} File${count > 1 ? 's' : ''}` : null;
+};
+
+const getCleanDescriptionSnippet = (htmlOrJson, maxLength = 130) => {
+  if (!htmlOrJson) return null;
+  try {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlOrJson;
+    let rawText = tempDiv.textContent || tempDiv.innerText || '';
+    rawText = rawText.replace(/\u00A0/g, ' ').replace(/&nbsp;/g, ' ').trim();
+    if (rawText.startsWith('{') || rawText.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(rawText);
+        const values = Object.entries(parsed)
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+          .join(' • ');
+        return values.length > maxLength ? values.substring(0, maxLength) + '…' : values;
+      } catch (e) {
+        return null;
+      }
+    }
+    if (!rawText) return null;
+    return rawText.length > maxLength ? rawText.substring(0, maxLength) + '…' : rawText;
+  } catch (e) {
+    return null;
+  }
+};
 
 const DynamicJsonViewer = ({ data, level = 0 }) => {
   if (data === null) return <span className="text-white/40 italic text-xs">null</span>;
@@ -37,9 +81,9 @@ const DynamicJsonViewer = ({ data, level = 0 }) => {
       <ul className="flex flex-col gap-1 mt-1 list-disc list-inside text-white/30 marker:text-white/20 pl-1">
         {data.map((item, idx) => (
           <li key={idx} className="text-xs">
-             <span className="inline-block align-top ml-[-4px] w-[calc(100%-12px)]">
-               <DynamicJsonViewer data={item} level={level + 1} />
-             </span>
+            <span className="inline-block align-top ml-[-4px] w-[calc(100%-12px)]">
+              <DynamicJsonViewer data={item} level={level + 1} />
+            </span>
           </li>
         ))}
       </ul>
@@ -123,12 +167,12 @@ const fmtRelativeTime = (dateStr) => {
 const fmtLogTime = (dateStr) => {
   if (!dateStr) return '';
   const d = new Date(dateStr.includes('T') || dateStr.includes('Z') ? dateStr : dateStr.replace(' ', 'T') + 'Z');
-  return d.toLocaleString('en-GB', { 
-    timeZone: 'Asia/Dhaka', 
-    day: '2-digit', 
-    month: 'short', 
-    year: 'numeric', 
-    hour: '2-digit', 
+  return d.toLocaleString('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   }).toUpperCase();
@@ -153,7 +197,7 @@ const TaskTimeline = ({ logs, loading }) => {
   return (
     <div className="space-y-3">
       <h4 className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Task History Logs</h4>
-      
+
       <div className="relative pl-5 border-l border-white/5 space-y-5 ml-1 pt-1 pb-1">
         {cronLogs.map((log) => {
           const isCreation = !log.status_from;
@@ -166,7 +210,7 @@ const TaskTimeline = ({ logs, loading }) => {
           return (
             <div key={log.id} className="relative">
               <span className="absolute left-0 -translate-x-[21px] top-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-4 ring-dark-900 block" />
-              
+
               <div>
                 <p className="text-white text-xs font-bold leading-tight">{statusText}</p>
                 <p className="text-white/40 text-[9px] uppercase font-semibold tracking-wide mt-1">
@@ -184,7 +228,7 @@ const TaskTimeline = ({ logs, loading }) => {
 // ── Image & Resource Renderers ───────────────────────────────────────────────
 const RefImagesRenderer = ({ imagesJson }) => {
   if (!imagesJson) return null;
-  
+
   let imageList = [];
   try {
     if (typeof imagesJson === 'string' && (imagesJson.trim().startsWith('[') || imagesJson.trim().startsWith('{'))) {
@@ -208,10 +252,10 @@ const RefImagesRenderer = ({ imagesJson }) => {
       <h4 className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Reference Images / Mockups</h4>
       <div className="flex flex-wrap gap-3">
         {imageList.map((img, idx) => (
-          <a 
-            key={idx} 
-            href={`${API_BASE}${img}`} 
-            target="_blank" 
+          <a
+            key={idx}
+            href={`${API_BASE}${img}`}
+            target="_blank"
             rel="noopener noreferrer"
             className="w-24 h-24 rounded-lg overflow-hidden border border-white/10 hover:border-brand-500/50 transition-all hover:scale-105 shrink-0 block bg-white/5"
           >
@@ -265,7 +309,7 @@ const VisualWorkImageRenderer = ({ imgPath }) => {
 
 const RefLinksRenderer = ({ linksJson }) => {
   if (!linksJson) return null;
-  
+
   let linkList = [];
   try {
     if (typeof linksJson === 'string' && (linksJson.trim().startsWith('[') || linksJson.trim().startsWith('{'))) {
@@ -289,10 +333,10 @@ const RefLinksRenderer = ({ linksJson }) => {
       <h4 className="text-white/40 text-[10px] font-bold uppercase tracking-wider">Reference Resources & Links</h4>
       <div className="flex flex-col gap-1.5 pl-1">
         {linkList.map((lnk, idx) => (
-          <a 
-            key={idx} 
-            href={lnk} 
-            target="_blank" 
+          <a
+            key={idx}
+            href={lnk}
+            target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-brand-400 hover:text-brand-300 hover:underline flex items-center gap-1.5"
           >
@@ -307,8 +351,8 @@ const RefLinksRenderer = ({ linksJson }) => {
 // ── Main Page Component ──────────────────────────────────────────────────────
 const CompletedReviews = () => {
   const { currentUser } = useAuth();
-  const [tasks, setTasks]       = useState([]);
-  const [loading, setLoading]   = useState(true);
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeReviewTask, setActiveReviewTask] = useState(null);
   const [taskLogs, setTaskLogs] = useState({});
   const [loadingLogs, setLoadingLogs] = useState({});
@@ -317,53 +361,102 @@ const CompletedReviews = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
+  const [staffList, setStaffList] = useState([]);
+  const [sortOrder, setSortOrder] = useState('newest');
   const [modalTab, setModalTab] = useState('submission'); // 'submission' | 'instructions'
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const fetchCompleted = async () => {
+  // Server-side Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
+  const [jumpPageInput, setJumpPageInput] = useState('');
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: 50,
+    total_pages: 1,
+    from: 0,
+    to: 0
+  });
+
+  const fetchCompleted = async (page = 1, limit = pageSize) => {
+    if (!currentUser?.id) return;
+    setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}api/reviewer/get_completed_reviews.php?reviewer_user_id=${currentUser.id}`);
+      const params = new URLSearchParams({
+        reviewer_user_id: currentUser.id,
+        page: page.toString(),
+        limit: limit.toString(),
+        sort: sortOrder
+      });
+
+      if (searchQuery.trim()) params.append('search', searchQuery.trim());
+      if (selectedStaff) params.append('staff_name', selectedStaff);
+      if (selectedDate) params.append('date', selectedDate);
+
+      const res = await axios.get(`${API_BASE}api/reviewer/get_completed_reviews.php?${params.toString()}`);
       if (res.data.status === 'success') {
         setTasks(res.data.data || []);
+        if (res.data.pagination) {
+          setPagination(res.data.pagination);
+          setCurrentPage(res.data.pagination.page);
+        }
+        if (res.data.staff_list && res.data.staff_list.length > 0) {
+          setStaffList(res.data.staff_list);
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error('Failed to fetch completed reviews', e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchCompleted();
-  }, [currentUser]);
+    const timer = setTimeout(() => {
+      fetchCompleted(currentPage, pageSize);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [currentUser, searchQuery, selectedStaff, selectedDate, sortOrder, currentPage, pageSize]);
 
-  // Extract unique staff names
-  const staffList = useMemo(() => {
-    const names = {};
-    tasks.forEach(t => {
-      if (t.staff_name) names[t.staff_name] = true;
-    });
-    return Object.keys(names);
-  }, [tasks]);
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= pagination.total_pages && newPage !== currentPage) {
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
-  // Filter tasks
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(t => {
-      const matchSearch = searchQuery.trim() === '' || 
-        t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (t.priority || '').toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchStaff = selectedStaff === '' || t.staff_name === selectedStaff;
-      
-      let matchDate = true;
-      if (selectedDate !== '') {
-        const taskDatePart = t.submitted_at ? t.submitted_at.split(' ')[0] : '';
-        matchDate = taskDatePart === selectedDate;
-      }
+  const handlePageSizeChange = (newSize) => {
+    const sizeNum = parseInt(newSize, 10);
+    if (!isNaN(sizeNum) && sizeNum > 0) {
+      setPageSize(sizeNum);
+      setCurrentPage(1);
+    }
+  };
 
-      return matchSearch && matchStaff && matchDate;
-    });
-  }, [tasks, searchQuery, selectedStaff, selectedDate]);
+  const handleJumpPage = (e) => {
+    e.preventDefault();
+    const p = parseInt(jumpPageInput, 10);
+    if (!isNaN(p) && p >= 1 && p <= pagination.total_pages) {
+      handlePageChange(p);
+      setJumpPageInput('');
+    }
+  };
+
+  const getPaginationPages = () => {
+    const total = pagination.total_pages;
+    const current = currentPage;
+    if (total <= 7) {
+      return Array.from({ length: total }, (_, i) => i + 1);
+    }
+    if (current <= 4) {
+      return [1, 2, 3, 4, 5, '...', total];
+    }
+    if (current >= total - 3) {
+      return [1, '...', total - 4, total - 3, total - 2, total - 1, total];
+    }
+    return [1, '...', current - 1, current, current + 1, '...', total];
+  };
 
   const selectTaskForReview = async (task) => {
     setActiveReviewTask(task);
@@ -384,7 +477,7 @@ const CompletedReviews = () => {
     }
   };
 
-  if (loading) return (
+  if (loading && tasks.length === 0) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -393,140 +486,340 @@ const CompletedReviews = () => {
   return (
     <div className="mx-auto space-y-6 animate-fade-in">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <FiCheckCircle className="text-emerald-400" /> Completed Reviews
-        </h1>
-        <p className="text-white/40 text-sm mt-1">Review task history and completed items</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl lg:text-3xl font-black text-white flex items-center gap-3">
+              <FiCheckCircle className="text-emerald-400" size={28} /> Completed Reviews
+            </h1>
+            {pagination.total > 0 && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-black shadow-xs">
+                {pagination.total} Total
+              </span>
+            )}
+          </div>
+          <p className="text-white/60 text-sm mt-1 font-medium">Review task history, approved deliverables, and quality ratings.</p>
+        </div>
+
+        {pagination.total_pages > 1 && (
+          <div className="flex items-center gap-2 text-xs font-bold text-white/50 bg-white/5 px-3.5 py-2 rounded-xl border border-white/5 self-start md:self-auto">
+            <span>Page <strong className="text-emerald-400 font-extrabold">{pagination.page}</strong> of {pagination.total_pages}</span>
+          </div>
+        )}
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex flex-col md:flex-row items-center gap-3 bg-white/[0.02] border border-white/5 p-3 rounded-2xl">
+      <div className="glass rounded-2xl p-4 border border-white/5 flex flex-col md:flex-row items-center gap-3.5">
         {/* Search */}
         <div className="relative w-full md:flex-1">
-          <FiSearch size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+          <FiSearch size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             placeholder="Search by title or priority…"
             value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white placeholder-white/20 rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all"
+            onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white/5 border border-white/10 text-white placeholder-white/30 rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-emerald-500/50 transition-all font-medium"
           />
         </div>
 
         {/* Staff dropdown */}
-        <div className="relative w-full md:w-56">
-          <FiUsers size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+        <div className="relative w-full md:w-64">
+          <FiUsers size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           <select
             value={selectedStaff}
-            onChange={e => setSelectedStaff(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-8 py-2.5 text-xs outline-none focus:border-brand-500/50 appearance-none transition-all cursor-pointer"
+            onChange={e => { setSelectedStaff(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-emerald-500/50 appearance-none transition-all cursor-pointer font-medium"
           >
-            <option value="" className="bg-dark-900 text-white">All Staff Members</option>
+            <option value="">All Staff Members</option>
             {staffList.map(name => (
-              <option key={name} value={name} className="bg-dark-900 text-white">{name}</option>
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          <FiChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+          <FiChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
         </div>
 
         {/* Date Filter */}
-        <div className="relative w-full md:w-48">
-          <FiCalendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-52 shrink-0">
+          <FiCalendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
           <input
             type="date"
             value={selectedDate}
-            onChange={e => setSelectedDate(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-brand-500/50 transition-all cursor-pointer"
+            onChange={e => { setSelectedDate(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-emerald-500/50 transition-all cursor-pointer font-medium"
           />
         </div>
 
-        {/* Clear Filters Button */}
-        {(searchQuery || selectedStaff || selectedDate) && (
-          <button
-            onClick={() => { setSearchQuery(''); setSelectedStaff(''); setSelectedDate(''); }}
-            className="w-full md:w-auto px-4 py-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+        {/* Sort Filter */}
+        <div className="relative w-full md:w-44 shrink-0">
+          <FiFilter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+          <select
+            value={sortOrder}
+            onChange={e => { setSortOrder(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-emerald-500/50 appearance-none transition-all cursor-pointer font-medium"
           >
-            <FiX size={14} /> Clear
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+          </select>
+          <FiChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+        </div>
+
+        {/* Clear Filters Button */}
+        {(searchQuery || selectedStaff || selectedDate || sortOrder !== 'newest') && (
+          <button
+            onClick={() => { setSearchQuery(''); setSelectedStaff(''); setSelectedDate(''); setSortOrder('newest'); setCurrentPage(1); }}
+            className="w-full md:w-auto shrink-0 px-5 py-3 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 text-sm font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <FiX size={15} /> Clear
           </button>
         )}
       </div>
 
       {/* Task Cards Grid */}
-      {filteredTasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <div className="glass rounded-2xl p-16 text-center border border-white/5">
-          <FiFileText className="mx-auto text-white/20 w-12 h-12 mb-3" />
+          <FiCheckCircle className="mx-auto text-emerald-400 w-12 h-12 bg-emerald-500/10 p-2 rounded-full mb-3" />
           <h2 className="text-white font-bold text-lg">No completed reviews found</h2>
           <p className="text-white/40 text-sm mt-1">
-            {tasks.length === 0 ? "You haven't approved any tasks yet." : "No completed tasks match your filters."}
+            {pagination.total === 0 ? "You haven't approved any tasks yet." : "No completed tasks match your filters."}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTasks.map(t => {
-            return (
-              <div
-                key={t.task_id}
-                onClick={() => selectTaskForReview(t)}
-                className="glass rounded-2xl p-5 border border-white/5 hover:border-emerald-500/20 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[170px] relative group"
-              >
-                <div>
-                  {/* Top row: Profile & Priority */}
-                  <div className="flex items-center justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border border-white/10">
-                        {t.staff_avatar
-                          ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
-                          : <span className="w-full h-full flex items-center justify-center font-bold text-xs text-brand-400 bg-white/5">{t.staff_name?.[0]}</span>
-                        }
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {tasks.map((t, index) => {
+              const itemNumber = (pagination.from || 1) + index;
+              return (
+                <div
+                  key={t.task_id}
+                  onClick={() => selectTaskForReview(t)}
+                  className="glass rounded-2xl p-5 lg:p-6 border border-white/10 dark:border-white/5 hover:border-emerald-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-emerald-500/15 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[190px] relative group overflow-hidden"
+                  style={{
+                    boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.04)'
+                  }}
+                >
+                  {/* Subtle top light sheen on hover */}
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                  <div>
+                    {/* Top row: Profile & Priority */}
+                    <div className="flex items-center justify-between gap-3 mb-3.5">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-white/10 shadow-2xs">
+                          {t.staff_avatar
+                            ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
+                            : <span className="w-full h-full flex items-center justify-center text-sm font-black text-slate-700 dark:text-white/50">{t.staff_name?.[0]}</span>
+                          }
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-white font-black text-sm lg:text-[15px] truncate leading-tight">{t.staff_name}</p>
+                          <p className="text-white/50 text-xs font-semibold truncate mt-0.5">{t.department_name || 'CCA Academy'}</p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-white font-bold text-xs truncate leading-tight">{t.staff_name}</p>
-                        <p className="text-white/30 text-[10px] truncate leading-none mt-0.5">{t.department_name || 'CCA Academy'}</p>
+
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
+                        <span className="text-white/50 font-black text-xs">#{itemNumber}</span>
+                        {t.rating && (
+                          <span className="px-2 py-0.5 rounded-full border text-xs font-bold text-amber-500 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1 shadow-2xs">
+                            <FiStar className="fill-amber-400 text-amber-400" size={11} /> {t.rating}/5
+                          </span>
+                        )}
+                        <span className="px-2.5 py-0.5 rounded-full border text-xs font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 shadow-2xs">
+                          Completed
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full border text-xs font-extrabold uppercase tracking-wider shadow-2xs ${t.priority === 'High' ? 'text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10'
+                            : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                              : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
+                          }`}>{t.priority}</span>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2 flex-wrap shrink-0">
-                      {t.rating && (
-                        <span className="px-2 py-0.5 rounded-full border text-[10px] font-bold text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
-                          <FiStar className="fill-amber-400 text-amber-400" size={10} /> {t.rating}/5
+
+                    {/* Task Title */}
+                    <h3 className="text-white font-extrabold text-base lg:text-[17px] line-clamp-2 mt-1.5 leading-snug group-hover:text-emerald-400 transition-colors">
+                      {t.title}
+                    </h3>
+
+                    {/* Task Description Snippet */}
+                    {getCleanDescriptionSnippet(t.description) && (
+                      <p className="text-white/60 dark:text-white/60 text-xs line-clamp-2 mt-1.5 leading-relaxed font-normal">
+                        {getCleanDescriptionSnippet(t.description)}
+                      </p>
+                    )}
+
+                    {/* Middle Metadata Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                      {t.category && (
+                        <span className="px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200/90 dark:border-white/10 text-slate-700 dark:text-white/70 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                          <FiTag size={11} className="text-emerald-500" />
+                          <span className="truncate max-w-[120px]">{t.category}</span>
                         </span>
                       )}
-                      <span className="px-2 py-0.5 rounded-full border text-[9px] font-semibold text-emerald-400 border-emerald-500/30 bg-emerald-500/5">
-                        Completed
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full border text-[9px] font-semibold shrink-0 ${
-                        t.priority === 'High' ? 'text-red-400 border-red-500/30 bg-red-500/5'
-                        : t.priority === 'Medium' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5'
-                        : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
-                      }`}>{t.priority}</span>
+
+                      {formatTimeSpent(t.total_time_spent) && (
+                        <span className="px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-blue-700 dark:text-blue-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                          <FiClock size={11} className="text-blue-500" />
+                          <span>{formatTimeSpent(t.total_time_spent)}</span>
+                        </span>
+                      )}
+
+                      {getDeliverablesCount(t) && (
+                        <span className="px-2 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/20 text-purple-700 dark:text-purple-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                          <FiPackage size={11} className="text-purple-500" />
+                          <span>{getDeliverablesCount(t)}</span>
+                        </span>
+                      )}
+
+                      {t.blueprint_variants?.length > 0 && (
+                        <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-700 dark:text-amber-300 text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                          <HiSparkles size={11} className="text-amber-500" />
+                          <span>AI Blueprint</span>
+                        </span>
+                      )}
                     </div>
+
+                    {/* Rating feedback snippet if present */}
+                    {t.feedback_notes && (
+                      <p className="text-xs text-slate-600 dark:text-white/60 italic line-clamp-1 mt-2.5 bg-slate-50 dark:bg-white/[0.02] px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-white/5">
+                        "{t.feedback_notes}"
+                      </p>
+                    )}
                   </div>
 
-                  {/* Task title */}
-                  <h3 className="text-white/90 font-bold text-sm leading-snug line-clamp-2 mt-2 group-hover:text-emerald-400 transition-colors">
-                    {t.title}
-                  </h3>
-
-                  {/* Rating feedback snippet if present */}
-                  {t.feedback_notes && (
-                    <p className="text-xs text-white/50 italic line-clamp-1 mt-2 bg-white/[0.02] px-2.5 py-1 rounded-lg border border-white/5">
-                      "{t.feedback_notes}"
-                    </p>
-                  )}
+                  {/* Footer details */}
+                  <div className="flex items-center justify-between border-t border-white/10 pt-3.5 mt-3.5 text-xs">
+                    <span className="text-white/50 font-bold flex items-center gap-1.5">
+                      <FiCalendar size={13} className="text-white/40" /> Approved {fmtRelativeTime(t.reviewed_at || t.updated_at)}
+                    </span>
+                    <span className="text-emerald-500 dark:text-emerald-400 font-bold flex items-center gap-1.5 group-hover:translate-x-0.5 transition-transform">
+                      Details <FiEye size={14} />
+                    </span>
+                  </div>
                 </div>
+              );
+            })}
+          </div>
 
-                {/* Footer details */}
-                <div className="mt-4 pt-3.5 border-t border-white/5 flex items-center justify-between text-[11px] text-white/30">
-                  <span>Approved {fmtRelativeTime(t.reviewed_at)}</span>
-                  <span className="text-brand-400 font-semibold group-hover:underline flex items-center gap-1">
-                    Details <FiEye size={12} />
+          {/* Modern Premium Server-Side Pagination Bar */}
+          {pagination.total > 0 && (
+            <div className="pagination-container rounded-2xl p-4 lg:p-5 flex flex-col xl:flex-row items-center justify-between gap-4 mt-6">
+              {/* Left Side: Summary & Page Size Selector */}
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3.5 w-full xl:w-auto">
+                <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                  <span className="text-slate-600 dark:text-white/70 font-medium">
+                    Showing <strong className="text-slate-900 dark:text-white font-extrabold">{pagination.from}</strong> – <strong className="text-slate-900 dark:text-white font-extrabold">{pagination.to}</strong> of <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">{pagination.total}</strong>
                   </span>
                 </div>
+
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-500 dark:text-white/50 font-semibold">Per Page:</span>
+                  <div className="relative">
+                    <select
+                      value={pageSize}
+                      onChange={(e) => handlePageSizeChange(e.target.value)}
+                      className="bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/10 text-slate-800 dark:text-white rounded-xl pl-3 pr-7 py-1.5 text-xs font-bold outline-none focus:border-emerald-500 cursor-pointer transition-all appearance-none"
+                    >
+                      <option value="5">5 / page</option>
+                      <option value="10">10 / page</option>
+                      <option value="25">25 / page</option>
+                      <option value="50">50 / page</option>
+                      <option value="100">100 / page</option>
+                    </select>
+                    <FiChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 dark:text-white/40 pointer-events-none" />
+                  </div>
+                </div>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Right Side: Page Navigation Buttons & Quick Jump */}
+              <div className="flex flex-wrap items-center justify-center gap-2 w-full xl:w-auto">
+                {/* Navigation Pills Group */}
+                <div className="pagination-group flex items-center gap-1.5 p-1.5 rounded-2xl shadow-xs">
+                  {/* First Page Button */}
+                  <button
+                    onClick={() => handlePageChange(1)}
+                    disabled={currentPage <= 1 || loading}
+                    className="pagination-btn p-2 rounded-xl flex items-center justify-center cursor-pointer active:scale-95 shadow-2xs"
+                    title="First Page"
+                  >
+                    <FiChevronsLeft size={15} />
+                  </button>
+
+                  {/* Previous Page Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1 || loading}
+                    className="pagination-btn py-1.5 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-pointer active:scale-95 shadow-2xs"
+                    title="Previous Page"
+                  >
+                    <FiChevronLeft size={15} />
+                    <span className="hidden sm:inline">Prev</span>
+                  </button>
+
+                  <div className="h-4 w-[1px] bg-slate-300 dark:bg-white/10 mx-0.5" />
+
+                  {/* Numbered Page Buttons */}
+                  {getPaginationPages().map((p, idx) => (
+                    typeof p === 'number' ? (
+                      <button
+                        key={idx}
+                        onClick={() => handlePageChange(p)}
+                        className={`min-w-[34px] h-[34px] px-2.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
+                          currentPage === p
+                            ? 'pagination-btn-active'
+                            : 'pagination-btn shadow-2xs'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ) : (
+                      <span key={idx} className="px-1.5 text-slate-400 dark:text-white/30 text-xs font-bold select-none">
+                        •••
+                      </span>
+                    )
+                  ))}
+
+                  <div className="h-4 w-[1px] bg-slate-300 dark:bg-white/10 mx-0.5" />
+
+                  {/* Next Page Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= pagination.total_pages || loading}
+                    className="pagination-btn py-1.5 px-3 rounded-xl flex items-center gap-1.5 text-xs font-black cursor-pointer active:scale-95 shadow-2xs"
+                    title="Next Page"
+                  >
+                    <span className="hidden sm:inline">Next</span>
+                    <FiChevronRight size={15} />
+                  </button>
+
+                  {/* Last Page Button */}
+                  <button
+                    onClick={() => handlePageChange(pagination.total_pages)}
+                    disabled={currentPage >= pagination.total_pages || loading}
+                    className="pagination-btn p-2 rounded-xl flex items-center justify-center cursor-pointer active:scale-95 shadow-2xs"
+                    title="Last Page"
+                  >
+                    <FiChevronsRight size={15} />
+                  </button>
+                </div>
+
+                {/* Quick Jump Input (when more than 3 pages exist) */}
+                {pagination.total_pages > 3 && (
+                  <form onSubmit={handleJumpPage} className="flex items-center gap-1.5 text-xs ml-1">
+                    <span className="text-slate-500 dark:text-white/40 text-[11px] font-semibold hidden md:inline">Go to:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={pagination.total_pages}
+                      placeholder="#"
+                      value={jumpPageInput}
+                      onChange={(e) => setJumpPageInput(e.target.value)}
+                      className="w-12 text-center bg-slate-100 dark:bg-dark-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl py-1.5 text-xs font-bold outline-none focus:border-emerald-500 transition-all placeholder:text-slate-400 dark:placeholder:text-white/30"
+                    />
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Detailed Completed Review Overlay Modal (Identical to PendingReviews layout) */}
@@ -539,34 +832,34 @@ const CompletedReviews = () => {
           />
 
           {/* Modal Container */}
-          <div className="relative z-10 glass rounded-3xl border border-white/5 w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in">
+          <div className="relative z-10 glass rounded-3xl border border-slate-200 dark:border-white/10 w-full max-w-6xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-scale-in bg-white dark:bg-dark-900">
             {/* Modal Header */}
-            <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-dark-900/40">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border border-white/10">
+            <div className="p-5 lg:p-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between gap-4 bg-slate-50/90 dark:bg-dark-900/60 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-white/10">
                   {activeReviewTask.staff_avatar
                     ? <img src={`${API_BASE}${activeReviewTask.staff_avatar}`} className="w-full h-full object-cover" alt="" />
-                    : <span className="w-full h-full flex items-center justify-center text-sm font-bold text-white/50">{activeReviewTask.staff_name?.[0]}</span>
+                    : <span className="w-full h-full flex items-center justify-center text-base font-black text-slate-700 dark:text-white/50">{activeReviewTask.staff_name?.[0]}</span>
                   }
                 </div>
                 <div>
-                  <h2 className="text-white font-bold text-sm leading-tight">{activeReviewTask.staff_name}</h2>
-                  <p className="text-white/40 text-[10px] mt-0.5">
+                  <h2 className="text-slate-900 dark:text-white font-black text-base lg:text-lg leading-tight">{activeReviewTask.staff_name}</h2>
+                  <p className="text-slate-500 dark:text-white/50 text-xs font-semibold mt-0.5">
                     {activeReviewTask.department_name} • Approved {fmtRelativeTime(activeReviewTask.reviewed_at)}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <span className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
-                  activeReviewTask.priority === 'High' ? 'text-red-400 border-red-500/30 bg-red-500/5'
-                  : activeReviewTask.priority === 'Medium' ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/5'
-                  : 'text-slate-400 border-slate-500/30 bg-slate-500/5'
+                <span className={`px-3 py-1 rounded-full border text-xs font-bold ${
+                  activeReviewTask.priority === 'High' ? 'text-red-500 border-red-500/30 bg-red-500/10'
+                    : activeReviewTask.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                      : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
                 }`}>{activeReviewTask.priority} Priority</span>
-                
+
                 <button
                   onClick={() => setActiveReviewTask(null)}
-                  className="text-white/40 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-all"
+                  className="text-slate-400 hover:text-slate-800 dark:text-white/40 dark:hover:text-white p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-all cursor-pointer"
                 >
                   <FiX size={20} />
                 </button>
@@ -574,26 +867,28 @@ const CompletedReviews = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 space-y-6 overscroll-contain">
               {/* Task Title & Tabs Header */}
               <div className="space-y-4">
-                <h1 className="text-white font-bold text-xl leading-snug">{activeReviewTask.title}</h1>
+                <h1 className="text-slate-900 dark:text-white font-extrabold text-2xl lg:text-3xl leading-snug tracking-tight">
+                  {activeReviewTask.title}
+                </h1>
 
-                {/* 2-Tab Navigation */}
-                <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                {/* 3-Tab Navigation */}
+                <div className="flex items-center gap-2.5 border-b border-slate-200 dark:border-white/10 pb-3 flex-wrap">
                   <button
                     type="button"
                     onClick={() => setModalTab('submission')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-all ${
                       modalTab === 'submission'
-                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
-                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 shadow-xs'
+                        : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                     }`}
                   >
-                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-emerald-600 dark:text-emerald-400' : 'text-white/40'} />
+                    <FiPackage size={15} className={modalTab === 'submission' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-white/40'} />
                     <span>Submitted Deliverables</span>
                     {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/25 text-emerald-900 dark:text-emerald-200">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/25 text-emerald-800 dark:text-emerald-200">
                         {activeReviewTask.submissions.length}
                       </span>
                     )}
@@ -602,20 +897,33 @@ const CompletedReviews = () => {
                   <button
                     type="button"
                     onClick={() => setModalTab('instructions')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-all ${
                       modalTab === 'instructions'
-                        ? 'bg-brand-500/15 text-brand-800 dark:text-brand-300 border border-brand-500/40 shadow-xs'
-                        : 'text-white/60 hover:text-white hover:bg-white/5'
+                        ? 'bg-brand-500/15 text-brand-700 dark:text-brand-300 border border-brand-500/40 shadow-xs'
+                        : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                     }`}
                   >
-                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-brand-600 dark:text-brand-400' : 'text-white/40'} />
+                    <FiFileText size={15} className={modalTab === 'instructions' ? 'text-brand-600 dark:text-brand-400' : 'text-slate-400 dark:text-white/40'} />
                     <span>Task Brief & Instructions</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalTab('markets')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs lg:text-sm font-bold transition-all ${
+                      modalTab === 'markets'
+                        ? 'bg-violet-500/15 text-violet-700 dark:text-violet-300 border border-violet-500/40 shadow-xs'
+                        : 'text-slate-600 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span>📦</span>
+                    <span>Marketplace Submissions</span>
                   </button>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 {/* Left Column (2/3 width): Active Tab Content */}
                 <div className="lg:col-span-2 space-y-6">
                   {modalTab === 'submission' ? (
@@ -701,9 +1009,9 @@ const CompletedReviews = () => {
                                 </button>
                               </div>
                               <div className="max-w-md rounded-xl overflow-hidden border border-blue-500/20 bg-black/40">
-                                <img 
-                                  src={activeReviewTask.final_image_url.startsWith('http') ? activeReviewTask.final_image_url : `${API_BASE}${activeReviewTask.final_image_url}`} 
-                                  className="w-full max-h-72 object-contain hover:opacity-90 transition-opacity cursor-pointer" 
+                                <img
+                                  src={activeReviewTask.final_image_url.startsWith('http') ? activeReviewTask.final_image_url : `${API_BASE}${activeReviewTask.final_image_url}`}
+                                  className="w-full max-h-72 object-contain hover:opacity-90 transition-opacity cursor-pointer"
                                   alt="Final Stock Preview"
                                   onClick={() => setSelectedImage(activeReviewTask.final_image_url.startsWith('http') ? activeReviewTask.final_image_url : `${API_BASE}${activeReviewTask.final_image_url}`)}
                                 />
@@ -720,8 +1028,8 @@ const CompletedReviews = () => {
                             Staff Original Submission (Preserved History)
                           </p>
                         )}
-                        <TaskDeliverablesViewer 
-                          submissions={activeReviewTask.submissions} 
+                        <TaskDeliverablesViewer
+                          submissions={activeReviewTask.submissions}
                           submissionLink={activeReviewTask.submission_link}
                           totalTimeSpent={activeReviewTask.total_time_spent}
                           submittedAt={activeReviewTask.submitted_at}
@@ -731,6 +1039,16 @@ const CompletedReviews = () => {
 
                       {/* Legacy Staff Uploaded Work Image */}
                       <VisualWorkImageRenderer imgPath={activeReviewTask.visual_image} />
+                    </div>
+                  ) : modalTab === 'markets' ? (
+                    <div className="animate-in fade-in duration-200">
+                      <MarketplaceSubmissions
+                        taskId={activeReviewTask.task_id}
+                        userId={activeReviewTask.staff_user_id || activeReviewTask.user_id || activeReviewTask.employee_id}
+                        addedBy={currentUser?.id}
+                        addedByRole="reviewer"
+                        canManage={true}
+                      />
                     </div>
                   ) : (
                     <div className="space-y-4 animate-in fade-in duration-200">
@@ -750,7 +1068,7 @@ const CompletedReviews = () => {
 
                 {/* Right Column (1/3 width): Review Evaluation & References */}
                 <div className="space-y-6 border-t lg:border-t-0 lg:border-l border-white/5 pt-6 lg:pt-0 lg:pl-6">
-                  
+
                   {/* ⭐ Review Evaluation Card */}
                   <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 via-brand-500/5 to-transparent border border-amber-500/20 space-y-3">
                     <div className="flex items-center justify-between">
@@ -768,11 +1086,10 @@ const CompletedReviews = () => {
                         <FiStar
                           key={star}
                           size={18}
-                          className={`${
-                            star <= (activeReviewTask.rating || 5)
+                          className={`${star <= (activeReviewTask.rating || 5)
                               ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
                               : 'text-white/20'
-                          }`}
+                            }`}
                         />
                       ))}
                     </div>
@@ -798,7 +1115,7 @@ const CompletedReviews = () => {
                       </div>
                     )}
                   </div>
-                  
+
                   {/* Checklists (Sub tasks) */}
                   {activeReviewTask.checklists && Array.isArray(activeReviewTask.checklists) && activeReviewTask.checklists.length > 0 && (
                     <div>
@@ -851,7 +1168,7 @@ const CompletedReviews = () => {
 
       {/* Image Lightbox Modal */}
       {selectedImage && createPortal(
-        <div 
+        <div
           className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => setSelectedImage(null)}
         >
@@ -863,8 +1180,8 @@ const CompletedReviews = () => {
           >
             <FiX size={24} />
           </button>
-          <div 
-            className="relative max-w-5xl max-h-[90vh] flex flex-col items-center select-none" 
+          <div
+            className="relative max-w-5xl max-h-[90vh] flex flex-col items-center select-none"
             onClick={(e) => e.stopPropagation()}
           >
             <img

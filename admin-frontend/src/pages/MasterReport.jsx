@@ -25,7 +25,7 @@ import {
   FiArrowUpRight,
   FiAward,
   FiLink,
-  FiZap,
+  FiStar,
   FiBarChart2,
   FiPieChart,
   FiExternalLink
@@ -79,11 +79,32 @@ const CustomSelect = ({ value, onChange, options, icon: Icon }) => {
   );
 };
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+const AVAILABLE_YEARS = [2026, 2025, 2024, 2023];
+
 const MasterReport = () => {
   const navigate = useNavigate();
 
-  // Date preset and values
-  const [periodPreset, setPeriodPreset] = useState('month'); // today, week, month, year, custom
+  // Filter States
+  const now = new Date();
+  const [filterType, setFilterType] = useState('this_month'); // 'this_month' | 'last_month' | 'specific_month' | 'all_time' | 'custom'
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  
+  // Custom Date inputs
+  const [customStart, setCustomStart] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [customEnd, setCustomEnd] = useState(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
+
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -95,53 +116,70 @@ const MasterReport = () => {
   // Filter, Search, Sort & Expanded rows
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
-  const [sortBy, setSortBy] = useState('overall'); // 'overall' | 'tasks_completed' | 'attendance_rate' | 'task_worked' | 'total_worked' | 'quality' | 'name'
+  const [sortBy, setSortBy] = useState('overall'); // 'overall' | 'tasks_completed' | 'quality_stars' | 'attendance_rate' | 'task_worked' | 'total_worked' | 'quality' | 'name'
   const [expandedStaffId, setExpandedStaffId] = useState(null);
 
-  const periodOptions = [
-    { value: 'today', label: 'Daily (Today)' },
-    { value: 'week', label: 'Weekly (Last 7 Days)' },
-    { value: 'month', label: 'Monthly (This Month)' },
-    { value: 'year', label: 'Yearly (This Year)' },
-    { value: 'custom', label: 'Custom Date Range' }
-  ];
+  // Calculate active date range
+  const activeDateRange = useMemo(() => {
+    const currentYear = now.getFullYear();
+    const currentMonthIndex = now.getMonth();
+    const todayStr = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  const formatLocalDate = (date) => {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, '0');
-    const dd = String(date.getDate()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
-  const getPresetDates = (preset) => {
-    const today = new Date();
-    let start = new Date();
-    let end = new Date();
-
-    if (preset === 'today') {
-      // today
-    } else if (preset === 'week') {
-      start.setDate(today.getDate() - 6);
-    } else if (preset === 'month') {
-      start = new Date(today.getFullYear(), today.getMonth(), 1);
-      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    } else if (preset === 'year') {
-      start = new Date(today.getFullYear(), 0, 1);
-      end = new Date(today.getFullYear(), 11, 31);
+    if (filterType === 'this_month') {
+      const start = `${currentYear}-${String(currentMonthIndex + 1).padStart(2, '0')}-01`;
+      return {
+        start,
+        end: todayStr,
+        label: `This Month (${MONTH_NAMES[currentMonthIndex]} ${currentYear})`
+      };
     }
+
+    if (filterType === 'last_month') {
+      const lastMonthDate = new Date(currentYear, currentMonthIndex - 1, 1);
+      const lastMonthYear = lastMonthDate.getFullYear();
+      const lastMonthIndex = lastMonthDate.getMonth();
+      const lastDayOfLastMonth = new Date(lastMonthYear, lastMonthIndex + 1, 0).getDate();
+      const start = `${lastMonthYear}-${String(lastMonthIndex + 1).padStart(2, '0')}-01`;
+      const end = `${lastMonthYear}-${String(lastMonthIndex + 1).padStart(2, '0')}-${String(lastDayOfLastMonth).padStart(2, '0')}`;
+      return {
+        start,
+        end,
+        label: `Last Month (${MONTH_NAMES[lastMonthIndex]} ${lastMonthYear})`
+      };
+    }
+
+    if (filterType === 'specific_month') {
+      const y = parseInt(selectedYear) || currentYear;
+      const m = parseInt(selectedMonth);
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const start = `${y}-${String(m + 1).padStart(2, '0')}-01`;
+      const end = `${y}-${String(m + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+      return {
+        start,
+        end,
+        label: `${MONTH_NAMES[m]} ${y}`
+      };
+    }
+
+    if (filterType === 'all_time') {
+      return {
+        start: '2023-01-01',
+        end: todayStr,
+        label: 'All-Time Cumulative'
+      };
+    }
+
     return {
-      start: formatLocalDate(start),
-      end: formatLocalDate(end)
+      start: customStart,
+      end: customEnd,
+      label: `Custom (${customStart} to ${customEnd})`
     };
-  };
+  }, [filterType, selectedYear, selectedMonth, customStart, customEnd]);
 
   useEffect(() => {
-    if (periodPreset !== 'custom') {
-      const dates = getPresetDates(periodPreset);
-      setStartDate(dates.start);
-      setEndDate(dates.end);
-    }
-  }, [periodPreset]);
+    setStartDate(activeDateRange.start);
+    setEndDate(activeDateRange.end);
+  }, [activeDateRange]);
 
   // Fetch Company Master Report
   const fetchReport = async () => {
@@ -202,8 +240,16 @@ const MasterReport = () => {
     }
 
     list.sort((a, b) => {
-      if (sortBy === 'overall') return b.efficiency_score - a.efficiency_score;
+      if (sortBy === 'overall') {
+        if (b.efficiency_score !== a.efficiency_score) return b.efficiency_score - a.efficiency_score;
+        if (b.tasks_completed !== a.tasks_completed) return b.tasks_completed - a.tasks_completed;
+        const ra = a.avg_rating !== null ? a.avg_rating : 0;
+        const rb = b.avg_rating !== null ? b.avg_rating : 0;
+        if (rb !== ra) return rb - ra;
+        return b.total_worked_seconds - a.total_worked_seconds;
+      }
       if (sortBy === 'tasks_completed') return b.tasks_completed - a.tasks_completed;
+      if (sortBy === 'quality_stars') return (b.avg_rating || 0) - (a.avg_rating || 0);
       if (sortBy === 'attendance_rate') return b.attendance_rate - a.attendance_rate;
       if (sortBy === 'task_worked') return b.task_worked_seconds - a.task_worked_seconds;
       if (sortBy === 'total_worked') return b.total_worked_seconds - a.total_worked_seconds;
@@ -215,11 +261,16 @@ const MasterReport = () => {
     return list;
   }, [reportData, selectedDept, searchTerm, sortBy]);
 
-  // Top 3 Performers
+  // Top 3 Performers (Staff with actual completed tasks and top scores)
   const topPerformers = useMemo(() => {
     if (!reportData || !reportData.staff_data || reportData.staff_data.length === 0) return [];
     return [...reportData.staff_data]
-      .sort((a, b) => (b.tasks_completed * 2 + b.attendance_rate) - (a.tasks_completed * 2 + a.attendance_rate))
+      .filter(s => s.tasks_completed > 0 && s.efficiency_score > 0)
+      .sort((a, b) => {
+        if (b.efficiency_score !== a.efficiency_score) return b.efficiency_score - a.efficiency_score;
+        if (b.tasks_completed !== a.tasks_completed) return b.tasks_completed - a.tasks_completed;
+        return (b.avg_rating || 0) - (a.avg_rating || 0);
+      })
       .slice(0, 3);
   }, [reportData]);
 
@@ -287,6 +338,7 @@ const MasterReport = () => {
               <th class="main-th">Employee Name</th>
               <th class="main-th">Department</th>
               <th class="main-th">Designation</th>
+              <th class="main-th text-center">Quality Stars</th>
               <th class="main-th text-center">Present</th>
               <th class="main-th text-center">Late</th>
               <th class="main-th text-center">Absent</th>
@@ -296,6 +348,7 @@ const MasterReport = () => {
               <th class="main-th text-center">Tasks Completed</th>
               <th class="main-th text-center">In Review</th>
               <th class="main-th text-center">In Progress</th>
+              <th class="main-th text-center">Resubmitted</th>
               <th class="main-th text-center">Rejections</th>
               <th class="main-th text-center">Task Working Time</th>
               <th class="main-th text-center">Completion Rate</th>
@@ -309,6 +362,7 @@ const MasterReport = () => {
                 <td class="main-td"><strong>${s.name}</strong></td>
                 <td class="main-td">${s.department_name}</td>
                 <td class="main-td">${s.designation}</td>
+                <td class="main-td text-center font-bold" style="color:#d97706;">${s.rated_count > 0 ? `⭐ ${s.avg_rating}` : '-'}</td>
                 <td class="main-td text-center badge-green">${s.present_days}</td>
                 <td class="main-td text-center badge-amber">${s.late_days}</td>
                 <td class="main-td text-center badge-red">${s.absent_days}</td>
@@ -318,6 +372,7 @@ const MasterReport = () => {
                 <td class="main-td text-center badge-green">${s.tasks_completed}</td>
                 <td class="main-td text-center">${s.tasks_in_review}</td>
                 <td class="main-td text-center">${s.tasks_in_progress}</td>
+                <td class="main-td text-center">${s.tasks_resubmitted || 0}</td>
                 <td class="main-td text-center ${s.tasks_rejected > 0 ? 'badge-red' : ''}">${s.tasks_rejected}</td>
                 <td class="main-td text-center"><strong>${s.task_worked_formatted}</strong></td>
                 <td class="main-td text-center"><strong>${s.completion_rate}%</strong></td>
@@ -498,12 +553,12 @@ const MasterReport = () => {
               <th>Employee Name</th>
               <th>Department</th>
               <th>Designation</th>
+              <th class="text-center">Quality Stars</th>
               <th class="text-center">Attendance</th>
               <th class="text-center">Office Duty</th>
               <th class="text-center">Tasks Done</th>
               <th class="text-center">Task Working Time</th>
               <th class="text-center">Rejections</th>
-              <th class="text-center">On-Time</th>
               <th class="text-center">Efficiency</th>
             </tr>
           </thead>
@@ -514,6 +569,7 @@ const MasterReport = () => {
                 <td><strong>${s.name}</strong></td>
                 <td>${s.department_name}</td>
                 <td>${s.designation}</td>
+                <td class="text-center font-bold" style="color:#d97706;">${s.rated_count > 0 ? `⭐ ${s.avg_rating}` : '-'}</td>
                 <td class="text-center">
                   <strong>${s.attendance_rate}%</strong>
                   <span style="font-size:8px; color:#64748b; display:block;">${s.present_days}P / ${s.late_days}L / ${s.absent_days}A</span>
@@ -525,7 +581,6 @@ const MasterReport = () => {
                 </td>
                 <td class="text-center font-bold" style="color:#7c3aed;">${s.task_worked_formatted}</td>
                 <td class="text-center font-bold ${s.tasks_rejected > 0 ? 'badge-a' : ''}">${s.tasks_rejected}x</td>
-                <td class="text-center">${s.on_time_rate}%</td>
                 <td class="text-center"><span class="badge-tier">${s.efficiency_score}% (${s.performance_tier})</span></td>
               </tr>
             `).join('')}
@@ -555,11 +610,12 @@ const MasterReport = () => {
   // ─── Export to CSV ──────────────────────────────────────────────────────────
   const handleExportCSV = () => {
     if (!reportData || !filteredStaff.length) return;
-    const headers = ['Employee Name', 'Department', 'Designation', 'Present Days', 'Late Days', 'Absent Days', 'Attendance Rate %', 'Office Hours Worked', 'Tasks Assigned', 'Tasks Completed', 'In Review', 'In Progress', 'Rejections', 'Task Working Time', 'Completion Rate %', 'Efficiency Score'];
+    const headers = ['Employee Name', 'Department', 'Designation', 'Quality Stars', 'Present Days', 'Late Days', 'Absent Days', 'Attendance Rate %', 'Office Hours Worked', 'Tasks Assigned', 'Tasks Completed', 'In Review', 'In Progress', 'Resubmitted', 'Rejections', 'Task Working Time', 'Completion Rate %', 'Efficiency Score'];
     const rows = filteredStaff.map(s => [
       s.name,
       s.department_name,
       s.designation,
+      `⭐ ${s.avg_rating || 5.0}`,
       s.present_days,
       s.late_days,
       s.absent_days,
@@ -569,6 +625,7 @@ const MasterReport = () => {
       s.tasks_completed,
       s.tasks_in_review,
       s.tasks_in_progress,
+      s.tasks_resubmitted || 0,
       s.tasks_rejected,
       s.task_worked_formatted,
       `${s.completion_rate}%`,
@@ -626,75 +683,133 @@ const MasterReport = () => {
         </div>
       </div>
 
-      {/* ──────── Control Panel: Date Filters ──────── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm mb-8">
-        <div className="flex flex-wrap items-end gap-4">
-
-          {/* Period Selection */}
-          <div className="w-full sm:w-64">
-            <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">
-              Time Period
-            </label>
-            <CustomSelect
-              value={periodPreset}
-              onChange={setPeriodPreset}
-              options={periodOptions}
-              icon={FiClock}
-            />
+      {/* ──────── Control Panel: Modern Pill Filter Bar & Aggregated Summary ──────── */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm mb-8 space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 lg:pb-0">
+            {[
+              { id: 'this_month', label: 'This Month', icon: FiCalendar },
+              { id: 'last_month', label: 'Last Month', icon: FiClock },
+              { id: 'specific_month', label: 'Select Month', icon: FiLayers },
+              { id: 'all_time', label: 'All-Time', icon: FiTrendingUp },
+              { id: 'custom', label: 'Custom Range', icon: FiFilter },
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFilterType(id)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+                  filterType === id
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/30'
+                    : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200/60 dark:border-slate-700/60'
+                }`}
+              >
+                <Icon size={14} />
+                <span>{label}</span>
+              </button>
+            ))}
           </div>
 
-          {/* Date pickers (if custom) */}
-          {periodPreset === 'custom' && (
-            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-              <div className="w-full sm:w-44">
-                <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Start Date</label>
-                <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl h-12 px-4 w-full">
-                  <FiCalendar className="text-slate-400 dark:text-slate-500 mr-2 flex-shrink-0" />
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none w-full cursor-pointer"
-                  />
-                </div>
-              </div>
-              <span className="text-slate-400 dark:text-slate-500 font-bold px-1 self-end mb-3 hidden sm:inline">to</span>
-              <div className="w-full sm:w-44">
-                <label className="block text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">End Date</label>
-                <div className="flex items-center bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl h-12 px-4 w-full">
-                  <FiCalendar className="text-slate-400 dark:text-slate-500 mr-2 flex-shrink-0" />
-                  <input
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-none w-full cursor-pointer"
-                  />
-                </div>
-              </div>
+          {/* Right Side: Active Date Range Pill Badge, Refresh & CSV */}
+          <div className="flex items-center gap-2.5 self-start lg:self-auto">
+            <div className="px-3.5 py-2 rounded-2xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/40 text-blue-600 dark:text-blue-400 text-xs font-bold flex items-center gap-2 shadow-xs">
+              <FiCalendar size={14} />
+              <span>{activeDateRange.start} → {activeDateRange.end}</span>
             </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex gap-2.5 ml-auto w-full sm:w-auto mt-2 sm:mt-0">
             <button
               onClick={fetchReport}
               disabled={loading}
-              className="flex items-center justify-center w-12 h-12 bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl transition-colors disabled:opacity-50 border border-slate-200 dark:border-slate-800 flex-shrink-0"
-              title="Refresh Data"
+              className="p-2.5 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl transition-colors border border-slate-200 dark:border-slate-700/60 cursor-pointer disabled:opacity-50"
+              title="Refresh Report Data"
             >
-              <FiRefreshCw className={loading ? "animate-spin" : ""} size={18} />
+              <FiRefreshCw className={loading ? "animate-spin text-blue-600" : ""} size={16} />
             </button>
 
             <button
               onClick={handleExportCSV}
               disabled={loading || !reportData}
-              className="flex-1 sm:flex-initial flex items-center justify-center gap-2 h-12 px-5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-2xl transition-colors border border-slate-200 dark:border-slate-700 disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-2xl transition-colors border border-slate-200 dark:border-slate-700/60 cursor-pointer disabled:opacity-50"
+              title="Export CSV"
             >
-              <FiDownload size={15} />
+              <FiDownload size={14} />
               <span>CSV</span>
             </button>
           </div>
         </div>
+
+        {/* Dynamic Month / Year Selectors */}
+        {filterType === 'specific_month' && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Select Month & Year:</span>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer"
+            >
+              {MONTH_NAMES.map((mName, idx) => (
+                <option key={idx} value={idx}>{mName}</option>
+              ))}
+            </select>
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer"
+            >
+              {AVAILABLE_YEARS.map((y) => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Dynamic Custom Date Inputs */}
+        {filterType === 'custom' && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">From:</span>
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">To:</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 dark:text-white outline-none cursor-pointer"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Aggregated Totals Summary Bar (Like Leaderboard) */}
+        {reportData && (
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-slate-500 dark:text-slate-400">Members: <strong className="text-slate-900 dark:text-white font-black">{reportData.company_summary.total_employees}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-500 dark:text-slate-400">Total Assigned: <strong className="text-slate-900 dark:text-white font-black">{reportData.company_summary.total_tasks_assigned}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-500 dark:text-slate-400">Completed: <strong className="text-emerald-600 dark:text-emerald-400 font-black">{reportData.company_summary.total_tasks_completed}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-500 dark:text-slate-400">In Review: <strong className="text-purple-600 dark:text-purple-400 font-black">{reportData.company_summary.total_tasks_in_review || 0}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-500 dark:text-slate-400">In Progress: <strong className="text-blue-600 dark:text-blue-400 font-black">{reportData.company_summary.total_tasks_in_progress || 0}</strong></span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-500 dark:text-slate-400">Rejected: <strong className="text-rose-600 dark:text-rose-400 font-black">{reportData.company_summary.total_tasks_rejected || 0}</strong></span>
+            </div>
+            <span className="text-[11px] text-slate-400 italic font-medium hidden sm:inline">
+              Click any staff row to view full score inspection
+            </span>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -755,7 +870,7 @@ const MasterReport = () => {
               </div>
             </div>
 
-            {/* 3. Tasks Completed */}
+            {/* 3. Tasks Completed & Pipeline */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-indigo-500"></div>
               <div className="flex items-center justify-between">
@@ -764,31 +879,42 @@ const MasterReport = () => {
                   <h3 className="text-3xl font-black text-indigo-700 dark:text-indigo-400">
                     {reportData.company_summary.total_tasks_completed} <span className="text-xs text-slate-400 font-normal">/ {reportData.company_summary.total_tasks_assigned}</span>
                   </h3>
-                  <p className="text-[11px] text-indigo-500 dark:text-indigo-300 mt-2 font-semibold">
-                    {reportData.company_summary.overall_completion_rate}% Completed Across Team
-                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/40">
+                      {reportData.company_summary.total_tasks_in_review || 0} Review
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40">
+                      {reportData.company_summary.total_tasks_in_progress || 0} Progress
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/40">
+                      {reportData.company_summary.total_tasks_rejected || 0} Rej
+                    </span>
+                  </div>
                 </div>
-                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center shrink-0">
                   <FiAward size={22} />
                 </div>
               </div>
             </div>
 
-            {/* 4. Task Work Duration */}
+            {/* 4. Quality Stars & Office Duty Duration */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-purple-500"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-amber-500"></div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider mb-1">Task Work Duration</p>
-                  <h3 className="text-2xl font-black text-purple-700 dark:text-purple-400 leading-tight">
-                    {reportData.company_summary.total_task_worked_formatted}
-                  </h3>
+                  <p className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Company Quality & Duty</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                      ⭐ {reportData.company_summary.avg_company_rating || 5.0}
+                    </h3>
+                    <span className="text-xs font-bold text-slate-400">/ 5.0 Rating</span>
+                  </div>
                   <p className="text-[11px] text-slate-400 mt-2 font-medium">
-                    Office Duty Time: <strong className="text-slate-700 dark:text-slate-300">{reportData.company_summary.total_worked_formatted}</strong>
+                    Office Duty: <strong className="text-slate-700 dark:text-slate-300">{reportData.company_summary.total_worked_formatted}</strong> • Task Time: <strong className="text-purple-600 dark:text-purple-400">{reportData.company_summary.total_task_worked_formatted}</strong>
                   </p>
                 </div>
-                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-2xl flex items-center justify-center">
-                  <FiClock size={22} />
+                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded-2xl flex items-center justify-center shrink-0">
+                  <FiStar size={22} />
                 </div>
               </div>
             </div>
@@ -798,55 +924,69 @@ const MasterReport = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Top 3 Performers Spotlight */}
-            <div className="lg:col-span-1 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 border border-indigo-900/40 shadow-lg relative overflow-hidden flex flex-col justify-between">
-              <div className="relative z-10">
+            <div className="lg:col-span-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-white rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-xs font-black uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                    <HiSparkles className="text-amber-400" />
+                  <span className="text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                    <HiSparkles className="text-amber-500" />
                     Top Contributors
                   </span>
-                  <span className="text-[10px] bg-white/10 px-2.5 py-1 rounded-full font-bold">This Period</span>
+                  <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2.5 py-1 rounded-full font-bold border border-slate-200 dark:border-slate-700">
+                    This Period
+                  </span>
                 </div>
 
                 <div className="space-y-3 mt-2">
-                  {topPerformers.map((staff, idx) => (
-                    <div
-                      key={staff.user_id}
-                      onClick={() => toggleExpand(staff.user_id)}
-                      className="flex items-center justify-between p-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-colors border border-white/5 cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${idx === 0 ? 'bg-amber-400 text-slate-950 shadow-md shadow-amber-400/30' :
-                            idx === 1 ? 'bg-slate-300 text-slate-950' :
-                              'bg-amber-700 text-white'
+                  {topPerformers.length > 0 ? (
+                    topPerformers.map((staff, idx) => (
+                      <div
+                        key={staff.user_id}
+                        onClick={() => toggleExpand(staff.user_id)}
+                        className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 hover:bg-indigo-50/60 dark:hover:bg-slate-800 transition-colors border border-slate-200/80 dark:border-slate-700/60 cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs shrink-0 ${
+                            idx === 0 ? 'bg-amber-400 text-slate-950 shadow-sm shadow-amber-400/40' :
+                            idx === 1 ? 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200' :
+                            'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'
                           }`}>
-                          {idx + 1}
-                        </span>
-                        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
-                          {staff.profile_picture ? (
-                            <img src={`${API_BASE}${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <span>{staff.name.charAt(0)}</span>
-                          )}
+                            {idx + 1}
+                          </span>
+                          <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-xs font-bold text-white overflow-hidden shrink-0">
+                            {staff.profile_picture ? (
+                              <img src={`${API_BASE}${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <span>{staff.name.charAt(0)}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-slate-900 dark:text-white truncate">{staff.name}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-slate-400 truncate">{staff.department_name}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-extrabold truncate max-w-[130px]">{staff.name}</p>
-                          <p className="text-[10px] text-white/50">{staff.department_name}</p>
-                        </div>
-                      </div>
 
-                      <div className="text-right">
-                        <p className="text-xs font-black text-emerald-400">{staff.tasks_completed} Done</p>
-                        <p className="text-[10px] text-white/40">{staff.attendance_rate}% Att</p>
+                        <div className="text-right shrink-0 pl-2">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {staff.rated_count > 0 && (
+                              <span className="text-[11px] font-bold text-amber-500">⭐ {staff.avg_rating}</span>
+                            )}
+                            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{staff.tasks_completed} Done</span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 dark:text-slate-400">{staff.attendance_rate}% Att • {staff.efficiency_score}% Score</p>
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center text-xs text-slate-400">
+                      No active task performers in this period
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-white/10 flex justify-between items-center text-[11px] text-white/50">
-                <span>Weighted by output & attendance</span>
-                <span className="text-indigo-400 font-bold">Auto-Ranked</span>
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px] text-slate-400 dark:text-slate-500">
+                <span>Ranked by Output, Quality & Attendance</span>
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold">Auto-Ranked</span>
               </div>
             </div>
 
@@ -867,8 +1007,8 @@ const MasterReport = () => {
                       key={i}
                       onClick={() => setSelectedDept(dept.department_name)}
                       className={`p-4 rounded-2xl border transition-all cursor-pointer ${selectedDept === dept.department_name
-                          ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-500 shadow-sm'
-                          : 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:border-slate-300'
+                        ? 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-500 shadow-sm'
+                        : 'bg-slate-50/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60 hover:border-slate-300'
                         }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -934,8 +1074,8 @@ const MasterReport = () => {
                     key={dept}
                     onClick={() => setSelectedDept(dept)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${selectedDept === dept
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                       }`}
                   >
                     {dept === 'all' ? 'All Departments' : dept}
@@ -954,10 +1094,11 @@ const MasterReport = () => {
               >
                 <option value="overall">🌟 Overall Performance</option>
                 <option value="tasks_completed">🎯 Tasks Completed</option>
+                <option value="quality_stars">⭐ Quality Stars (Highest)</option>
                 <option value="attendance_rate">📅 Attendance Rate % </option>
                 <option value="task_worked">⏱️ Task Work Duration </option>
                 <option value="total_worked">💼 Office Hours Worked </option>
-                <option value="quality">✨ Best Quality</option>
+                <option value="quality">✨ Fewest Rejections</option>
                 <option value="name">🔤 Staff Name (A-Z)</option>
               </select>
             </div>
@@ -972,7 +1113,7 @@ const MasterReport = () => {
                   <span>Company Staff Performance Directory ({filteredStaff.length})</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Click any staff row to expand detailed task deliverables and recent attendance logs.
+                  Comprehensive multi-dimensional analysis with Quality Stars, Output Pipeline, Duty Hours & Attendance.
                 </p>
               </div>
 
@@ -988,12 +1129,14 @@ const MasterReport = () => {
                     <th className="py-4 px-4 text-center w-12">#</th>
                     <th className="py-4 px-4">Employee</th>
                     <th className="py-4 px-4">Department</th>
-                    <th className="py-4 px-4 text-center">Attendance %</th>
+                    <th className="py-4 px-4 text-center">Quality Stars</th>
+                    <th className="py-4 px-4 text-center">Attendance</th>
                     <th className="py-4 px-4 text-center">Duty Hours</th>
                     <th className="py-4 px-4 text-center">Tasks Output</th>
-                    <th className="py-4 px-4 text-center">Working Time Tracked</th>
+                    <th className="py-4 px-4 text-center">Task Pipeline</th>
+                    <th className="py-4 px-4 text-center">Time Tracked</th>
                     <th className="py-4 px-4 text-center">Rejections</th>
-                    <th className="py-4 px-4 text-center">Efficiency</th>
+                    <th className="py-4 px-4 text-center">Score</th>
                     <th className="py-4 px-6 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1045,13 +1188,39 @@ const MasterReport = () => {
                               </span>
                             </td>
 
+                            {/* Quality Stars */}
+                            <td className="py-4 px-4 text-center">
+                              <div className="flex flex-col items-center">
+                                {staff.rated_count > 0 ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-500 border border-amber-500/25">
+                                      ⭐ {staff.avg_rating}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 mt-1 font-medium">
+                                      {staff.rated_count} rated
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700">
+                                      -
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                                      0 rated
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+
                             {/* Attendance % */}
                             <td className="py-4 px-4 text-center">
                               <div>
-                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black ${staff.attendance_rate >= 90 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                                    staff.attendance_rate >= 75 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                                      'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
-                                  }`}>
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-black ${
+                                  staff.attendance_rate >= 90 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
+                                  staff.attendance_rate >= 75 ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                                  'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400'
+                                }`}>
                                   {staff.attendance_rate}%
                                 </span>
                                 <p className="text-[10px] text-slate-400 mt-1 font-mono">
@@ -1086,6 +1255,25 @@ const MasterReport = () => {
                               </div>
                             </td>
 
+                            {/* Pipeline Breakdown */}
+                            <td className="py-4 px-4 text-center">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center gap-1">
+                                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800/40" title="In Review">
+                                    {staff.tasks_in_review || 0} Rev
+                                  </span>
+                                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800/40" title="In Progress">
+                                    {staff.tasks_in_progress || 0} Prog
+                                  </span>
+                                </div>
+                                {staff.tasks_resubmitted > 0 && (
+                                  <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/40" title="Resubmitted">
+                                    {staff.tasks_resubmitted} Resub
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
                             {/* Working Time Tracked */}
                             <td className="py-4 px-4 text-center">
                               <span className="font-mono font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 px-2.5 py-1 rounded-lg border border-purple-200 dark:border-purple-900/40">
@@ -1107,10 +1295,12 @@ const MasterReport = () => {
                             {/* Efficiency Score */}
                             <td className="py-4 px-4 text-center">
                               <div className="flex flex-col items-center">
-                                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${staff.efficiency_score >= 80 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' :
-                                    staff.efficiency_score >= 60 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400' :
-                                      'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-                                  }`}>
+                                <span className={`text-xs font-black px-2.5 py-0.5 rounded-full ${
+                                  staff.efficiency_score === 0 ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' :
+                                  staff.efficiency_score >= 80 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400' :
+                                  staff.efficiency_score >= 60 ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400' :
+                                  'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                                }`}>
                                   {staff.efficiency_score}%
                                 </span>
                                 <span className="text-[9px] text-slate-400 font-bold mt-0.5">
@@ -1143,7 +1333,7 @@ const MasterReport = () => {
                           {/* ── EXPANDABLE IN-PLACE DRILLDOWN PANEL ── */}
                           {isExpanded && (
                             <tr className="bg-slate-50/80 dark:bg-slate-950/60">
-                              <td colSpan="10" className="p-6 border-b border-slate-200 dark:border-slate-800">
+                              <td colSpan="12" className="p-6 border-b border-slate-200 dark:border-slate-800">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2 duration-200">
 
                                   {/* Left: Recent Tasks */}
@@ -1172,10 +1362,15 @@ const MasterReport = () => {
                                               </p>
                                             </div>
                                             <div className="flex items-center gap-2 shrink-0">
+                                              {task.rating && (
+                                                <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                                                  ⭐ {task.rating}
+                                                </span>
+                                              )}
                                               <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${task.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                                                  task.status === 'In Review' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                                                    task.status === 'Rejected' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' :
-                                                      'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
+                                                task.status === 'In Review' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                                                  task.status === 'Rejected' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' :
+                                                    'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
                                                 }`}>
                                                 {task.status}
                                               </span>
@@ -1226,9 +1421,9 @@ const MasterReport = () => {
                                               <span>Out: {att.check_out || '--:--'}</span>
                                             </div>
                                             <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${att.status === 'Present' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                                                att.status === 'Late' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
-                                                  att.status === 'Absent' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' :
-                                                    'bg-slate-200 text-slate-700'
+                                              att.status === 'Late' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400' :
+                                                att.status === 'Absent' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400' :
+                                                  'bg-slate-200 text-slate-700'
                                               }`}>
                                               {att.status || 'Present'}
                                             </span>

@@ -68,10 +68,9 @@ const AdminLayout = ({ children }) => {
   }, [currentUser]);
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors overflow-hidden">
-      <Toaster richColors position="top-right" />
+    <div className="flex h-screen w-full bg-slate-50 dark:bg-slate-900 transition-colors overflow-hidden">
       <AdminSidebar isOpen={isSidebarOpen} />
-      <div className="flex-1 flex flex-col h-screen overflow-hidden min-w-0 transition-all duration-300">
+      <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 transition-all duration-300">
         {/* Top Header */}
         <header className="h-16 shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shadow-xs relative z-50 transition-colors">
           <div className="flex items-center gap-3 min-w-0">

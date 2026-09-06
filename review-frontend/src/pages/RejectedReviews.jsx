@@ -391,37 +391,37 @@ const RejectedReviews = () => {
           <select
             value={selectedStaff}
             onChange={e => setSelectedStaff(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-8 py-2.5 text-xs outline-none focus:border-red-500/40 appearance-none transition-all cursor-pointer"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-red-500/40 appearance-none transition-all cursor-pointer font-medium"
           >
-            <option value="" className="bg-dark-900 text-white">All Staff Members</option>
+            <option value="">All Staff Members</option>
             {staffList.map(name => (
-              <option key={name} value={name} className="bg-dark-900 text-white">{name}</option>
+              <option key={name} value={name}>{name}</option>
             ))}
           </select>
-          <FiChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
+          <FiChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
         </div>
 
         {/* Date Filter */}
-        <div className="relative w-full md:w-48">
-          <FiCalendar size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-52">
+          <FiCalendar size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <input
             type="date"
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-red-500/40 transition-all cursor-pointer"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-4 py-3 text-sm outline-none focus:border-red-500/40 transition-all cursor-pointer font-medium"
           />
         </div>
 
         {/* Sort */}
-        <div className="relative w-full md:w-40">
-          <FiFilter size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30" />
+        <div className="relative w-full md:w-44">
+          <FiFilter size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40" />
           <select
             value={sortOrder}
             onChange={e => setSortOrder(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 text-white rounded-xl pl-9 pr-4 py-2.5 text-xs outline-none focus:border-red-500/40 appearance-none transition-all cursor-pointer"
+            className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white rounded-xl pl-10 pr-9 py-3 text-sm outline-none focus:border-red-500/40 appearance-none transition-all cursor-pointer font-medium"
           >
-            <option value="newest" className="bg-dark-900 text-white">Newest First</option>
-            <option value="oldest" className="bg-dark-900 text-white">Oldest First</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
           </select>
           <FiChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none" />
         </div>
@@ -522,11 +522,11 @@ const RejectedReviews = () => {
 
           {/* Modal */}
           <div className={`relative z-10 glass border border-red-500/20 flex flex-col overflow-hidden shadow-2xl transition-all duration-300 ${
-            zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-6xl max-h-[90vh]'
+            zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-6xl h-[90vh] max-h-[90vh]'
           }`}>
 
             {/* Modal Header */}
-            <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-red-950/20 backdrop-blur-md">
+            <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-red-950/20 backdrop-blur-md shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex-shrink-0 border border-red-500/20">
                   {activeTask.staff_avatar
@@ -569,7 +569,7 @@ const RejectedReviews = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-6 lg:p-8 space-y-6 overscroll-contain">
               {/* Task Title */}
               <div>
                 <h1 className="text-white font-bold text-lg leading-snug">{activeTask.title}</h1>

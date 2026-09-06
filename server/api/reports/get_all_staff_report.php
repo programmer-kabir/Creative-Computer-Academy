@@ -1,14 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST, GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit();
-}
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 date_default_timezone_set('Asia/Dhaka');
 
@@ -117,7 +108,7 @@ try {
         }
     }
 
-    // 4. Fetch task logs in period for rejections
+    // 4. Fetch task logs in period for rejections and resubmissions
     $log_query = "
         SELECT task_id, status_from, status_to, created_at 
         FROM task_logs 
@@ -131,33 +122,65 @@ try {
     $log_rows = $log_stmt->fetchAll(PDO::FETCH_ASSOC);
     
     $rejections_by_task = [];
+    $resubmissions_by_task = [];
     foreach ($log_rows as $l) {
         if ($l['status_to'] === 'Rejected') {
             $rejections_by_task[$l['task_id']] = ($rejections_by_task[$l['task_id']] ?? 0) + 1;
         }
+        if ($l['status_from'] === 'Rejected' && $l['status_to'] === 'In Progress') {
+            $resubmissions_by_task[$l['task_id']] = ($resubmissions_by_task[$l['task_id']] ?? 0) + 1;
+        }
     }
 
-    // Helper: calculate total calendar working days
+    // 4b. Fetch task reviews for ratings
+    $all_task_ids = array_column($task_rows, 'id');
+    $reviews_by_task = [];
+    if (!empty($all_task_ids)) {
+        $in_clause = implode(',', array_map('intval', $all_task_ids));
+        $rev_stmt = $db->query("SELECT task_id, rating, feedback_notes, tags FROM task_reviews WHERE task_id IN ($in_clause)");
+        if ($rev_stmt) {
+            while ($r = $rev_stmt->fetch(PDO::FETCH_ASSOC)) {
+                $reviews_by_task[$r['task_id']] = $r;
+            }
+        }
+    }
+
+    // Helper: calculate total calendar days and actual working days (excluding Friday weekly off)
     $start_ts = strtotime($start_date);
     $end_ts = strtotime($end_date);
     $diff_days = max(1, round(($end_ts - $start_ts) / 86400) + 1);
+
+    $working_days_count = 0;
+    for ($cur = $start_ts; $cur <= $end_ts; $cur += 86400) {
+        $day_of_week = date('N', $cur); // 1 = Mon, 5 = Fri, 7 = Sun
+        if ($day_of_week != 5) { // Exclude Friday (Weekly off)
+            $working_days_count++;
+        }
+    }
+    if ($working_days_count === 0) {
+        $working_days_count = 1;
+    }
 
     // 5. Build Aggregated Staff Data
     $staff_data = [];
     $dept_aggregates = [];
     $company_summary = [
-        'total_employees'       => count($employees),
-        'total_tasks_assigned'  => 0,
-        'total_tasks_completed' => 0,
-        'total_tasks_in_review' => 0,
+        'total_employees'         => count($employees),
+        'total_tasks_assigned'    => 0,
+        'total_tasks_completed'   => 0,
+        'total_tasks_in_review'   => 0,
         'total_tasks_in_progress' => 0,
-        'total_tasks_rejected'  => 0,
-        'total_worked_seconds'  => 0,
+        'total_tasks_todo'        => 0,
+        'total_tasks_resubmitted' => 0,
+        'total_tasks_rejected'    => 0,
+        'total_worked_seconds'    => 0,
         'total_working_time_secs' => 0,
-        'total_present_count'   => 0,
-        'total_late_count'      => 0,
-        'total_absent_count'    => 0,
-        'total_leave_count'     => 0
+        'total_present_count'     => 0,
+        'total_late_count'        => 0,
+        'total_absent_count'      => 0,
+        'total_leave_count'       => 0,
+        'total_ratings_sum'       => 0,
+        'total_ratings_count'     => 0
     ];
 
     foreach ($employees as $emp) {
@@ -211,9 +234,12 @@ try {
         $todo_count = 0;
         $task_worked_secs = 0;
         $rejections_count = 0;
+        $resubmitted_count = 0;
         $on_time_count = 0;
+        $rating_sum = 0;
+        $rated_count = 0;
 
-        foreach ($user_tasks as $t) {
+        foreach ($user_tasks as &$t) {
             $st = $t['status'];
             if ($st === 'Completed') $completed_count++;
             elseif ($st === 'In Review') $in_review_count++;
@@ -223,6 +249,22 @@ try {
             $task_worked_secs += intval($t['total_time_spent'] ?? 0);
             if (isset($rejections_by_task[$t['id']])) {
                 $rejections_count += $rejections_by_task[$t['id']];
+            }
+            if (isset($resubmissions_by_task[$t['id']])) {
+                $resubmitted_count += $resubmissions_by_task[$t['id']];
+            }
+
+            // Attach review / rating
+            if (isset($reviews_by_task[$t['id']])) {
+                $t['rating'] = $reviews_by_task[$t['id']]['rating'];
+                $t['feedback_notes'] = $reviews_by_task[$t['id']]['feedback_notes'];
+                $t['tags'] = $reviews_by_task[$t['id']]['tags'];
+                if (intval($t['rating']) > 0) {
+                    $rating_sum += intval($t['rating']);
+                    $rated_count++;
+                }
+            } else {
+                $t['rating'] = null;
             }
 
             // Check if on-time
@@ -236,24 +278,50 @@ try {
                 $on_time_count++;
             }
         }
+        unset($t);
 
-        // Rates & KPIs
-        $attendance_rate = $diff_days > 0 ? round(($present_days / $diff_days) * 100) : 100;
-        if ($attendance_rate > 100) $attendance_rate = 100;
+        // Average rating calculation (null/0 if 0 reviews)
+        $avg_rating = $rated_count > 0 ? round($rating_sum / $rated_count, 1) : null;
+
+        // Rates & KPIs: Exclude Fridays and approved leaves from expected working days
+        $expected_working_days = max(1, $working_days_count - $leave_days);
+        $attendance_rate = min(100, round(($present_days / $expected_working_days) * 100));
 
         $completion_rate = $assigned_count > 0 ? round(($completed_count / $assigned_count) * 100) : 0;
         $on_time_rate = $completed_count > 0 ? round(($on_time_count / $completed_count) * 100) : 100;
         $rejection_rate = $assigned_count > 0 ? round(($rejections_count / $assigned_count) * 100) : 0;
 
-        // Composite Efficiency Score (0-100)
-        $score = round(($attendance_rate * 0.4) + ($completion_rate * 0.4) + (max(0, 100 - ($rejection_rate * 2)) * 0.2));
-        if ($score > 100) $score = 100;
+        // Composite Efficiency Score (0-100):
+        $rej_penalty = min(20, $rejection_rate * 0.5);
 
-        $tier = 'Standard';
-        if ($score >= 85) $tier = 'Top Performer';
-        elseif ($score >= 70) $tier = 'High Output';
-        elseif ($score >= 50) $tier = 'Good Standing';
-        else $tier = 'Needs Attention';
+        if ($assigned_count === 0 && $present_days === 0) {
+            // Completely inactive in this date range: 0% score
+            $score = 0;
+            $tier = 'No Activity';
+        } elseif ($assigned_count === 0 && $present_days > 0) {
+            // Only office attendance recorded (0 tasks assigned) -> Max 30% from attendance
+            $score = round($attendance_rate * 0.30);
+            $tier = 'Attendance Only';
+        } else {
+            // Has tasks assigned
+            $comp_pts = $completion_rate * 0.35;
+            $att_pts = $attendance_rate * 0.30;
+
+            if ($rated_count > 0) {
+                // 35% Task Completion + 35% Quality Star Rating + 30% Attendance - Rejection Penalty
+                $quality_pts = ($avg_rating / 5.0) * 100 * 0.35;
+                $score = round($comp_pts + $quality_pts + $att_pts - $rej_penalty);
+            } else {
+                // Tasks assigned/completed but not yet reviewed with stars (quality portion unearned)
+                $score = round($comp_pts + $att_pts - $rej_penalty);
+            }
+            $score = max(0, min(100, $score));
+
+            if ($score >= 85) $tier = 'Top Performer';
+            elseif ($score >= 70) $tier = 'High Output';
+            elseif ($score >= 50) $tier = 'Good Standing';
+            else $tier = 'Needs Attention';
+        }
 
         // Average daily duty hours
         $avg_daily_hours = $present_days > 0 ? round(($worked_secs / 3600) / $present_days, 1) : 0;
@@ -272,6 +340,8 @@ try {
         $company_summary['total_tasks_completed'] += $completed_count;
         $company_summary['total_tasks_in_review'] += $in_review_count;
         $company_summary['total_tasks_in_progress'] += $in_progress_count;
+        $company_summary['total_tasks_todo'] += $todo_count;
+        $company_summary['total_tasks_resubmitted'] += $resubmitted_count;
         $company_summary['total_tasks_rejected'] += $rejections_count;
         $company_summary['total_worked_seconds'] += $worked_secs;
         $company_summary['total_working_time_secs'] += $task_worked_secs;
@@ -279,6 +349,8 @@ try {
         $company_summary['total_late_count'] += $late_days;
         $company_summary['total_absent_count'] += $absent_days;
         $company_summary['total_leave_count'] += $leave_days;
+        $company_summary['total_ratings_sum'] += $rating_sum;
+        $company_summary['total_ratings_count'] += $rated_count;
 
         // Department Aggregation
         if (!isset($dept_aggregates[$d_name])) {
@@ -313,6 +385,9 @@ try {
             'department_name'       => $d_name,
             'department_id'         => $emp['department_id'],
             'profile_picture'       => $emp['profile_picture'],
+            // Star Ratings
+            'avg_rating'            => $avg_rating,
+            'rated_count'           => $rated_count,
             // Attendance
             'present_days'          => $present_days,
             'late_days'             => $late_days,
@@ -328,6 +403,7 @@ try {
             'tasks_in_review'       => $in_review_count,
             'tasks_in_progress'     => $in_progress_count,
             'tasks_todo'            => $todo_count,
+            'tasks_resubmitted'     => $resubmitted_count,
             'tasks_rejected'        => $rejections_count,
             'task_worked_seconds'   => $task_worked_secs,
             'task_worked_formatted' => $total_task_worked_str,
@@ -360,6 +436,10 @@ try {
         ? round(($company_summary['total_tasks_completed'] / $company_summary['total_tasks_assigned']) * 100)
         : 0;
 
+    $company_summary['avg_company_rating'] = $company_summary['total_ratings_count'] > 0
+        ? round($company_summary['total_ratings_sum'] / $company_summary['total_ratings_count'], 1)
+        : 5.0;
+
     // Format department summaries
     $dept_list = [];
     foreach ($dept_aggregates as $d) {
@@ -368,6 +448,22 @@ try {
         $d['completion_rate'] = $d['tasks_assigned'] > 0 ? round(($d['tasks_completed'] / $d['tasks_assigned']) * 100) : 0;
         $dept_list[] = $d;
     }
+
+    // Sort staff list by efficiency score DESC, tasks completed DESC, avg_rating DESC, total duty hours DESC
+    usort($staff_data, function($a, $b) {
+        if ($b['efficiency_score'] !== $a['efficiency_score']) {
+            return $b['efficiency_score'] - $a['efficiency_score'];
+        }
+        if ($b['tasks_completed'] !== $a['tasks_completed']) {
+            return $b['tasks_completed'] - $a['tasks_completed'];
+        }
+        $r_a = $a['avg_rating'] !== null ? $a['avg_rating'] : 0;
+        $r_b = $b['avg_rating'] !== null ? $b['avg_rating'] : 0;
+        if ($r_b != $r_a) {
+            return ($r_b > $r_a) ? 1 : -1;
+        }
+        return $b['total_worked_seconds'] - $a['total_worked_seconds'];
+    });
 
     echo json_encode([
         "status"          => "success",

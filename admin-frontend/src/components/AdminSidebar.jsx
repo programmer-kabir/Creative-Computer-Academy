@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { FiGrid, FiUsers, FiCheckSquare, FiClock, FiCalendar, FiSettings, FiLogOut, FiBarChart2, FiMessageSquare, FiDatabase, FiChevronDown } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +8,7 @@ import axios from 'axios';
 const AdminSidebar = ({ isOpen = true }) => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingDisputes, setPendingDisputes] = useState(0);
 
@@ -62,12 +63,12 @@ const AdminSidebar = ({ isOpen = true }) => {
   };
 
   const menuItems = [
-    { name: 'Dashboard', path: '/', icon: <FiGrid size={19} /> },
-    { name: 'Staff Directory', path: '/staff', icon: <FiUsers size={19} /> },
-    { name: 'Task Oversight', path: '/tasks', icon: <FiCheckSquare size={19} /> },
+    { name: 'Dashboard', path: '/', icon: <FiGrid size={18} /> },
+    { name: 'Staff Directory', path: '/staff', icon: <FiUsers size={18} /> },
+    { name: 'Task Oversight', path: '/tasks', icon: <FiCheckSquare size={18} /> },
     {
       name: 'Work & Attendance',
-      icon: <FiClock size={19} />,
+      icon: <FiClock size={18} />,
       badge: pendingDisputes,
       subItems: [
         { name: 'Daily Roster', path: '/attendance' },
@@ -77,18 +78,30 @@ const AdminSidebar = ({ isOpen = true }) => {
     },
     {
       name: 'Reports & Analytics',
-      icon: <FiBarChart2 size={19} />,
+      icon: <FiBarChart2 size={18} />,
       subItems: [
         { name: 'Company Master Report', path: '/master-report' },
         { name: 'Staff Reports', path: '/reports' },
         { name: 'Reviewer Reports', path: '/reviewer-report' }
       ]
     },
-    { name: 'Message', path: '/messages', icon: <FiMessageSquare size={19} /> },
-    { name: 'Brand Kit & Assets', path: '/brand-resources', icon: <HiSparkles size={19} className="text-amber-400" /> },
-    { name: 'Database Manager', path: '/database', icon: <FiDatabase size={19} /> },
-    { name: 'Settings', path: '/settings', icon: <FiSettings size={19} /> },
+    { name: 'Message', path: '/messages', icon: <FiMessageSquare size={18} /> },
+    { name: 'Brand Kit & Assets', path: '/brand-resources', icon: <HiSparkles size={18} className="text-amber-400" /> },
+    { name: 'Database Manager', path: '/database', icon: <FiDatabase size={18} /> },
+    { name: 'Settings', path: '/settings', icon: <FiSettings size={18} /> },
   ];
+
+  // Auto-expand menu on active child
+  useEffect(() => {
+    menuItems.forEach(item => {
+      if (item.subItems) {
+        const isChildActive = item.subItems.some(sub => location.pathname === sub.path || (sub.path !== '/' && location.pathname.startsWith(sub.path)));
+        if (isChildActive) {
+          setOpenMenus(prev => ({ ...prev, [item.name]: true }));
+        }
+      }
+    });
+  }, [location.pathname]);
 
   return (
     <aside
@@ -112,45 +125,53 @@ const AdminSidebar = ({ isOpen = true }) => {
             {menuItems.map((item) => {
               if (item.subItems) {
                 const isOpen = openMenus[item.name];
-                const isAnyChildActive = item.subItems.some(sub => window.location.pathname + window.location.search === sub.path);
+                const isAnyChildActive = item.subItems.some(sub => location.pathname === sub.path || (sub.path !== '/' && location.pathname.startsWith(sub.path)));
 
                 return (
                   <div key={item.name} className="space-y-1">
                     <button
                       onClick={() => toggleMenu(item.name)}
-                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${isAnyChildActive || isOpen
-                        ? 'bg-blue-50/80 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold'
+                      className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${isAnyChildActive || isOpen
+                        ? 'bg-blue-50/90 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-slate-200'
                         }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <span className={isAnyChildActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}>{item.icon}</span>
-                        <span className="tracking-wide text-base">{item.name}</span>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className={`shrink-0 ${isAnyChildActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500'}`}>{item.icon}</span>
+                        <span className="truncate text-sm">{item.name}</span>
                         {item.badge > 0 && (
-                          <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
+                          <span className="bg-rose-500 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-xs shrink-0">
                             {item.badge}
                           </span>
                         )}
                       </div>
-                      <FiChevronDown className={`w-4 h-4 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-500' : 'text-slate-400'}`} />
+                      <FiChevronDown className={`w-4 h-4 transition-transform duration-200 shrink-0 ${isOpen ? 'rotate-180 text-blue-500' : 'text-slate-400'}`} />
                     </button>
 
                     {isOpen && (
-                      <div className="pl-9 pr-1 space-y-1 mt-1 animate-in slide-in-from-top-1 duration-150">
+                      <div className="relative ml-5 pl-3.5 space-y-1 my-1 border-l-2 border-slate-200/90 dark:border-slate-800 animate-in slide-in-from-top-1 duration-150">
                         {item.subItems.map(sub => {
-                          const isSubActive = window.location.pathname + window.location.search === sub.path;
+                          const isSubActive = location.pathname === sub.path || (sub.path !== '/' && location.pathname.startsWith(sub.path));
                           return (
                             <NavLink
                               key={sub.name}
                               to={sub.path}
-                              className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isSubActive
-                                ? 'bg-blue-600 text-white font-bold shadow-sm shadow-blue-500/20'
-                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800'
+                              className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-sm font-semibold transition-all ${isSubActive
+                                ? 'bg-blue-600 !text-white font-bold shadow-sm shadow-blue-500/25'
+                                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/70'
                                 }`}
                             >
-                              <span className="truncate">{sub.name}</span>
+                              {/* Hierarchy branch indicator line */}
+                              <span
+                                className={`absolute -left-[16px] top-1/2 -translate-y-1/2 w-2.5 h-[2px] rounded-full transition-colors ${
+                                  isSubActive
+                                    ? 'bg-blue-600 dark:bg-blue-500'
+                                    : 'bg-slate-300 dark:bg-slate-700 group-hover:bg-slate-400 dark:group-hover:bg-slate-500'
+                                }`}
+                              />
+                              <span className="truncate text-sm">{sub.name}</span>
                               {sub.badge > 0 && (
-                                <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-xs ml-2">
+                                <span className="bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-xs ml-2 shrink-0">
                                   {sub.badge}
                                 </span>
                               )}
@@ -175,12 +196,12 @@ const AdminSidebar = ({ isOpen = true }) => {
                     }`
                   }
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <span className="shrink-0">{item.icon}</span>
-                    <span className="tracking-wide text-sm">{item.name}</span>
+                    <span className="truncate text-sm">{item.name}</span>
                   </div>
                   {item.name === 'Message' && unreadCount > 0 && (
-                    <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                    <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs shrink-0">
                       {unreadCount}
                     </span>
                   )}

@@ -1,11 +1,5 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(200); exit(); }
-
+require_once '../../config/cors.php';
 require_once '../../config/database.php';
 $database = new Database();
 $db = $database->getConnection();
@@ -22,13 +16,82 @@ if (!$reviewer_user_id) {
     exit;
 }
 
+// Pagination params
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$limit = isset($_GET['limit']) ? max(1, min(200, intval($_GET['limit']))) : 50;
+$offset = ($page - 1) * $limit;
+
+// Filter params
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+$staff_name = isset($_GET['staff_name']) ? trim($_GET['staff_name']) : '';
+$selected_date = isset($_GET['date']) ? trim($_GET['date']) : '';
+$sort_order = (isset($_GET['sort']) && strtolower($_GET['sort']) === 'oldest') ? 'ASC' : 'DESC';
+
 try {
-    // Query tasks with status 'Rejected' assigned to employees under this reviewer
+    // 1. Fetch all assigned staff under this reviewer for filter dropdown
+    $staff_list = [];
+    try {
+        $staff_stmt = $db->prepare("
+            SELECT DISTINCT u.name 
+            FROM employees e 
+            JOIN users u ON e.user_id = u.id 
+            WHERE e.reporting_manager_id = :reviewer_user_id 
+            ORDER BY u.name ASC
+        ");
+        $staff_stmt->execute([':reviewer_user_id' => $reviewer_user_id]);
+        $staff_list = $staff_stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Exception $e) {}
+
+    // 2. Build WHERE clauses
+    $where_clauses = [
+        "e.reporting_manager_id = :reviewer_user_id",
+        "t.status = 'Rejected'"
+    ];
+    $params = [
+        ':reviewer_user_id' => $reviewer_user_id
+    ];
+
+    if (!empty($search)) {
+        $where_clauses[] = "(t.title LIKE :search OR t.description LIKE :search OR t.priority LIKE :search)";
+        $params[':search'] = '%' . $search . '%';
+    }
+
+    if (!empty($staff_name)) {
+        $where_clauses[] = "u.name = :staff_name";
+        $params[':staff_name'] = $staff_name;
+    }
+
+    if (!empty($selected_date)) {
+        $where_clauses[] = "(DATE(t.updated_at) = :selected_date OR DATE(t.reviewed_at) = :selected_date)";
+        $params[':selected_date'] = $selected_date;
+    }
+
+    $where_sql = implode(' AND ', $where_clauses);
+
+    // 3. Count total matching records for pagination
+    $count_sql = "
+        SELECT COUNT(DISTINCT t.id) AS total
+        FROM tasks t
+        JOIN employees e ON t.assigned_to = e.id
+        JOIN users u ON e.user_id = u.id
+        WHERE {$where_sql}
+    ";
+    $count_stmt = $db->prepare($count_sql);
+    foreach ($params as $k => $v) {
+        $count_stmt->bindValue($k, $v);
+    }
+    $count_stmt->execute();
+    $total_records = (int)$count_stmt->fetchColumn();
+    $total_pages = ceil($total_records / $limit);
+
+    // 4. Query paginated tasks
     $query = "
         SELECT 
             t.id AS task_id,
             t.title,
             t.description,
+            COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') AS category,
+            t.is_self_created,
             t.priority,
             t.deadline,
             t.checklists,
@@ -54,13 +117,20 @@ try {
         JOIN employees e ON t.assigned_to = e.id
         JOIN users u ON e.user_id = u.id
         LEFT JOIN departments d ON e.department_id = d.id
-        WHERE e.reporting_manager_id = :reviewer_user_id
-          AND t.status = 'Rejected'
-        ORDER BY t.updated_at DESC
+        LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
+        LEFT JOIN task_categories tc_sub ON t.sub_category_id = tc_sub.id
+        LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
+        WHERE {$where_sql}
+        ORDER BY t.updated_at {$sort_order}
+        LIMIT :limit OFFSET :offset
     ";
 
     $stmt = $db->prepare($query);
-    $stmt->bindParam(':reviewer_user_id', $reviewer_user_id, PDO::PARAM_INT);
+    foreach ($params as $k => $v) {
+        $stmt->bindValue($k, $v);
+    }
+    $stmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $stmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
     $stmt->execute();
 
     $rejected_tasks = [];
@@ -106,8 +176,20 @@ try {
         }
     }
 
+    $from_record = $total_records > 0 ? $offset + 1 : 0;
+    $to_record = min($offset + $limit, $total_records);
+
     echo json_encode([
         "status" => "success",
+        "pagination" => [
+            "total" => $total_records,
+            "page" => $page,
+            "limit" => $limit,
+            "total_pages" => (int)$total_pages,
+            "from" => $from_record,
+            "to" => $to_record
+        ],
+        "staff_list" => $staff_list,
         "count"  => count($rejected_tasks),
         "data"   => $rejected_tasks
     ]);

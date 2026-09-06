@@ -11,6 +11,7 @@ import {
   FiRefreshCw, FiCalendar, FiAlertTriangle, FiTrendingUp,
   FiUser, FiList, FiEye, FiAlertCircle, FiChevronDown, FiChevronUp, FiCode
 } from 'react-icons/fi';
+import MarketplaceSubmissions from '../components/MarketplaceSubmissions';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -110,12 +111,13 @@ const scoreInfo = (s) =>
   : s >= 40 ? { text: 'text-orange-400',  bg: 'bg-orange-500',  label: 'Needs Improvement',  fill: '#f97316' }
   :           { text: 'text-red-400',     bg: 'bg-red-500',     label: 'Poor Performance',   fill: '#ef4444' };
 
-// Score = completion% × 0.70  −  rejection_penalty (max 30)
-const calcScore = (completed, total, rejected) => {
+// Score = (Completion Rate × 50%) + (Quality Rating % × 50%) − Rejection Penalty (max 30)
+const calcScore = (completed, total, rejected, avgRating = 5.0) => {
   if (total === 0) return 0;
   const compRate   = Math.round((completed / total) * 100);
+  const qualityRate = Math.min(100, Math.round(((avgRating || 5.0) / 5.0) * 100));
   const rejPenalty = Math.min(30, Math.round((rejected / total) * 30));
-  return Math.max(0, Math.min(100, Math.round(compRate * 0.70 - rejPenalty)));
+  return Math.max(0, Math.min(100, Math.round((compRate * 0.50) + (qualityRate * 0.50) - rejPenalty)));
 };
 
 const fmtDate = (d) =>
@@ -202,8 +204,9 @@ const StaffReview = () => {
     if (!taskData) return null;
     const s = taskData.summary;
     const compRate = s.total_assigned > 0 ? Math.round((s.total_completed / s.total_assigned) * 100) : 0;
-    const score    = calcScore(s.total_completed, s.total_assigned, s.total_rejected);
-    return { compRate, score, s };
+    const avgRating = s.avg_rating !== undefined ? Number(s.avg_rating) : 5.0;
+    const score    = calcScore(s.total_completed, s.total_assigned, s.total_rejected, avgRating);
+    return { compRate, avgRating, score, s };
   }, [taskData]);
 
   // Bar chart: task status per month-label (group by month of created_at)
@@ -313,13 +316,19 @@ const StaffReview = () => {
               {/* Score formula explanation */}
               <div className="mt-5 w-full glass rounded-xl p-3 text-xs space-y-1.5">
                 <div className="flex justify-between text-white/40">
-                  <span>Completion Rate</span>
-                  <span className="text-white/70 font-semibold">{metrics.compRate}% × 0.70</span>
+                  <span>Task Completion (50%)</span>
+                  <span className="text-white/70 font-semibold">{metrics.compRate}%</span>
+                </div>
+                <div className="flex justify-between text-white/40">
+                  <span>Quality / Stars (50%)</span>
+                  <span className="text-amber-400 font-semibold">
+                    ⭐ {metrics.avgRating} / 5.0
+                  </span>
                 </div>
                 <div className="flex justify-between text-white/40">
                   <span>Rejection Penalty</span>
                   <span className="text-red-400 font-semibold">
-                    -{metrics.s.total_assigned > 0 ? Math.min(30, Math.round((metrics.s.total_rejected / metrics.s.total_assigned) * 30)) : 0}
+                    -{metrics.s.total_assigned > 0 ? Math.min(30, Math.round((metrics.s.total_rejected / metrics.s.total_assigned) * 30)) : 0} pts
                   </span>
                 </div>
               </div>
@@ -490,6 +499,19 @@ const StaffReview = () => {
                             } catch (e) {}
                             return null;
                           })()}
+
+                          {/* Marketplace Submissions Management */}
+                          {(t.status === 'Completed' || t.status === 'In Review') && (
+                            <div className="pt-3 border-t border-white/5">
+                              <MarketplaceSubmissions
+                                taskId={t.id}
+                                userId={member?.user_id || id}
+                                addedBy={currentUser?.id}
+                                addedByRole="reviewer"
+                                canManage={true}
+                              />
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

@@ -6,6 +6,7 @@ import { HiSparkles } from 'react-icons/hi';
 import { Link } from 'react-router-dom';
 import BreakMonitor from '../components/BreakMonitor';
 import AttendanceListWidget from '../components/AttendanceListWidget';
+import ReviewerSummaryWidget from '../components/ReviewerSummaryWidget';
 import AnimatedCounter from '../components/AnimatedCounter';
 
 const StatCard = ({ title, value, subtitle, icon: Icon, gradient, cubeBg, cubeShadow, glowShadow, linkTo, badgeText, badgeStyle }) => (
@@ -288,6 +289,9 @@ const Dashboard = () => {
           />
         </div>
       </div>
+
+      {/* ── Reviewer & QA Oversight Widget ── */}
+      <ReviewerSummaryWidget />
 
       {/* ── Attendance List Widget & Break Monitor ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
