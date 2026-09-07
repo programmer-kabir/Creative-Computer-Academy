@@ -10,6 +10,7 @@ When the user asks you to start the project or run servers, you must run the fol
 1. `admin-frontend` using `npm run dev`
 2. `staff-frontend` using `npm run dev -- --port 5174`
 3. `review-frontend` using `npm run dev -- --port 5175`
+3. `student-frontend` using `npm run dev -- --port 5176`
 
 Note: The backend is in the 'Server' folder (PHP).
 
@@ -17,7 +18,7 @@ Note: The backend is in the 'Server' folder (PHP).
 
 After all servers are running, you MUST do the following:
 
-1. **Read the full codebase** — Explore all major folders: `admin-frontend/src`, `staff-frontend/src`, `review-frontend/src`, and `server/`.
+1. **Read the full codebase** — Explore all major folders: `admin-frontend/src`, `staff-frontend/src`, `review-frontend/src`, `student-frontend`, and `server/`.
 2. **Understand the project** — Figure out:
    - What the overall project is (its name, purpose, goal)
    - What each frontend app does (admin, staff, review)

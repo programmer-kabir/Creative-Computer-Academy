@@ -72,7 +72,7 @@ const AdminLayout = ({ children }) => {
       <AdminSidebar isOpen={isSidebarOpen} />
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0 transition-all duration-300">
         {/* Top Header */}
-        <header className="h-16 shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shadow-xs relative z-50 transition-colors">
+        <header className="h-16 shrink-0 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shadow-xs relative z-30 transition-colors">
           <div className="flex items-center gap-3 min-w-0">
             {/* Sidebar Collapse/Expand Toggle Button */}
             <button

@@ -5,6 +5,8 @@ import AdminLayout from './layouts/AdminLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import StaffDirectory from './pages/StaffDirectory';
+import StudentDirectory from './pages/StudentDirectory';
+import CoursesAndBatches from './pages/CoursesAndBatches';
 import StaffProfile from './pages/StaffProfile';
 import TaskOversight from './pages/TaskOversight';
 import Reports from './pages/Reports';
@@ -53,6 +55,18 @@ function App() {
           <Route path="/staff" element={
             <ProtectedRoute>
               <AdminLayout><StaffDirectory /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/students" element={
+            <ProtectedRoute>
+              <AdminLayout><StudentDirectory /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/courses-batches" element={
+            <ProtectedRoute>
+              <AdminLayout><CoursesAndBatches /></AdminLayout>
             </ProtectedRoute>
           } />
 

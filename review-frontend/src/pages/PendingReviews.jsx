@@ -38,6 +38,21 @@ const DELIVERY_SUGGESTED_TAGS = [
   '🔥 Pixel Perfect'
 ];
 
+const smartMacros = [
+  { icon: '📐', label: 'Wrong Dimensions / Size', text: 'Dimensions or aspect ratio does not match the project requirements. Please adjust to the specified dimensions.' },
+  { icon: '🎨', label: 'Color / Palette Mismatch', text: 'Colors do not follow the brand guidelines or provided color palette. Please update color scheme.' },
+  { icon: '🔤', label: 'Typography / Font Issue', text: 'Font family, hierarchy, or typography formatting needs correction. Please refer to the design brief.' },
+  { icon: '🔍', label: 'Low Resolution / Blurry', text: 'Images or export quality is low resolution/blurry. Please re-export at 300 DPI / high resolution.' },
+  { icon: '🧹', label: 'Messy Layers / Assets', text: 'File organization and layer structure needs cleanup. Please name and group layers properly.' },
+  { icon: '📋', label: 'Incomplete Checklist', text: 'Not all requirements from the brief/checklist have been met. Please review the checklist items.' },
+  { icon: '⚠️', label: 'Spelling / Content Error', text: 'There are typos or grammatical errors in the text content. Please proofread and correct.' },
+  { icon: '📦', label: 'Missing Deliverables', text: 'Required source files or export formats are missing. Please attach all required deliverables.' },
+  {
+    icon: '↔️',
+    label: 'Alignment / Spacing Issue',
+    text: 'Elements are not properly aligned or spacing is inconsistent. Please adjust alignment, margins, spacing, and positioning for a clean and balanced layout.'
+  }];
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 const isColorHex = (str) => typeof str === 'string' && /^#([0-9A-F]{3}){1,2}$/i.test(str);
 
@@ -941,8 +956,8 @@ const PendingReviews = () => {
                     key={t.task_id}
                     onClick={() => selectTaskForReview(t)}
                     className={`group relative glass rounded-2xl p-5 lg:p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[190px] overflow-hidden ${selectedTasks.includes(t.task_id)
-                        ? 'border-brand-500 shadow-[0_0_20px_rgba(var(--brand-500-rgb),0.25)] bg-brand-500/10 ring-2 ring-brand-500/20'
-                        : 'border-white/10 dark:border-white/5 hover:border-brand-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-500/15 bg-white dark:bg-dark-900'
+                      ? 'border-brand-500 shadow-[0_0_20px_rgba(var(--brand-500-rgb),0.25)] bg-brand-500/10 ring-2 ring-brand-500/20'
+                      : 'border-white/10 dark:border-white/5 hover:border-brand-500/40 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-brand-500/15 bg-white dark:bg-dark-900'
                       }`}
                     style={{
                       boxShadow: '0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 12px 24px -4px rgba(0, 0, 0, 0.04)'
@@ -986,8 +1001,8 @@ const PendingReviews = () => {
                           )}
                           <span className="text-white/50 font-black text-xs">#{itemNumber}</span>
                           <span className={`px-2.5 py-0.5 rounded-full border text-xs font-extrabold uppercase tracking-wider shadow-2xs ${t.priority === 'High' ? 'text-red-600 dark:text-red-400 border-red-500/30 bg-red-500/10'
-                              : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
-                                : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
+                            : t.priority === 'Medium' ? 'text-yellow-600 dark:text-yellow-400 border-yellow-500/30 bg-yellow-500/10'
+                              : 'text-slate-600 dark:text-slate-400 border-slate-500/30 bg-slate-500/10'
                             }`}>{t.priority}</span>
                         </div>
                       </div>
@@ -1131,11 +1146,10 @@ const PendingReviews = () => {
                       <button
                         key={idx}
                         onClick={() => handlePageChange(p)}
-                        className={`min-w-[34px] h-[34px] px-2.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${
-                          currentPage === p
-                            ? 'pagination-btn-active'
-                            : 'pagination-btn shadow-2xs'
-                        }`}
+                        className={`min-w-[34px] h-[34px] px-2.5 rounded-xl text-xs font-black transition-all duration-200 cursor-pointer flex items-center justify-center ${currentPage === p
+                          ? 'pagination-btn-active'
+                          : 'pagination-btn shadow-2xs'
+                          }`}
                       >
                         {p}
                       </button>
@@ -1269,9 +1283,8 @@ const PendingReviews = () => {
                     <FiPackage size={14} className={modalTab === 'submission' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
                     <span>Submitted Deliverables</span>
                     {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
-                        modalTab === 'submission' ? 'bg-white/25 text-white' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${modalTab === 'submission' ? 'bg-white/25 text-white' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                        }`}>
                         {activeReviewTask.submissions.length}
                       </span>
                     )}
@@ -1433,7 +1446,7 @@ const PendingReviews = () => {
                 <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-2">
                   Smart Macros / Quick Reasons
                 </label>
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
                   {smartMacros.map(macro => (
                     <button
                       key={macro.label}
@@ -1465,8 +1478,8 @@ const PendingReviews = () => {
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-2xl p-3.5 text-center transition-all relative overflow-hidden ${isDragging
-                      ? 'border-red-500 bg-red-500/10 scale-[1.01]'
-                      : 'border-white/10 hover:border-red-400/50 bg-dark-950/50'
+                    ? 'border-red-500 bg-red-500/10 scale-[1.01]'
+                    : 'border-white/10 hover:border-red-400/50 bg-dark-950/50'
                     }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
@@ -1593,8 +1606,8 @@ const PendingReviews = () => {
                 <div className="flex flex-col gap-2">
                   <div
                     className={`border-2 border-dashed rounded-2xl p-3.5 text-center cursor-pointer transition-all flex items-center justify-between gap-2 relative ${finalFile
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-slate-900 dark:text-white'
-                        : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/60'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-slate-900 dark:text-white'
+                      : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-white/60'
                       }`}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
@@ -1657,8 +1670,8 @@ const PendingReviews = () => {
 
                 <div
                   className={`border-2 border-dashed rounded-2xl p-3 text-center transition-all relative overflow-hidden ${isDraggingFinal
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
-                      : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10'
+                    : 'border-slate-200 dark:border-white/10 hover:border-blue-500/50 bg-slate-50 dark:bg-white/5'
                     }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDraggingFinal(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDraggingFinal(false); }}
@@ -1721,8 +1734,8 @@ const PendingReviews = () => {
                     </span>
                   </label>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${deliveryIncludeRating
-                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
-                      : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40'
+                    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                    : 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40'
                     }`}>
                     {deliveryIncludeRating ? `${deliveryRating} Stars` : 'No Stars'}
                   </span>
@@ -1747,8 +1760,8 @@ const PendingReviews = () => {
                               <FiStar
                                 size={24}
                                 className={`${isAct
-                                    ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
-                                    : 'text-slate-200 dark:text-white/20'
+                                  ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+                                  : 'text-slate-200 dark:text-white/20'
                                   } transition-colors duration-150`}
                               />
                             </button>
@@ -1774,8 +1787,8 @@ const PendingReviews = () => {
                               type="button"
                               onClick={() => handleDeliveryTagToggle(tag)}
                               className={`text-[10px] px-2.5 py-1 rounded-lg border font-semibold transition-all ${isSel
-                                  ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-brand-500/20 dark:border-brand-500/40 dark:text-brand-300 shadow-xs'
-                                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/[0.06]'
+                                ? 'bg-indigo-50 border-indigo-300 text-indigo-700 dark:bg-brand-500/20 dark:border-brand-500/40 dark:text-brand-300 shadow-xs'
+                                : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700 dark:bg-white/[0.03] dark:border-white/10 dark:text-white/60 dark:hover:text-white dark:hover:bg-white/[0.06]'
                                 }`}
                             >
                               {tag}

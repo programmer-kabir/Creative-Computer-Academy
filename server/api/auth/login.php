@@ -66,7 +66,8 @@ try {
         exit;
     }
 
-    // ── 5. Fetch employee/reviewer details ────────────────────────────────────
+    // ── 5. Fetch employee/reviewer/student details ───────────────────────────
+    $student_info = null;
     if ($required_role === 'reviewer') {
         $rev_stmt = $db->prepare(
             "SELECT r.reviewer_code AS employee_code, r.designation, NULL AS department_name
@@ -78,6 +79,27 @@ try {
         $emp = $rev_stmt->rowCount() > 0
             ? $rev_stmt->fetch(PDO::FETCH_ASSOC)
             : ['employee_code' => null, 'designation' => null, 'department_name' => null];
+    } else if ($required_role === 'student') {
+        $stu_stmt = $db->prepare(
+            "SELECT 
+                s.student_code, s.course_id, s.batch_id, 
+                s.guardian_phone, s.enrollment_date, s.completion_date, s.status AS student_status,
+                COALESCE(c.title, 'General Course') AS course_name,
+                c.course_code,
+                COALESCE(b.batch_code, 'Batch-01') AS batch_no,
+                b.batch_name
+             FROM students s
+             LEFT JOIN courses c ON s.course_id = c.id
+             LEFT JOIN batches b ON s.batch_id = b.id
+             WHERE s.user_id = :user_id LIMIT 1"
+        );
+        $stu_stmt->bindParam(':user_id', $user_id);
+        $stu_stmt->execute();
+        $student_info = $stu_stmt->rowCount() > 0
+            ? $stu_stmt->fetch(PDO::FETCH_ASSOC)
+            : null;
+
+        $emp = ['employee_code' => null, 'designation' => 'Student', 'department_name' => $student_info['course_name'] ?? 'General'];
     } else {
         $emp_stmt = $db->prepare(
             "SELECT e.employee_code, e.designation, d.name AS department_name, e.shift_start, e.shift_end, e.joining_date
@@ -102,12 +124,13 @@ try {
     // ── 7. Build response ────────────────────────────────────────────────────
     unset($user['password']);
     $user['roles']           = $roles;
-    $user['employee_code']   = $emp['employee_code'] ?? null;
+    $user['employee_code']   = $emp['employee_code'] ?? ($student_info['student_code'] ?? null);
     $user['designation']     = $emp['designation'] ?? null;
     $user['department_name'] = $emp['department_name'] ?? null;
     $user['shift_start']     = $emp['shift_start'] ?? null;
     $user['shift_end']       = $emp['shift_end'] ?? null;
     $user['joining_date']    = $emp['joining_date'] ?? null;
+    $user['student_info']    = $student_info;
 
     echo json_encode(["status" => "success", "token" => $token, "user" => $user]);
 
