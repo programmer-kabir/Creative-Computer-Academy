@@ -65,19 +65,45 @@ const MARKET_COLORS = {
 const MARKETPLACE_OPTIONS = MARKETPLACES.map(m => ({
   value: m,
   label: m,
-  badge: MARKET_COLORS[m] || 'bg-slate-100 text-slate-700 border-slate-200'
+  colorClass: MARKET_COLORS[m] || 'bg-slate-100 text-slate-700 border-slate-200'
 }));
 
 const STATUS_OPTIONS = [
-  { value: 'pending',     label: 'Pending (In Review)', dot: 'bg-amber-500 animate-pulse', badge: 'bg-amber-50 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-500/30' },
-  { value: 'approved',    label: 'Approved',            dot: 'bg-emerald-500',             badge: 'bg-emerald-50 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30' },
-  { value: 'rejected',    label: 'Rejected',            dot: 'bg-red-500',                 badge: 'bg-red-50 dark:bg-red-500/20 text-red-800 dark:text-red-300 border-red-300 dark:border-red-500/30' },
-  { value: 'resubmitted', label: 'Resubmitted',         dot: 'bg-blue-500',                badge: 'bg-blue-50 dark:bg-blue-500/20 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-500/30' },
+  { value: 'pending',     label: 'Pending (In Review)', dot: 'bg-amber-500 animate-pulse' },
+  { value: 'approved',    label: 'Approved',            dot: 'bg-emerald-500' },
+  { value: 'rejected',    label: 'Rejected',            dot: 'bg-red-500' },
+  { value: 'resubmitted', label: 'Resubmitted',         dot: 'bg-blue-500' },
 ];
 
 function getMarketDisplay(entry) {
   return (entry.marketplace === 'Custom' && entry.custom_market)
     ? entry.custom_market : entry.marketplace;
+}
+
+function getMarketCreditBadge(entry) {
+  const isDayal = (entry.marketplace || '').toLowerCase() === 'dayal stock';
+  if (isDayal) {
+    return {
+      text: '+1 Credit',
+      color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
+    };
+  }
+  if (entry.status === 'approved') {
+    return {
+      text: '+3 Credits',
+      color: 'bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30'
+    };
+  }
+  if (entry.status === 'rejected') {
+    return {
+      text: '0 Credit',
+      color: 'bg-red-50 dark:bg-red-500/15 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/30'
+    };
+  }
+  return {
+    text: '+1 Credit',
+    color: 'bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30'
+  };
 }
 
 function formatDate(dateStr) {
@@ -191,6 +217,7 @@ const MarketplaceSubmissions = ({ taskId, userId, employeeId, addedBy, addedByRo
         setNewStatus('pending');
         setNewDate(new Date().toISOString().split('T')[0]);
         setShowAddForm(false);
+        window.dispatchEvent(new Event('credit-updated'));
         await fetchSubmissions();
       }
     } catch (e) {
@@ -221,6 +248,7 @@ const MarketplaceSubmissions = ({ taskId, userId, employeeId, addedBy, addedByRo
         reject_reason: editStatus === 'rejected' ? editReason : null,
       });
       setEditingId(null);
+      window.dispatchEvent(new Event('credit-updated'));
       await fetchSubmissions();
     } catch (e) {
       console.error(e);
@@ -236,6 +264,7 @@ const MarketplaceSubmissions = ({ taskId, userId, employeeId, addedBy, addedByRo
       await axios.post(`${API_BASE}api/tasks/marketplace_submissions.php`, {
         action: 'delete', id, deleted_by: addedBy
       });
+      window.dispatchEvent(new Event('credit-updated'));
       await fetchSubmissions();
     } catch (e) {
       console.error(e);
@@ -410,6 +439,7 @@ const MarketplaceSubmissions = ({ taskId, userId, employeeId, addedBy, addedByRo
             const displayName = getMarketDisplay(entry);
             const statusCfg   = STATUS_CONFIG[entry.status] || STATUS_CONFIG.pending;
             const marketColor = MARKET_COLORS[entry.marketplace] || 'bg-slate-100 text-slate-700 border-slate-200';
+            const creditBadge = getMarketCreditBadge(entry);
             const isEditing   = editingId === entry.id;
 
             return (
@@ -426,6 +456,9 @@ const MarketplaceSubmissions = ({ taskId, userId, employeeId, addedBy, addedByRo
                     <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusCfg.color}`}>
                       <span className={`w-2 h-2 rounded-full ${statusCfg.dot}`} />
                       {statusCfg.label}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold border ${creditBadge.color}`}>
+                      <span>🪙 {creditBadge.text}</span>
                     </span>
                   </div>
 

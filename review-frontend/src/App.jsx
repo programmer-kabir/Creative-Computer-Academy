@@ -14,6 +14,7 @@ import RejectedReviews from './pages/RejectedReviews';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import Credits from './pages/Credits';
 import BrandResources from './pages/BrandResources';
 import NotFound from './pages/NotFound';
 
@@ -88,6 +89,12 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute>
               <ReviewerLayout><Reports /></ReviewerLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/credits" element={
+            <ProtectedRoute>
+              <ReviewerLayout><Credits /></ReviewerLayout>
             </ProtectedRoute>
           } />
 

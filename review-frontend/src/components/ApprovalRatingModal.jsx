@@ -62,7 +62,8 @@ const ApprovalRatingModal = ({ isOpen, onClose, task, onConfirm }) => {
       await onConfirm({
         rating,
         feedback_notes: feedbackNotes.trim(),
-        tags: selectedTags
+        tags: selectedTags,
+        reward_credit: task.category_credit || task.credit || task.custom_credit || 5
       });
       onClose();
     } catch (err) {
@@ -126,7 +127,7 @@ const ApprovalRatingModal = ({ isOpen, onClose, task, onConfirm }) => {
 
           {/* Staff Info pill */}
           {task.staff_name && (
-            <div className="mb-6 p-3 rounded-2xl bg-slate-50/90 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 flex items-center justify-between shadow-xs">
+            <div className="mb-4 p-3 rounded-2xl bg-slate-50/90 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/5 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-3">
                 {avatarUrl ? (
                   <img
@@ -150,6 +151,24 @@ const ApprovalRatingModal = ({ isOpen, onClose, task, onConfirm }) => {
               </span>
             </div>
           )}
+
+          {/* Dynamic Category Credit Reward Preview */}
+          <div className="mb-6 p-3 rounded-2xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-amber-500/10 border border-amber-500/30 flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xl">🪙</span>
+              <div>
+                <p className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                  Category Credit Reward
+                </p>
+                <p className="text-[11px] text-amber-700/80 dark:text-amber-300/70">
+                  অ্যাপ্রুভ করার সাথে সাথে কর্মীর ওয়ালেটে ক্যাটাগরি ক্রেডিট জমা হবে
+                </p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-xl bg-amber-500/20 text-amber-900 dark:text-amber-200 font-extrabold text-xs">
+              +{task.category_credit || task.credit || 5} Credits
+            </span>
+          </div>
 
           {/* 5-Star Rating Section */}
           <div className="mb-6 text-center bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/5 rounded-2xl p-5 shadow-xs">
@@ -233,6 +252,17 @@ const ApprovalRatingModal = ({ isOpen, onClose, task, onConfirm }) => {
               placeholder="e.g. Great attention to typography and clean layers. Well done!"
               className="w-full bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-2xl p-3.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/25 focus:outline-none focus:border-indigo-500 dark:focus:border-brand-500 focus:ring-1 focus:ring-indigo-500/40 dark:focus:ring-brand-500/50 transition-all resize-none shadow-inner"
             />
+          </div>
+
+          {/* Reviewer Incentive Banner */}
+          <div className="mb-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-300 font-semibold">
+              <span className="text-base">🪙</span>
+              <span>Reviewer Reward: <strong>+1 Credit</strong></span>
+            </div>
+            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300">
+              Verified QA
+            </span>
           </div>
 
           {/* Action Buttons */}

@@ -107,7 +107,10 @@ try {
             t.reviewed_by,
             t.reviewed_at,
             t.rejection_reason,
-            t.rejection_image,
+            t.custom_credit,
+            tc_child.credit AS child_credit,
+            tc_sub.credit AS sub_credit,
+            tc_main.credit AS main_credit,
             (SELECT name FROM users WHERE id = t.reviewed_by) AS reviewed_by_name,
             u.id AS user_id,
             u.name AS staff_name,
@@ -118,7 +121,7 @@ try {
         JOIN users u ON e.user_id = u.id
         LEFT JOIN departments d ON e.department_id = d.id
         LEFT JOIN task_categories tc_main ON t.category_id = tc_main.id
-        LEFT JOIN task_categories tc_sub ON t.sub_category_id = tc_sub.id
+        LEFT JOIN task_categories tc_sub ON t.subcategory_id = tc_sub.id
         LEFT JOIN task_categories tc_child ON t.child_category_id = tc_child.id
         WHERE {$where_sql}
         ORDER BY t.updated_at {$sort_order}
@@ -135,6 +138,25 @@ try {
 
     $rejected_tasks = [];
     while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        // Calculate effective reward credit
+        if (isset($row['custom_credit']) && $row['custom_credit'] !== null && intval($row['custom_credit']) > 0) {
+            $row['category_credit'] = intval($row['custom_credit']);
+            $row['is_custom_credit'] = true;
+        } elseif (!empty($row['child_credit']) && intval($row['child_credit']) > 0) {
+            $row['category_credit'] = intval($row['child_credit']);
+            $row['is_custom_credit'] = false;
+        } elseif (!empty($row['sub_credit']) && intval($row['sub_credit']) > 0) {
+            $row['category_credit'] = intval($row['sub_credit']);
+            $row['is_custom_credit'] = false;
+        } elseif (!empty($row['main_credit']) && intval($row['main_credit']) > 0) {
+            $row['category_credit'] = intval($row['main_credit']);
+            $row['is_custom_credit'] = false;
+        } else {
+            $row['category_credit'] = 5;
+            $row['is_custom_credit'] = false;
+        }
+        $row['credit'] = $row['category_credit'];
+
         if (!empty($row['checklists']) && is_string($row['checklists'])) {
             $row['checklists'] = json_decode($row['checklists'], true);
         } else {

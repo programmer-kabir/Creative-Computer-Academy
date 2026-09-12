@@ -17,7 +17,7 @@ ensureCategoryTableExists($db);
 try {
     // 1. Fetch all active categories ordered by order_index, name
     $stmt = $db->prepare("
-        SELECT id, name, slug, parent_id, level, icon, color, default_checklists, default_specs, estimated_minutes, department_id, status, order_index 
+        SELECT id, name, slug, parent_id, level, icon, color, credit, default_checklists, default_specs, estimated_minutes, department_id, status, order_index 
         FROM task_categories 
         WHERE status = 'active'
         ORDER BY order_index ASC, name ASC
@@ -101,6 +101,7 @@ try {
                 'full_path' => $m['name'],
                 'icon' => $m['icon'],
                 'color' => $m['color'],
+                'credit' => isset($m['credit']) ? (int)$m['credit'] : 5,
                 'checklists' => $m['default_checklists'],
                 'specs' => $m['default_specs'],
                 'estimated_minutes' => $m['estimated_minutes']
@@ -118,6 +119,7 @@ try {
                         'full_path' => $m['name'] . ' > ' . $s['name'],
                         'icon' => $s['icon'] ?: $m['icon'],
                         'color' => $s['color'] ?: $m['color'],
+                        'credit' => isset($s['credit']) && (int)$s['credit'] > 0 ? (int)$s['credit'] : (isset($m['credit']) ? (int)$m['credit'] : 5),
                         'checklists' => $s['default_checklists'],
                         'specs' => $s['default_specs'],
                         'estimated_minutes' => $s['estimated_minutes']
@@ -134,6 +136,7 @@ try {
                             'full_path' => $m['name'] . ' > ' . $s['name'] . ' > ' . $c['name'],
                             'icon' => $c['icon'] ?: ($s['icon'] ?: $m['icon']),
                             'color' => $s['color'] ?: $m['color'],
+                            'credit' => isset($c['credit']) && (int)$c['credit'] > 0 ? (int)$c['credit'] : (isset($s['credit']) && (int)$s['credit'] > 0 ? (int)$s['credit'] : (isset($m['credit']) ? (int)$m['credit'] : 5)),
                             'checklists' => !empty($c['default_checklists']) ? $c['default_checklists'] : $s['default_checklists'],
                             'specs' => !empty($c['default_specs']) ? $c['default_specs'] : $s['default_specs'],
                             'estimated_minutes' => $c['estimated_minutes'] ?: $s['estimated_minutes']

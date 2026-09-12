@@ -1,6 +1,7 @@
 import React from 'react';
 import { FiCode, FiFlag, FiPlayCircle, FiCheckSquare, FiPauseCircle, FiImage, FiStar, FiCalendar, FiClock } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
+import { FaCoins } from 'react-icons/fa6';
 
 const stripHtml = (html) => {
   if (!html) return '';
@@ -135,6 +136,12 @@ const TaskCard = ({ task, onSelect, onStart, onClaim, onToggleTimer, formatTimeS
               'text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200/70 dark:border-emerald-800/60'
             }`}>
               <FiFlag size={10} /> {task.priority}
+            </span>
+          )}
+
+          {(task.reward_credit !== undefined && task.reward_credit !== null) && (
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-extrabold tracking-wider px-2 py-0.5 rounded-lg text-amber-800 dark:text-amber-300 bg-amber-500/10 border border-amber-400/50 dark:border-amber-600/40 shadow-2xs" title={task.is_custom_credit ? "Custom Task Credit" : "Category Reward Credit"}>
+              <FaCoins size={11} className="text-amber-500" /> +{task.reward_credit} Credits
             </span>
           )}
         </div>

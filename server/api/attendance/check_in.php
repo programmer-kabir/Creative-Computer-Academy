@@ -1,42 +1,44 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
 error_reporting(E_ALL);
 
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
 
 require_once '../../config/database.php';
+require_once '../../config/cors.php';
+require_once 'AttendanceSecurityHelper.php';
 
 $database = new Database();
 $db = $database->getConnection();
 date_default_timezone_set('Asia/Dhaka');
 
-$data = json_decode(file_get_contents("php://input"));
+$data = json_decode(file_get_contents("php://input"), true);
 
-if(!isset($data->user_id)) {
+if(!isset($data['user_id'])) {
     echo json_encode(["status" => "error", "message" => "User ID required."]);
     exit;
 }
 
-$user_id = $data->user_id;
+$user_id = $data['user_id'];
+$device_info = isset($data['device_info']) && is_array($data['device_info']) ? $data['device_info'] : [];
+$location = isset($data['location']) && is_array($data['location']) ? $data['location'] : [];
 
-// --- Security: Office IP Verification ---
-// Replace with the actual public IP address of the office Wi-Fi in production.
-$allowed_ips = ['127.0.0.1', '::1', '182.48.76.182']; 
-$user_ip = $_SERVER['REMOTE_ADDR'];
+// Resolve real IP taking Cloudflare/proxies into account
+$user_ip = AttendanceSecurityHelper::getRealClientIP();
 
-if (!in_array($user_ip, $allowed_ips)) {
+// Evaluate Geofence, IP & Security
+$eval = AttendanceSecurityHelper::evaluateSecurity($db, $user_id, 'check_in', $user_ip, $device_info, $location);
+
+// Check if blocked under Strict Mode
+if (!empty($eval['is_blocked'])) {
     echo json_encode([
-        "status" => "error", 
-        "message" => "Check-in failed. You must be connected to the Office Wi-Fi. (Your IP: " . $user_ip . ")",
-        "ip" => $user_ip
+        "status" => "error",
+        "message" => $eval['block_message'],
+        "ip" => $user_ip,
+        "distance_meters" => $eval['distance_meters'],
+        "is_within_geofence" => $eval['is_within_geofence']
     ]);
     exit;
 }
-// ----------------------------------------
 
 $today = date('Y-m-d');
 $current_time = date('H:i:s');
@@ -47,7 +49,7 @@ $user_check->execute([':id' => $user_id]);
 if ($user_check->rowCount() === 0) {
     echo json_encode([
         "status" => "error",
-        "message" => "Diagnostic error: The user ID '" . $user_id . "' does not exist in the users table."
+        "message" => "User ID '" . $user_id . "' does not exist in the users table."
     ]);
     exit;
 }
@@ -61,13 +63,10 @@ $emp_stmt->execute();
 $shift_start = '10:00:00'; // Default
 if($emp_stmt->rowCount() > 0) {
     $emp_row = $emp_stmt->fetch(PDO::FETCH_ASSOC);
-    if($emp_row['shift_start']) {
+    if(!empty($emp_row['shift_start'])) {
         $shift_start = $emp_row['shift_start'];
     }
 }
-
-// Calculate late threshold (shift_start + 15 minutes)
-$late_threshold = date('H:i:s', strtotime($shift_start) + 15 * 60);
 
 // Check if already checked in today
 $check_query = "SELECT id, check_in, check_out FROM attendance WHERE user_id = :user_id AND date = :today LIMIT 1";
@@ -94,11 +93,19 @@ $stmt->bindParam(':check_in', $current_time);
 $stmt->bindParam(':status', $status);
 
 if($stmt->execute()) {
+    $attendance_id = $db->lastInsertId();
+
+    // Log complete device & security metadata to attendance_device_logs
+    AttendanceSecurityHelper::logDevicePunch($db, $attendance_id, $user_id, 'check_in', $eval);
+
     echo json_encode([
         "status" => "success", 
         "message" => "Checked in successfully as " . $status,
         "time" => $current_time,
-        "attendance_status" => $status
+        "attendance_status" => $status,
+        "trust_score" => $eval['trust_score'],
+        "distance_meters" => $eval['distance_meters'],
+        "verification_status" => $eval['verification_status']
     ]);
 } else {
     echo json_encode(["status" => "error", "message" => "Failed to check in."]);

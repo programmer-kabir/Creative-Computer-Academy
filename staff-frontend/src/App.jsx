@@ -16,6 +16,7 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const Messages = React.lazy(() => import('./pages/Messages'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const BrandKit = React.lazy(() => import('./pages/BrandKit'));
+const Credits = React.lazy(() => import('./pages/Credits'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
@@ -96,6 +97,14 @@ function App() {
               <ProtectedRoute>
                 <AuthenticatedLayout>
                   <BrandKit />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/credits" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <Credits />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

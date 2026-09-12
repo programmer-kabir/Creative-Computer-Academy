@@ -5,12 +5,12 @@ description: Use this skill when the user asks to "start the project" or "run se
 
 # Start the project
 
-When the user asks you to start the project or run servers, you must run the following 3 React apps in the background:
+When the user asks you to start the project or run servers, you must run the following 4 React apps in the background:
 
 1. `admin-frontend` using `npm run dev`
 2. `staff-frontend` using `npm run dev -- --port 5174`
 3. `review-frontend` using `npm run dev -- --port 5175`
-3. `student-frontend` using `npm run dev -- --port 5176`
+4. `student-frontend` using `npm run dev -- --port 5176`
 
 Note: The backend is in the 'Server' folder (PHP).
 
@@ -30,3 +30,4 @@ After all servers are running, you MUST do the following:
    - 🔧 Backend API overview
    - ✅ Key features already built
    - 🚀 Running URLs for each app
+   - 💡 Any observations, suggestions, or potential improvements you noticed

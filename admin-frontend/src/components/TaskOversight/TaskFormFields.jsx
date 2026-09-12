@@ -66,7 +66,8 @@ export const TaskFormFields = ({ formData, setFormData, editorRef, staff, worklo
                                 category: val,
                                 category_id: meta?.category_id || prev.category_id,
                                 subcategory_id: meta?.subcategory_id || prev.subcategory_id,
-                                child_category_id: meta?.child_category_id || prev.child_category_id
+                                child_category_id: meta?.child_category_id || prev.child_category_id,
+                                category_credit: meta?.credit !== undefined ? meta.credit : prev.category_credit
                             }));
                         }}
                         onTemplateSelect={(tpl) => {
@@ -85,6 +86,47 @@ export const TaskFormFields = ({ formData, setFormData, editorRef, staff, worklo
                         apiBase={apiBase}
                     />
                 </div>
+            </div>
+
+            {/* Reward Credits Section (Inherited + Custom Override) */}
+            <div className="p-3.5 rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.04] via-yellow-500/[0.03] to-amber-500/[0.07] dark:border-amber-500/30">
+                <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-1.5 text-[11px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
+                        <span>🪙</span> Reward Credits
+                    </label>
+                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-900 dark:text-amber-200 border border-amber-500/30">
+                        {formData.custom_credit && Number(formData.custom_credit) > 0 
+                            ? `${formData.custom_credit} Credits (Custom)`
+                            : `${formData.category_credit || 5} Credits (Inherited)`
+                        }
+                    </span>
+                </div>
+
+                <div className="relative">
+                    <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={formData.custom_credit || ''}
+                        onChange={e => setFormData({ ...formData, custom_credit: e.target.value })}
+                        className="w-full bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-500/30 rounded-lg px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 placeholder:font-normal placeholder:text-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+                        placeholder={`Default: ${formData.category_credit || 5} credits (Leave blank to inherit)`}
+                    />
+                    {formData.custom_credit && (
+                        <button
+                            type="button"
+                            onClick={() => setFormData({ ...formData, custom_credit: '' })}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:text-red-500 px-1.5 py-0.5 rounded bg-amber-100/60 dark:bg-amber-900/40 transition-colors"
+                        >
+                            Reset
+                        </button>
+                    )}
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 leading-relaxed">
+                    {formData.custom_credit 
+                        ? '⚡ Custom credit set! This specific amount will be awarded upon completion.' 
+                        : '💡 Child category automatically inherits credit from Subcategory (or Category).'}
+                </p>
             </div>
 
             {/* Priority */}

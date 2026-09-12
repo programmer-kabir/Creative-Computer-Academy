@@ -48,17 +48,60 @@ switch($filter) {
         break;
 }
 
+$start_dt = $start_date . ' 00:00:00';
+$end_dt = $end_date . ' 23:59:59';
+
 $response = [
     "status" => "success",
     "filter_used" => $filter,
     "start_date" => $start_date,
     "end_date" => $end_date,
-    "attendance" => [],
+    "credits" => [],
     "completed" => [],
-    "in_review" => []
+    "in_review" => [],
+    "attendance" => []
 ];
 
-// 1. Attendance Leaderboard (Total Worked Hours)
+// 1. Top Credit Earners Leaderboard (Within time filter or All-time)
+$cred_query = "
+    SELECT u.id, u.name, u.profile_picture, SUM(ct.amount) as score 
+    FROM users u 
+    JOIN credit_transactions ct ON u.id = ct.user_id 
+    WHERE ct.amount > 0 
+      AND ct.created_at >= :start_date AND ct.created_at <= :end_date 
+    GROUP BY u.id 
+    ORDER BY score DESC 
+    LIMIT 5
+";
+$cred_stmt = $db->prepare($cred_query);
+$cred_stmt->bindParam(':start_date', $start_dt);
+$cred_stmt->bindParam(':end_date', $end_dt);
+$cred_stmt->execute();
+
+$cred_rows = $cred_stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// If no transactions found in that period or for overall, fallback / combine with user_credits.balance or total_earned
+if (empty($cred_rows)) {
+    $fb_query = "
+        SELECT u.id, u.name, u.profile_picture, uc.total_earned as score
+        FROM users u
+        JOIN user_credits uc ON u.id = uc.user_id
+        WHERE uc.total_earned > 0
+        ORDER BY uc.total_earned DESC, uc.balance DESC
+        LIMIT 5
+    ";
+    $fb_stmt = $db->query($fb_query);
+    if ($fb_stmt) {
+        $cred_rows = $fb_stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
+
+foreach ($cred_rows as $row) {
+    $row['score'] = '+' . intval($row['score']) . ' Credits';
+    $response["credits"][] = $row;
+}
+
+// 2. Attendance Leaderboard (Total Worked Hours)
 $att_query = "
     SELECT u.id, u.name, u.profile_picture, 
            SUM(TIME_TO_SEC(IFNULL(a.check_out, IF(a.date = :today, :current_time, a.check_in))) - TIME_TO_SEC(a.check_in)) as total_seconds
@@ -92,7 +135,7 @@ while($row = $att_stmt->fetch(PDO::FETCH_ASSOC)) {
     $response["attendance"][] = $row;
 }
 
-// 2. Completed Tasks Leaderboard
+// 3. Completed Tasks Leaderboard
 $comp_query = "
     SELECT u.id, u.name, u.profile_picture, COUNT(t.id) as score 
     FROM users u 
@@ -105,8 +148,6 @@ $comp_query = "
     LIMIT 5
 ";
 $comp_stmt = $db->prepare($comp_query);
-$start_dt = $start_date . ' 00:00:00';
-$end_dt = $end_date . ' 23:59:59';
 $comp_stmt->bindParam(':start_date', $start_dt);
 $comp_stmt->bindParam(':end_date', $end_dt);
 $comp_stmt->execute();
@@ -115,7 +156,7 @@ while($row = $comp_stmt->fetch(PDO::FETCH_ASSOC)) {
     $response["completed"][] = $row;
 }
 
-// 3. In Review Tasks Leaderboard
+// 4. In Review Tasks Leaderboard
 $rev_query = "
     SELECT u.id, u.name, u.profile_picture, COUNT(t.id) as score 
     FROM users u 

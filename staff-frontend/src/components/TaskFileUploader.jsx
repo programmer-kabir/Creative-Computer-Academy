@@ -67,13 +67,15 @@ export default function TaskFileUploader({ files = [], setFiles, taskId = 0, use
           return { ...f, file: matchingLocal };
         });
         setFiles(prev => [...prev, ...mergedFiles]);
-        toast.success(`${response.data.files.length} file(s) uploaded to Cloudflare R2!`);
+        toast.success(`${response.data.files.length} file(s) uploaded successfully!`);
       } else {
-        toast.error(response.data?.message || 'File upload failed');
+        const errorMsg = response.data?.message || (response.data?.errors ? response.data.errors.join(' | ') : 'File upload failed');
+        toast.error(errorMsg);
       }
     } catch (err) {
       console.error('File upload error:', err);
-      toast.error(err.response?.data?.message || 'Server error while uploading to Cloudflare R2');
+      const errorMsg = err.response?.data?.message || err.message || 'Server error while uploading file';
+      toast.error(errorMsg);
     } finally {
       setUploading(false);
       setUploadProgress(0);

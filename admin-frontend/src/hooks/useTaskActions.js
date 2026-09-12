@@ -157,37 +157,82 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
 
 
     const fetchTasksAndStaff = async (isSilent = false) => {
-        if (!isSilent) {
-            setLoading(prev => (tasks && tasks.length > 0 ? false : true));
-        }
-        try {
-            const [tasksRes, staffRes, deptRes, workloadRes] = await Promise.all([
-                axios.get(`${apiBase}api/admin/tasks/get_all_tasks.php`),
-                axios.get(`${apiBase}api/admin/staff/get_all_staff.php`),
-                axios.get(`${apiBase}api/admin/departments/get_departments.php`),
-                axios.get(`${apiBase}api/admin/tasks/get_workload.php`).catch(() => ({ data: { status: 'error' } }))
-            ]);
-            if (tasksRes.data.status === 'success') {
-                setTasks(tasksRes.data.data);
-                try { sessionStorage.setItem('cca_admin_tasks', JSON.stringify(tasksRes.data.data)); } catch (_) {}
-            }
-            if (staffRes.data.status === 'success') {
-                setStaff(staffRes.data.data);
-                try { sessionStorage.setItem('cca_admin_staff', JSON.stringify(staffRes.data.data)); } catch (_) {}
-            }
-            if (deptRes.data.status === 'success') {
-                setDepartments(deptRes.data.data);
-                try { sessionStorage.setItem('cca_admin_depts', JSON.stringify(deptRes.data.data)); } catch (_) {}
-            }
-            if (workloadRes.data.status === 'success') {
-                setWorkloads(workloadRes.data.data);
-                try { sessionStorage.setItem('cca_admin_workloads', JSON.stringify(workloadRes.data.data)); } catch (_) {}
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-        } finally {
+        const cachedTasks = (() => {
+            try {
+                const c = sessionStorage.getItem('cca_admin_tasks');
+                return c ? JSON.parse(c) : null;
+            } catch (_) { return null; }
+        })();
+
+        const hasExistingData = (tasks && tasks.length > 0) || (cachedTasks && cachedTasks.length > 0);
+
+        if (!isSilent && !hasExistingData) {
+            setLoading(true);
+        } else {
             setLoading(false);
         }
+
+        const safeSaveSession = (key, data) => {
+            try {
+                sessionStorage.setItem(key, JSON.stringify(data));
+            } catch (err) {
+                try {
+                    if (Array.isArray(data)) {
+                        const lightData = data.map(item => {
+                            let desc = item.description || '';
+                            if (typeof desc === 'string' && desc.includes('data:image/')) {
+                                desc = desc.replace(/data:image\/[^;]+;base64,[^"'\s)]+/g, '[img]');
+                            }
+                            return { ...item, description: desc };
+                        });
+                        sessionStorage.setItem(key, JSON.stringify(lightData));
+                    }
+                } catch (innerErr) {
+                    console.warn('Could not store in sessionStorage due to size:', key, innerErr);
+                }
+            }
+        };
+
+        // 1. Fetch main tasks first and render immediately
+        const tasksPromise = axios.get(`${apiBase}api/admin/tasks/get_all_tasks.php`)
+            .then(res => {
+                if (res.data.status === 'success') {
+                    setTasks(res.data.data);
+                    safeSaveSession('cca_admin_tasks', res.data.data);
+                }
+            })
+            .catch(err => console.error('Error fetching tasks:', err))
+            .finally(() => setLoading(false));
+
+        // 2. Fetch ancillary data (staff, depts, workload) in parallel without blocking UI
+        const staffPromise = axios.get(`${apiBase}api/admin/staff/get_all_staff.php`)
+            .then(res => {
+                if (res.data.status === 'success') {
+                    setStaff(res.data.data);
+                    safeSaveSession('cca_admin_staff', res.data.data);
+                }
+            })
+            .catch(err => console.error('Error fetching staff:', err));
+
+        const deptPromise = axios.get(`${apiBase}api/admin/departments/get_departments.php`)
+            .then(res => {
+                if (res.data.status === 'success') {
+                    setDepartments(res.data.data);
+                    safeSaveSession('cca_admin_depts', res.data.data);
+                }
+            })
+            .catch(err => console.error('Error fetching departments:', err));
+
+        const workloadPromise = axios.get(`${apiBase}api/admin/tasks/get_workload.php`)
+            .then(res => {
+                if (res.data.status === 'success') {
+                    setWorkloads(res.data.data);
+                    safeSaveSession('cca_admin_workloads', res.data.data);
+                }
+            })
+            .catch(() => { });
+
+        await Promise.allSettled([tasksPromise, staffPromise, deptPromise, workloadPromise]);
     };
     const handleCreateTask = async (e, customData = null) => {
         if (e && e.preventDefault) e.preventDefault();
@@ -265,9 +310,9 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             }
         }
 
-        const activeVariant = Array.isArray(task.blueprint_variants) 
-          ? (task.blueprint_variants.find(v => v.is_active) || task.blueprint_variants[0])
-          : null;
+        const activeVariant = Array.isArray(task.blueprint_variants)
+            ? (task.blueprint_variants.find(v => v.is_active) || task.blueprint_variants[0])
+            : null;
         const activeBlueprintData = activeVariant?.blueprint_data || parsedBlueprint;
 
         setEditTask({
@@ -291,6 +336,7 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
             blueprint_data: activeBlueprintData,
             blueprint_variants: task.blueprint_variants || [],
             priority: task.priority || 'Medium',
+            custom_credit: task.custom_credit !== null && task.custom_credit !== undefined ? String(task.custom_credit) : '',
             checklists: task.checklists ? (typeof task.checklists === 'string' ? JSON.parse(task.checklists) : task.checklists) : []
         });
         setIsEditOpen(true);
@@ -484,12 +530,12 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 const catName = (t.category_name || '').toLowerCase().trim();
                 const directCat = (t.category || '').toLowerCase().trim();
                 const catPath = (t.category_path || '').toLowerCase().trim();
-                
+
                 return mainName === catLow ||
-                       directCat === catLow ||
-                       catPath.startsWith(catLow) ||
-                       catPath.includes(catLow) ||
-                       catName === catLow;
+                    directCat === catLow ||
+                    catPath.startsWith(catLow) ||
+                    catPath.includes(catLow) ||
+                    catName === catLow;
             });
         }
 
@@ -501,8 +547,8 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 const catPath = (t.category_path || '').toLowerCase().trim();
 
                 return subName === subLow ||
-                       directCat === subLow ||
-                       catPath.includes(subLow);
+                    directCat === subLow ||
+                    catPath.includes(subLow);
             });
         }
 
@@ -514,15 +560,15 @@ export const useTaskActions = ({ apiBase, currentUser, setComments, setAddingCom
                 const catPath = (t.category_path || '').toLowerCase().trim();
 
                 return childName === childLow ||
-                       directCat === childLow ||
-                       catPath.includes(childLow);
+                    directCat === childLow ||
+                    catPath.includes(childLow);
             });
         }
 
         // Backward compatibility for selectedDeptFilter
         if (selectedDeptFilter && selectedDeptFilter !== 'all' && (!selectedCategoryFilter || selectedCategoryFilter === 'all')) {
             const filterLow = selectedDeptFilter.toLowerCase();
-            result = result.filter(t => 
+            result = result.filter(t =>
                 t.category === selectedDeptFilter ||
                 (t.category_path && t.category_path.toLowerCase().includes(filterLow)) ||
                 (t.category && t.category.toLowerCase().includes(filterLow))

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -9,13 +10,16 @@ import {
   FiChevronDown, FiCalendar, FiEye, FiLink, FiDownload,
   FiImage, FiMaximize, FiMinimize, FiCode, FiMessageSquare,
   FiSend, FiPlusCircle, FiAlertCircle, FiFileText, FiPackage, FiExternalLink,
-  FiStar, FiTag, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiLayers
+  FiStar, FiTag, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiLayers,
+  FiCheckSquare, FiCopy
 } from 'react-icons/fi';
+import { FaCoins } from 'react-icons/fa6';
 import { HiSparkles } from 'react-icons/hi';
 import TaskTimeline from '../components/TaskTimeline';
 import TaskDeliverablesViewer from '../components/TaskDeliverablesViewer';
 import ApprovalRatingModal from '../components/ApprovalRatingModal';
 import AgenticBlueprintViewer from '../components/AgenticBlueprintViewer';
+import TaskCreditsTab from '../components/TaskCreditsTab';
 import { downloadFile } from '../utils/fileDownloader';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -104,26 +108,65 @@ const getCleanDescriptionSnippet = (htmlOrJson, maxLength = 130) => {
   }
 };
 
-const DynamicJsonViewer = ({ data, level = 0 }) => {
-  if (data === null) return <span className="text-white/40 italic text-xs">null</span>;
-  if (typeof data === 'boolean') return <span className={`text-xs ${data ? "text-emerald-400 font-semibold" : "text-rose-400 font-semibold"}`}>{data ? 'True' : 'False'}</span>;
-  if (typeof data === 'number') return <span className="text-blue-400 font-medium text-xs">{data}</span>;
+const CopyButton = ({ textToCopy }) => {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+        setCopied(true);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = textToCopy;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopied(true);
+      }
+    } catch (err) {
+      console.error('Failed to copy: ', err);
+    }
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="p-1.5 rounded-lg bg-slate-200/50 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors flex items-center justify-center gap-1.5 text-xs font-semibold shadow-xs cursor-pointer"
+      title="Copy text"
+    >
+      {copied ? <FiCheck size={14} className="text-emerald-500" /> : <FiCopy size={14} />}
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+};
+
+const DynamicJsonViewer = React.memo(({ data, level = 0 }) => {
+  if (data === null) return <span className="text-slate-400 italic text-sm">null</span>;
+  if (typeof data === 'boolean') return <span className={`text-sm ${data ? "text-emerald-600 dark:text-emerald-400 font-semibold" : "text-rose-600 dark:text-rose-400 font-semibold"}`}>{data ? 'True' : 'False'}</span>;
+  if (typeof data === 'number') return <span className="text-blue-600 dark:text-blue-400 font-medium text-sm">{data}</span>;
   if (typeof data === 'string') {
     if (isColorHex(data)) {
       return (
-        <span className="flex items-center gap-2">
-          <span className="w-3.5 h-3.5 rounded-full shadow-sm inline-block shrink-0 border border-white/10" style={{ backgroundColor: data }}></span>
-          <span className="text-white/70 font-medium text-xs">{data}</span>
+        <span className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-sm font-mono text-slate-700 dark:text-slate-300">
+          <span className="w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-slate-600 flex-shrink-0" style={{ backgroundColor: data }} />
+          {data}
         </span>
       );
     }
-    return <span className="text-white/70 text-xs leading-relaxed">{data}</span>;
+    return <span className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{data}</span>;
   }
   if (Array.isArray(data)) {
     return (
-      <ul className="flex flex-col gap-1 mt-1 list-disc list-inside text-white/30 marker:text-white/20 pl-1">
+      <ul className="flex flex-col gap-1.5 mt-1 list-disc list-inside text-slate-400 marker:text-slate-300 pl-1">
         {data.map((item, idx) => (
-          <li key={idx} className="text-xs">
+          <li key={idx} className="text-sm">
             <span className="inline-block align-top ml-[-4px] w-[calc(100%-12px)]">
               <DynamicJsonViewer data={item} level={level + 1} />
             </span>
@@ -133,13 +176,13 @@ const DynamicJsonViewer = ({ data, level = 0 }) => {
     );
   }
   if (typeof data === 'object') {
+    const isComplex = Object.values(data).some(v => typeof v === 'object' && v !== null);
     return (
-      <div className={`flex flex-col gap-2 ${level > 0 ? 'mt-1.5 pl-3 border-l-2 border-white/5' : ''}`}>
+      <div className={`flex flex-col ${level > 0 ? 'gap-2.5 pl-3 border-l border-slate-200 dark:border-slate-800' : 'gap-3.5'}`}>
         {Object.entries(data).map(([key, val]) => {
-          const isComplex = typeof val === 'object' && val !== null;
           return (
             <div key={key} className={`flex ${isComplex ? 'flex-col' : 'items-start gap-3'}`}>
-              <span className={`text-[10px] font-bold text-white/40 uppercase shrink-0 ${!isComplex ? 'w-1/3 min-w-[120px] max-w-[150px] pt-0.5' : 'mb-0.5 text-white/70'}`}>
+              <span className={`text-xs font-bold text-slate-500 dark:text-slate-400 capitalize shrink-0 ${!isComplex ? 'w-1/3 min-w-[120px] max-w-[150px] pt-0.5' : 'mb-0.5 text-slate-800 dark:text-slate-200'}`}>
                 {key.replace(/_/g, ' ')}
               </span>
               <div className={`${isComplex ? 'w-full' : 'flex-1 break-words'}`}>
@@ -152,43 +195,169 @@ const DynamicJsonViewer = ({ data, level = 0 }) => {
     );
   }
   return null;
-};
+});
 
-const DescriptionRenderer = ({ htmlContent }) => {
+const DescriptionRenderer = React.memo(({ htmlContent, onImageClick }) => {
   let jsonData = null;
+  let textBefore = '';
+  let textAfter = '';
+  let cleanHtml = htmlContent || '';
+
+  // Linkify HTML safely for non-JSON rendering
   try {
     const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = htmlContent;
+    tempDiv.innerHTML = cleanHtml;
+    const urlRegex = /(https?:\/\/[^\s<"']+)/g;
+    const walker = document.createTreeWalker(tempDiv, NodeFilter.SHOW_TEXT, null, false);
+    const nodesToReplace = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentNode && node.parentNode.tagName !== 'A' && urlRegex.test(node.nodeValue)) {
+        nodesToReplace.push(node);
+      }
+    }
+    nodesToReplace.forEach((n) => {
+      const span = document.createElement('span');
+      span.innerHTML = n.nodeValue.replace(urlRegex, (url) => {
+        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold hover:underline" draggable="false">${url}</a>`;
+      });
+      n.parentNode.replaceChild(span, n);
+    });
+
+    // Ensure ALL anchor tags and images are not draggable to prevent text selection loss
+    const allLinks = tempDiv.querySelectorAll('a, img');
+    allLinks.forEach(el => {
+      el.setAttribute('draggable', 'false');
+      if (el.tagName === 'A') {
+        el.classList.add('text-blue-600', 'hover:text-blue-700', 'dark:text-blue-400', 'dark:hover:text-blue-300', 'font-semibold', 'hover:underline');
+      } else if (el.tagName === 'IMG') {
+        el.classList.add('cursor-zoom-in', 'hover:opacity-90', 'transition-opacity', 'rounded-xl', 'border', 'border-slate-200', 'dark:border-white/10');
+      }
+    });
+
+    cleanHtml = tempDiv.innerHTML;
+  } catch (e) {
+    console.error("Linkify error", e);
+  }
+
+  try {
+    let textWithNewlines = htmlContent || '';
+    textWithNewlines = textWithNewlines.replace(/<p[^>]*>/gi, '\n');
+    textWithNewlines = textWithNewlines.replace(/<\/p>/gi, '\n');
+    textWithNewlines = textWithNewlines.replace(/<div[^>]*>/gi, '\n');
+    textWithNewlines = textWithNewlines.replace(/<\/div>/gi, '\n');
+    textWithNewlines = textWithNewlines.replace(/<br\s*\/?>/gi, '\n');
+    textWithNewlines = textWithNewlines.replace(/<li[^>]*>/gi, '\n• ');
+    textWithNewlines = textWithNewlines.replace(/<\/li>/gi, '\n');
+
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = textWithNewlines;
     let rawText = tempDiv.textContent || tempDiv.innerText || '';
-    rawText = rawText.replace(/\u00A0/g, ' ').replace(/&nbsp;/g, ' ').trim();
-    if (rawText.startsWith('{') || rawText.startsWith('[')) {
-      jsonData = JSON.parse(rawText);
+    rawText = rawText.replace(/\u00A0/g, ' ').replace(/&nbsp;/g, ' ');
+
+    const firstBrace = rawText.indexOf('{');
+    const lastBrace = rawText.lastIndexOf('}');
+    const firstBracket = rawText.indexOf('[');
+    const lastBracket = rawText.lastIndexOf(']');
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    if (firstBrace !== -1 && lastBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+      startIndex = firstBrace;
+      endIndex = lastBrace;
+    } else if (firstBracket !== -1 && lastBracket !== -1) {
+      startIndex = firstBracket;
+      endIndex = lastBracket;
+    }
+
+    if (startIndex !== -1 && endIndex !== -1 && endIndex > startIndex) {
+      const possibleJson = rawText.substring(startIndex, endIndex + 1);
+      jsonData = JSON.parse(possibleJson);
+      textBefore = rawText.substring(0, startIndex).trim();
+      textAfter = rawText.substring(endIndex + 1).trim();
     }
   } catch (e) {
     jsonData = null;
   }
 
+  const escapeHtml = (unsafe) => {
+    if (!unsafe) return '';
+    return unsafe
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  };
+
+  const formatPlainText = (text) => {
+    if (!text) return null;
+    const escaped = escapeHtml(text);
+    const urlRegex = /(https?:\/\/[^\s<"']+)/g;
+    const linkedText = escaped.replace(urlRegex, (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold hover:underline" draggable="false">${url}</a>`);
+    return (
+      <div
+        className="text-slate-700 dark:text-slate-300 text-sm whitespace-pre-wrap leading-relaxed select-text"
+        dangerouslySetInnerHTML={{ __html: linkedText }}
+      />
+    );
+  };
+
   if (jsonData) {
     return (
-      <div className="bg-white/[0.02] p-4 rounded-xl border border-white/5">
-        <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-[11px] font-black text-brand-400 uppercase tracking-widest flex items-center gap-1.5">
-            <FiCode size={14} />
-            Structured Specifications (JSON)
-          </h4>
+      <div className="space-y-4 select-text">
+        {textBefore && (
+          <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+            {formatPlainText(textBefore)}
+          </div>
+        )}
+
+        <div className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-xl border border-slate-100 dark:border-slate-700 relative">
+          <div className="flex items-center justify-between mb-4 border-b border-slate-200 dark:border-slate-700 pb-3">
+            <h4 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+              <FiCode size={14} /> Structured Specifications
+            </h4>
+            <CopyButton textToCopy={JSON.stringify(jsonData, null, 2)} />
+          </div>
+          <DynamicJsonViewer data={jsonData} />
         </div>
-        <DynamicJsonViewer data={jsonData} />
+
+        {textAfter && (
+          <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+            {formatPlainText(textAfter)}
+          </div>
+        )}
       </div>
     );
   }
 
+  // Generate plain text from cleanHtml for copying
+  let fallbackText = '';
+  try {
+    const fallbackDiv = document.createElement('div');
+    fallbackDiv.innerHTML = cleanHtml;
+    fallbackText = fallbackDiv.textContent || fallbackDiv.innerText || '';
+  } catch (e) { }
+
   return (
-    <div
-      className="text-white/70 text-xs leading-relaxed max-w-none task-description-html"
-      dangerouslySetInnerHTML={{ __html: htmlContent || '<p class="italic text-white/30">No description provided.</p>' }}
-    />
+    <div className="relative selection:bg-blue-500/30 selection:text-slate-900 dark:selection:text-white select-text">
+      <div className="absolute top-3 right-3 z-10">
+        <CopyButton textToCopy={fallbackText} />
+      </div>
+      <div
+        onClick={(e) => {
+          if (e.target && e.target.tagName === 'IMG' && e.target.src && onImageClick) {
+            e.stopPropagation();
+            onImageClick(e.target.src);
+          }
+        }}
+        className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-xl text-slate-700 dark:text-slate-300 text-sm border border-slate-100 dark:border-slate-700 prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-2 prose-li:my-0 leading-normal task-description-content pr-20 select-text"
+        dangerouslySetInnerHTML={{ __html: cleanHtml || '<span class="italic !text-slate-400" style="color: #94a3b8;">No description provided.</span>' }}
+      />
+    </div>
   );
-};
+});
 
 const fmtRelativeTime = (dateStr) => {
   if (!dateStr) return '';
@@ -348,6 +517,12 @@ const RefLinksRenderer = ({ linksJson }) => {
 // ── Main Page Component ──────────────────────────────────────────────────────
 const PendingReviews = () => {
   const { currentUser } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const requestedTaskId = searchParams.get('taskId') || searchParams.get('ttaskId') || searchParams.get('task_id') || location.state?.taskId;
+
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeReviewTask, setActiveReviewTask] = useState(null);
@@ -411,6 +586,28 @@ const PendingReviews = () => {
     from: 0,
     to: 0
   });
+
+  // Dynamic System Settings from DB
+  const [systemSettings, setSystemSettings] = useState({
+    reviewer_delivery_bonus: 5,
+    reviewer_approval_credit: 2,
+    reviewer_rejection_credit: 1,
+    staff_rejection_penalty: 1,
+  });
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}api/settings/get_system_settings.php`);
+        if (res.data.status === 'success' && res.data.settings) {
+          setSystemSettings(prev => ({ ...prev, ...res.data.settings }));
+        }
+      } catch (err) {
+        console.error('Failed to load system settings:', err);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const fetchPending = useCallback(async (page = 1, limit = pageSize) => {
     if (!currentUser?.id) return;
@@ -530,6 +727,19 @@ const PendingReviews = () => {
     return () => window.removeEventListener('paste', handlePaste);
   }, [rejectModalOpen, deliveryModalOpen]);
 
+  const handleCloseModal = () => {
+    setActiveReviewTask(null);
+    setZenMode(false);
+    const newParams = new URLSearchParams(searchParams);
+    let changed = false;
+    if (newParams.has('taskId')) { newParams.delete('taskId'); changed = true; }
+    if (newParams.has('ttaskId')) { newParams.delete('ttaskId'); changed = true; }
+    if (newParams.has('task_id')) { newParams.delete('task_id'); changed = true; }
+    if (changed) {
+      setSearchParams(newParams, { replace: true });
+    }
+  };
+
   // Keyboard Shortcuts for Active Task Modal
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -547,17 +757,18 @@ const PendingReviews = () => {
         }
       } else if (activeReviewTask) {
         if (e.key === 'Escape') {
-          setActiveReviewTask(null);
+          handleCloseModal();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeReviewTask, rejectModalOpen, deliveryModalOpen]);
+  }, [activeReviewTask, rejectModalOpen, deliveryModalOpen, searchParams]);
 
   const selectTaskForReview = async (task) => {
     setActiveReviewTask(task);
-    const taskId = task.task_id;
+    const taskId = task.task_id || task.id;
+    if (!taskId) return;
 
     if (!taskLogs[taskId]) {
       setLoadingLogs(prev => ({ ...prev, [taskId]: true }));
@@ -574,13 +785,41 @@ const PendingReviews = () => {
     }
   };
 
+  // Auto-open modal when requestedTaskId is in URL or location.state
+  useEffect(() => {
+    if (!requestedTaskId) return;
+
+    // 1. Check in already loaded tasks
+    const matched = tasks.find(t => String(t.task_id || t.id) === String(requestedTaskId));
+    if (matched) {
+      selectTaskForReview(matched);
+      return;
+    }
+
+    // 2. Fetch directly from API
+    let isMounted = true;
+    const fetchTargetTask = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}api/tasks/get_task_details.php?task_id=${requestedTaskId}`);
+        if (isMounted && res.data.status === 'success' && res.data.data) {
+          selectTaskForReview(res.data.data);
+        }
+      } catch (err) {
+        console.error('Failed to auto-open target task details in pending:', err);
+      }
+    };
+
+    fetchTargetTask();
+    return () => { isMounted = false; };
+  }, [requestedTaskId, tasks]);
+
   const advanceToNextTask = (currentTaskId) => {
-    const currentIndex = tasks.findIndex(t => t.task_id === currentTaskId);
+    const currentIndex = tasks.findIndex(t => (t.task_id || t.id) === currentTaskId);
     if (currentIndex >= 0 && currentIndex < tasks.length - 1) {
       const nextTask = tasks[currentIndex + 1];
       selectTaskForReview(nextTask);
     } else {
-      setActiveReviewTask(null);
+      handleCloseModal();
     }
   };
 
@@ -618,10 +857,13 @@ const PendingReviews = () => {
         if (ratingData.rating) payload.rating = ratingData.rating;
         if (ratingData.feedback_notes) payload.feedback_notes = ratingData.feedback_notes;
         if (ratingData.tags) payload.tags = ratingData.tags;
+        if (ratingData.reward_credit) payload.reward_credit = ratingData.reward_credit;
       }
 
       axios.post(`${API_BASE}api/reviewer/update_task_status.php`, payload).then(res => {
-        if (res.data.status !== 'success') {
+        if (res.data.status === 'success') {
+          window.dispatchEvent(new Event('credit-updated'));
+        } else {
           console.error(res.data);
           alert('Failed to update task status. Reverting changes.');
           setTasks(previousTasks);
@@ -731,6 +973,11 @@ const PendingReviews = () => {
       formData.append('fix_notes', fixNotes);
       formData.append('source_type', 'reviewer_corrected');
 
+      const rewardCredit = deliveryTask.category_credit || deliveryTask.credit || deliveryTask.custom_credit || null;
+      if (rewardCredit) {
+        formData.append('reward_credit', rewardCredit);
+      }
+
       if (deliveryIncludeRating && deliveryRating > 0) {
         formData.append('rating', deliveryRating);
         formData.append('feedback_notes', fixNotes);
@@ -766,6 +1013,8 @@ const PendingReviews = () => {
           origin: { y: 0.6 },
           colors: ['#38bdf8', '#3b82f6', '#10b981', '#fbbf24', '#a855f7']
         });
+
+        window.dispatchEvent(new Event('credit-updated'));
 
         setDeliveryModalOpen(false);
         setTasks(prev => prev.filter(t => t.task_id !== taskIdDone));
@@ -1212,11 +1461,11 @@ const PendingReviews = () => {
           {/* Backdrop */}
           <div
             className={`fixed inset-0 transition-colors duration-500 ${zenMode ? 'bg-dark-950' : 'bg-black/75 backdrop-blur-md'}`}
-            onClick={() => { setActiveReviewTask(null); setZenMode(false); }}
+            onClick={handleCloseModal}
           />
 
           {/* Modal Container */}
-          <div className={`relative z-10 glass border border-white/5 flex flex-col overflow-hidden shadow-2xl transition-all duration-300 ${zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-6xl h-[90vh] max-h-[90vh]'
+          <div className={`relative z-10 glass border border-white/5 flex flex-col overflow-hidden shadow-2xl transition-all duration-300 ${zenMode ? 'w-screen h-screen rounded-none border-0' : 'rounded-3xl w-full max-w-[1500px] h-[90vh] max-h-[90vh]'
             }`}>
             {/* Modal Header */}
             <div className="p-5 border-b border-white/5 flex items-center justify-between gap-4 bg-dark-900/40 shrink-0">
@@ -1256,7 +1505,7 @@ const PendingReviews = () => {
                 </button>
 
                 <button
-                  onClick={() => { setActiveReviewTask(null); setZenMode(false); }}
+                  onClick={handleCloseModal}
                   className="text-white/40 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-all"
                 >
                   <FiX size={20} />
@@ -1270,37 +1519,81 @@ const PendingReviews = () => {
               <div className="space-y-4">
                 <h1 className="text-white font-bold text-xl leading-snug">{activeReviewTask.title}</h1>
 
-                {/* 2-Tab Navigation */}
-                <div className="flex items-center gap-2 border-b border-slate-200 dark:border-white/10 pb-3">
-                  <button
-                    type="button"
-                    onClick={() => setModalTab('submission')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'submission'
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
-                      : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
-                      }`}
-                  >
-                    <FiPackage size={14} className={modalTab === 'submission' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
-                    <span>Submitted Deliverables</span>
-                    {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${modalTab === 'submission' ? 'bg-white/25 text-white' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-                        }`}>
-                        {activeReviewTask.submissions.length}
-                      </span>
-                    )}
-                  </button>
+                {/* 2-Tab Navigation + Reviewer & Staff Credit Info */}
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 dark:border-white/10 pb-3 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('submission')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'submission'
+                        ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/30'
+                        : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
+                        }`}
+                    >
+                      <FiPackage size={14} className={modalTab === 'submission' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
+                      <span>Submitted Deliverables</span>
+                      {activeReviewTask.submissions && activeReviewTask.submissions.length > 0 && (
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${modalTab === 'submission' ? 'bg-white/25 text-white' : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          }`}>
+                          {activeReviewTask.submissions.length}
+                        </span>
+                      )}
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setModalTab('instructions')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'instructions'
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 ring-brand-500/30'
-                      : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
-                      }`}
-                  >
-                    <FiFileText size={14} className={modalTab === 'instructions' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
-                    <span>Task Brief & Instructions</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('instructions')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'instructions'
+                        ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25 ring-2 ring-brand-500/30'
+                        : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
+                        }`}
+                    >
+                      <FiFileText size={14} className={modalTab === 'instructions' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
+                      <span>Task Brief & Instructions</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('credits')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${modalTab === 'credits'
+                        ? 'bg-amber-600 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-500/30'
+                        : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white border border-slate-200/80 dark:border-white/10'
+                        }`}
+                    >
+                      <FaCoins size={14} className={modalTab === 'credits' ? 'text-white' : 'text-slate-500 dark:text-white/50'} />
+                      <span>Credits & Rewards</span>
+                    </button>
+                  </div>
+
+                  {/* Reviewer & Staff Credit Rewards */}
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {/* Reviewer Reward */}
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('credits')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 font-bold text-xs shadow-xs hover:border-amber-500/60 transition-all cursor-pointer"
+                      title="Click to view full credit breakdown"
+                    >
+                      <FaCoins size={14} className="text-amber-400 shrink-0" />
+                      <span className="text-[11px] text-amber-600/80 dark:text-amber-300/80">Reviewer:</span>
+                      <span className="font-extrabold text-amber-600 dark:text-amber-300">
+                        +{systemSettings.reviewer_approval_credit || 2} Credit{(systemSettings.reviewer_approval_credit || 2) > 1 ? 's' : ''}
+                      </span>
+                    </button>
+
+                    {/* Staff Reward Value */}
+                    <button
+                      type="button"
+                      onClick={() => setModalTab('credits')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-bold text-xs shadow-xs hover:border-emerald-500/60 transition-all cursor-pointer"
+                      title="Click to view full staff credit & penalty history"
+                    >
+                      <span className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">Staff:</span>
+                      <span className="font-extrabold text-emerald-600 dark:text-emerald-300">
+                        +{activeReviewTask.credit || activeReviewTask.category_credit || 5} Credits
+                      </span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -1323,50 +1616,328 @@ const PendingReviews = () => {
                       {/* Legacy Staff Uploaded Work Image */}
                       <VisualWorkImageRenderer imgPath={activeReviewTask.visual_image} />
                     </div>
+                  ) : modalTab === 'credits' ? (
+                    <div className="animate-in fade-in duration-200">
+                      <TaskCreditsTab task={activeReviewTask} />
+                    </div>
                   ) : (
-                    <div className="space-y-4 animate-in fade-in duration-200">
-                      {activeReviewTask.blueprint_variants && activeReviewTask.blueprint_variants.length > 0 ? (
-                        <AgenticBlueprintViewer variants={activeReviewTask.blueprint_variants} />
-                      ) : (
-                        <div className="p-5 rounded-2xl bg-white/[0.03] border border-white/10">
-                          <h4 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-3 flex items-center gap-2">
-                            <FiFileText className="text-brand-400" size={14} /> Full Description & Specifications
-                          </h4>
-                          <DescriptionRenderer htmlContent={activeReviewTask.description} />
+                    /* ── TAB 2: TASK BRIEF & INSTRUCTIONS ── */
+                    <div className="space-y-6 animate-in fade-in duration-200">
+                      {/* Pre-assigned Drive Folder / Cloud Proof Link */}
+                      {activeReviewTask.submission_link && (
+                        <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 sm:p-5 rounded-2xl flex items-center justify-between gap-4 bg-gradient-to-r from-emerald-500/10 via-emerald-500/5 to-transparent">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+                              <FiLink size={18} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+                                Assigned Submission Folder / Cloud Link
+                              </h4>
+                              <a
+                                href={activeReviewTask.submission_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-slate-600 dark:text-slate-300 hover:text-emerald-500 dark:hover:text-emerald-300 hover:underline truncate block mt-0.5 font-mono"
+                              >
+                                {activeReviewTask.submission_link}
+                              </a>
+                            </div>
+                          </div>
+                          <a
+                            href={activeReviewTask.submission_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500 text-emerald-700 dark:text-emerald-300 hover:text-white dark:hover:text-slate-950 transition-all shrink-0"
+                            title="Open External Link"
+                          >
+                            <FiExternalLink size={16} />
+                          </a>
                         </div>
                       )}
+
+                      {/* Quick Info & Meta Stats Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {/* Assigned Date */}
+                        <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 p-4 rounded-2xl">
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <FiCalendar className="text-blue-500 dark:text-blue-400" /> Assigned Date
+                          </p>
+                          <p className="font-semibold text-slate-900 dark:text-white text-sm">
+                            {new Date(activeReviewTask.assign_date || activeReviewTask.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </p>
+                        </div>
+
+                        {/* Deadline */}
+                        <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 p-4 rounded-2xl">
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                            <FiClock className="text-amber-500 dark:text-amber-400" /> Deadline
+                          </p>
+                          <p className="font-semibold text-sm text-slate-900 dark:text-white">
+                            {activeReviewTask.deadline
+                              ? new Date(activeReviewTask.deadline).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                              : 'No deadline'}
+                            {activeReviewTask.deadline_time && (
+                              <span className="ml-1.5 text-xs text-slate-500 dark:text-white/50">
+                                {new Date('1970-01-01T' + activeReviewTask.deadline_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Working Time */}
+                        <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 p-4 rounded-2xl">
+                          <p className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1 flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <FiClock className="text-purple-500 dark:text-purple-400" /> Working Time
+                            </span>
+                            {activeReviewTask.total_time_spent > 0 && Number(activeReviewTask.total_time_spent) < 120 && (
+                              <span className="text-[9px] bg-amber-500/15 dark:bg-amber-500/20 text-amber-600 dark:text-amber-300 font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
+                                ⚡ Fast Submit
+                              </span>
+                            )}
+                          </p>
+                          <p className="font-semibold text-slate-900 dark:text-white font-mono text-sm">
+                            {formatTimeSpent(activeReviewTask.total_time_spent) || '0m'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Reference Materials (Images & Links) */}
+                      {(activeReviewTask.ref_links || activeReviewTask.ref_image || activeReviewTask.visual_image) && (
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-2">
+                            <FiImage className="text-purple-500 dark:text-purple-400" size={14} /> Reference Materials
+                          </h4>
+
+                          {/* Reference Links */}
+                          {activeReviewTask.ref_links && (() => {
+                            let links = [];
+                            try {
+                              const parsed = JSON.parse(activeReviewTask.ref_links);
+                              links = Array.isArray(parsed) ? parsed : [activeReviewTask.ref_links];
+                            } catch {
+                              links = [activeReviewTask.ref_links];
+                            }
+                            links = links.filter(l => l && typeof l === 'string' && l.trim());
+                            if (links.length === 0) return null;
+
+                            return (
+                              <div className="space-y-2">
+                                {links.map((link, i) => (
+                                  <a
+                                    key={i}
+                                    href={link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-2.5 text-xs text-blue-600 dark:text-blue-400 hover:underline bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 px-4 py-3 rounded-2xl transition-all"
+                                  >
+                                    <FiLink size={14} /> <span>{link}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Target Visual Images */}
+                          {activeReviewTask.visual_image && (() => {
+                            let imgs = [];
+                            try {
+                              const parsed = JSON.parse(activeReviewTask.visual_image);
+                              imgs = Array.isArray(parsed) ? parsed : [activeReviewTask.visual_image];
+                            } catch {
+                              imgs = [activeReviewTask.visual_image];
+                            }
+                            imgs = imgs.filter(img => img && typeof img === 'string' && img.trim());
+                            if (imgs.length === 0) return null;
+
+                            return (
+                              <div className="space-y-2 bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                                <p className="text-[11px] font-bold text-slate-600 dark:text-white/50 uppercase tracking-wider flex items-center gap-2">
+                                  <FiImage size={13} className="text-blue-500 dark:text-blue-400" /> Target Visual Image
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                  {imgs.map((imgUrl, idx) => {
+                                    const fullUrl = imgUrl.startsWith('http') ? imgUrl : `${API_BASE}${imgUrl}`;
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/15 bg-slate-100 dark:bg-black/40 hover:border-blue-400 transition-all group aspect-video"
+                                      >
+                                        <img
+                                          src={fullUrl}
+                                          alt={`Visual ${idx + 1}`}
+                                          onClick={() => setSelectedImage(fullUrl)}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                                        />
+                                        <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              downloadFile(fullUrl);
+                                            }}
+                                            className="p-2 rounded-xl bg-black/70 hover:bg-emerald-600 text-white transition-all shadow-lg backdrop-blur-sm flex items-center gap-1 text-xs font-bold"
+                                            title="Download Original High-Res Image"
+                                          >
+                                            <FiDownload size={13} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {/* Reference Images */}
+                          {activeReviewTask.ref_image && (() => {
+                            let imgs = [];
+                            try {
+                              const parsed = JSON.parse(activeReviewTask.ref_image);
+                              imgs = Array.isArray(parsed) ? parsed : [activeReviewTask.ref_image];
+                            } catch {
+                              imgs = [activeReviewTask.ref_image];
+                            }
+                            imgs = imgs.filter(img => img && typeof img === 'string' && img.trim());
+                            if (imgs.length === 0) return null;
+
+                            return (
+                              <div className="space-y-2 bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+                                <p className="text-[11px] font-bold text-slate-600 dark:text-white/50 uppercase tracking-wider flex items-center gap-2">
+                                  <FiImage size={13} className="text-purple-500 dark:text-purple-400" /> Reference Brief Images ({imgs.length})
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">
+                                  {imgs.map((imgUrl, idx) => {
+                                    const fullUrl = imgUrl.startsWith('http') ? imgUrl : `${API_BASE}${imgUrl}`;
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-black/40 hover:border-purple-400 transition-all group aspect-video"
+                                      >
+                                        <img
+                                          src={fullUrl}
+                                          alt={`Reference ${idx + 1}`}
+                                          onClick={() => setSelectedImage(fullUrl)}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 cursor-pointer"
+                                        />
+                                        <div className="absolute top-2 right-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              downloadFile(fullUrl);
+                                            }}
+                                            className="p-1.5 rounded-xl bg-black/70 hover:bg-emerald-600 text-white transition-all shadow-lg backdrop-blur-sm flex items-center gap-1 text-xs font-bold"
+                                            title="Download Original High-Res Image"
+                                          >
+                                            <FiDownload size={13} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Sub-tasks / Checklist Section */}
+                      {activeReviewTask.checklists && Array.isArray(activeReviewTask.checklists) && activeReviewTask.checklists.length > 0 && (
+                        <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-2">
+                            <FiCheckSquare className="text-blue-500 dark:text-blue-400" size={14} /> Sub-tasks & Checklist
+                          </h4>
+                          <div className="grid gap-2">
+                            {activeReviewTask.checklists.map((cl, idx) => {
+                              const isCompleted = cl.is_completed === true || cl.is_completed === 1 || cl.is_completed === '1' || String(cl.is_completed).toLowerCase() === 'true';
+                              return (
+                                <div
+                                  key={idx}
+                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${isCompleted
+                                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/25 text-emerald-800 dark:text-emerald-300'
+                                      : 'bg-slate-50 dark:bg-dark-800/60 border-slate-200 dark:border-dark-700 text-slate-800 dark:text-slate-200'
+                                    }`}
+                                >
+                                  <div
+                                    className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${isCompleted
+                                        ? 'bg-emerald-500 border-emerald-500 text-[#ffffff] shadow-xs'
+                                        : 'border-slate-300 dark:border-dark-600 bg-[#ffffff] dark:bg-dark-800'
+                                      }`}
+                                  >
+                                    {isCompleted ? (
+                                      <FiCheck size={12} className="text-[#ffffff] stroke-[3]" />
+                                    ) : (
+                                      <span className="w-1.5 h-1.5 rounded-xs bg-slate-300 dark:bg-slate-600" />
+                                    )}
+                                  </div>
+                                  <span
+                                    className={`text-xs font-medium ${isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
+                                      }`}
+                                  >
+                                    {cl.title}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Specifications & Description */}
+                      <div className="space-y-3">
+                        {activeReviewTask.blueprint_variants && activeReviewTask.blueprint_variants.length > 0 ? (
+                          <AgenticBlueprintViewer variants={activeReviewTask.blueprint_variants} />
+                        ) : (
+                          <>
+                            <h4 className="text-xs font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-2">
+                              <FiFileText className="text-blue-500 dark:text-blue-400" size={14} /> Task Description & Specifications
+                            </h4>
+                            <DescriptionRenderer
+                              htmlContent={activeReviewTask.description}
+                              onImageClick={(url) => setSelectedImage(url.startsWith('http') ? url : `${API_BASE}${url}`)}
+                            />
+                          </>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
 
                 {/* Right Column (1/3 width): References & Checklist */}
                 <div className="space-y-6 border-t lg:border-t-0 lg:border-l border-white/5 pt-6 lg:pt-0 lg:pl-6">
-
-                  {/* Checklists (Sub tasks) */}
-                  {activeReviewTask.checklists && Array.isArray(activeReviewTask.checklists) && activeReviewTask.checklists.length > 0 && (
-                    <div>
-                      <h4 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2">Checklist Status</h4>
-                      <div className="flex flex-col gap-2 pl-1">
-                        {activeReviewTask.checklists.map((item, cIdx) => (
-                          <div key={cIdx} className="flex items-center gap-2 text-xs text-white/60">
-                            <input
-                              type="checkbox"
-                              checked={item.is_completed}
-                              readOnly
-                              className="rounded border-white/10 bg-white/5 text-brand-500 focus:ring-0 cursor-default"
-                            />
-                            <span className={item.is_completed ? 'line-through text-white/30' : ''}>{item.title}</span>
+                  {modalTab === 'submission' && (
+                    <>
+                      {/* Checklists (Sub tasks) */}
+                      {activeReviewTask.checklists && Array.isArray(activeReviewTask.checklists) && activeReviewTask.checklists.length > 0 && (
+                        <div>
+                          <h4 className="text-white/40 text-xs font-semibold uppercase tracking-wider mb-2">Checklist Status</h4>
+                          <div className="flex flex-col gap-2 pl-1">
+                            {activeReviewTask.checklists.map((item, cIdx) => (
+                              <div key={cIdx} className="flex items-center gap-2 text-xs text-white/60">
+                                <input
+                                  type="checkbox"
+                                  checked={item.is_completed}
+                                  readOnly
+                                  className="rounded border-white/10 bg-white/5 text-brand-500 focus:ring-0 cursor-default"
+                                />
+                                <span className={item.is_completed ? 'line-through text-white/30' : ''}>{item.title}</span>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
+                        </div>
+                      )}
+
+                      {/* Reference Images */}
+                      <RefImagesRenderer imagesJson={activeReviewTask.ref_image} />
+
+                      {/* Reference Links */}
+                      <RefLinksRenderer linksJson={activeReviewTask.ref_links} />
+                    </>
                   )}
-
-                  {/* Reference Images */}
-                  <RefImagesRenderer imagesJson={activeReviewTask.ref_image} />
-
-                  {/* Reference Links */}
-                  <RefLinksRenderer linksJson={activeReviewTask.ref_links} />
 
                   {/* Task History Logs */}
                   <TaskTimeline logs={taskLogs[activeReviewTask.task_id]} loading={loadingLogs[activeReviewTask.task_id]} />
@@ -1419,23 +1990,23 @@ const PendingReviews = () => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           {/* Overlay backdrop */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-md animate-fade-in"
+            className="fixed inset-0 bg-slate-900/60 dark:bg-black/75 backdrop-blur-md animate-fade-in"
             onClick={() => { setRejectModalOpen(false); setRejectTaskId(null); }}
           />
 
           {/* Modal Container */}
-          <div className="relative z-10 rounded-3xl border border-white/10 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-4 shadow-2xl animate-fade-in bg-dark-900 text-white">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3.5">
-              <h3 className="text-red-500 font-bold text-base flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center">
+          <div className="relative z-10 glass rounded-3xl border border-slate-200 dark:border-rose-500/30 max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 sm:p-7 space-y-4 shadow-2xl animate-fade-in bg-white dark:bg-[#0f172a] text-slate-800 dark:text-white">
+            <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-white/5 pb-3.5">
+              <h3 className="text-slate-900 dark:text-white font-extrabold text-base flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-red-500/10 border border-rose-200 dark:border-red-500/20 text-rose-600 dark:text-red-500 flex items-center justify-center">
                   <FiX size={18} />
                 </div>
-                Reject Submission
+                <span>Reject Submission</span>
               </h3>
               <button
                 type="button"
                 onClick={() => { setRejectModalOpen(false); setRejectTaskId(null); }}
-                className="text-white/40 hover:text-white transition-colors p-1"
+                className="text-slate-400 hover:text-slate-700 dark:text-white/40 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5"
               >
                 <FiX size={18} />
               </button>
@@ -1443,7 +2014,7 @@ const PendingReviews = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-2">
+                <label className="text-slate-700 dark:text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-2">
                   Smart Macros / Quick Reasons
                 </label>
                 <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
@@ -1452,7 +2023,7 @@ const PendingReviews = () => {
                       key={macro.label}
                       type="button"
                       onClick={() => setRejectComment(prev => prev ? prev + '\n\n' + macro.text : macro.text)}
-                      className="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-300 hover:bg-red-500/20 hover:border-red-500/40 transition-all flex items-center gap-1.5 shadow-2xs"
+                      className="text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border border-rose-200 dark:border-red-500/20 bg-rose-50 dark:bg-red-500/10 text-rose-700 dark:text-red-300 hover:bg-rose-100 dark:hover:bg-red-500/20 hover:border-rose-300 dark:hover:border-red-500/40 transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                     >
                       <span>{macro.icon}</span> {macro.label}
                     </button>
@@ -1461,25 +2032,25 @@ const PendingReviews = () => {
               </div>
 
               <div>
-                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
-                  Rejection Reason / Feedback <span className="text-red-500">*</span>
+                <label className="text-slate-700 dark:text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
+                  Rejection Reason / Feedback <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   value={rejectComment}
                   onChange={e => setRejectComment(e.target.value)}
                   placeholder="Describe the issue / reason for rejection in detail..."
-                  className="w-full h-28 bg-dark-950/70 border border-white/10 text-white placeholder-white/30 rounded-xl p-3 text-xs outline-none focus:border-red-500/60 focus:ring-1 focus:ring-red-500/30 transition-all resize-none"
+                  className="w-full h-28 bg-slate-50 dark:bg-dark-950/70 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-white/30 rounded-xl p-3 text-xs outline-none focus:border-rose-500/60 dark:focus:border-red-500/60 focus:ring-1 focus:ring-rose-500/30 dark:focus:ring-red-500/30 transition-all resize-none shadow-xs"
                 />
               </div>
 
               <div>
-                <label className="text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
+                <label className="text-slate-700 dark:text-white/70 text-[11px] font-bold uppercase tracking-wider block mb-1.5">
                   Attachment / Screenshot (Optional)
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-2xl p-3.5 text-center transition-all relative overflow-hidden ${isDragging
-                    ? 'border-red-500 bg-red-500/10 scale-[1.01]'
-                    : 'border-white/10 hover:border-red-400/50 bg-dark-950/50'
+                    ? 'border-rose-500 bg-rose-50 dark:bg-red-500/10 scale-[1.01]'
+                    : 'border-slate-200 dark:border-white/10 hover:border-rose-400/50 bg-slate-50 dark:bg-dark-950/50'
                     }`}
                   onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                   onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
@@ -1499,16 +2070,16 @@ const PendingReviews = () => {
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setRejectScreenshot(null); setRejectScreenshotPreview(null); }}
-                        className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-2 right-2 p-1.5 bg-rose-600 text-white rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <FiX size={14} />
                       </button>
                     </div>
                   ) : (
                     <label className="flex flex-col items-center justify-center cursor-pointer h-24 w-full">
-                      <FiImage className="text-white/30 mb-1" size={22} />
-                      <span className="text-white/80 text-xs font-semibold">Click or Drag & Drop screenshot</span>
-                      <span className="text-white/40 text-[10px] mt-0.5">(Or press Ctrl+V to paste)</span>
+                      <FiImage className="text-slate-400 dark:text-white/30 mb-1" size={22} />
+                      <span className="text-slate-700 dark:text-white/80 text-xs font-semibold">Click or Drag & Drop screenshot</span>
+                      <span className="text-slate-400 dark:text-white/40 text-[10px] mt-0.5">(Or press Ctrl+V to paste)</span>
                       <input
                         type="file"
                         accept="image/*"
@@ -1531,7 +2102,7 @@ const PendingReviews = () => {
               <button
                 type="button"
                 onClick={() => { setRejectModalOpen(false); setRejectTaskId(null); }}
-                className="flex-1 py-2.5 px-4 rounded-xl border border-white/10 bg-dark-800 hover:bg-dark-700 text-white/80 text-xs font-semibold transition-all"
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-dark-800 hover:bg-slate-200 dark:hover:bg-dark-700 text-slate-700 dark:text-white/80 text-xs font-semibold transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -1539,7 +2110,7 @@ const PendingReviews = () => {
                 type="button"
                 onClick={submitRejection}
                 disabled={!rejectComment.trim()}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-red-600/20"
+                className="flex-1 py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-rose-600/20 cursor-pointer"
               >
                 <FiSend size={14} /> Submit Rejection
               </button>
@@ -1834,6 +2405,17 @@ const PendingReviews = () => {
                 </div>
               </div>
             )}
+
+            {/* Reviewer Super Delivery Bonus Banner */}
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-300 font-semibold">
+                <span className="text-base">🚀</span>
+                <span>Super Delivery Bonus: <strong>+{systemSettings.reviewer_delivery_bonus || 5} Credits</strong></span>
+              </div>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                Cloud Stock Ready
+              </span>
+            </div>
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-2">

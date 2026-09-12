@@ -2,10 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
   FiCalendar, FiClock, FiUser, FiEdit2, FiCheckCircle,
-  FiXCircle, FiAlertTriangle, FiLoader, FiSave, FiX, FiChevronLeft, FiChevronRight
+  FiXCircle, FiAlertTriangle, FiLoader, FiSave, FiX, FiChevronLeft, FiChevronRight,
+  FiSmartphone, FiMonitor, FiShield, FiMapPin
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import AttendanceDeviceDetailsModal from '../components/AttendanceDeviceDetailsModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -182,6 +184,7 @@ const DailyRoster = () => {
   const [rosterData, setRosterData] = useState([]);
   const [loading, setLoading]       = useState(true);
   const [editingStaff, setEditingStaff] = useState(null);
+  const [viewingDeviceStaff, setViewingDeviceStaff] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
 
   const fetchRoster = useCallback(async () => {
@@ -264,7 +267,7 @@ const DailyRoster = () => {
           {!isToday && (
             <button
               onClick={() => setDate(new Date().toISOString().split('T')[0])}
-              className="px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-lg transition-colors"
+              className="text-xs font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-500/10 px-2.5 py-1.5 rounded-lg transition-colors"
             >
               Today
             </button>
@@ -296,20 +299,20 @@ const DailyRoster = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-1.5 shadow-sm overflow-x-auto">
+      <div className="flex flex-wrap gap-2">
         {filterTabs.map(tab => (
           <button
             key={tab.key}
             onClick={() => setFilterStatus(tab.key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               filterStatus === tab.key
-                ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-                : `${tab.color} hover:bg-slate-50 dark:hover:bg-slate-700/50`
+                ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-md'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
-            {tab.label}
-            <span className={`text-xs px-1.5 py-0.5 rounded-md font-black ${
-              filterStatus === tab.key ? 'bg-white dark:bg-slate-600' : 'bg-slate-100 dark:bg-slate-700'
+            <span className={filterStatus === tab.key ? 'text-white dark:text-slate-900' : tab.color}>{tab.label}</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+              filterStatus === tab.key ? 'bg-white/20 dark:bg-black/20' : 'bg-slate-100 dark:bg-slate-700'
             }`}>
               {counts[tab.key]}
             </span>
@@ -340,91 +343,129 @@ const DailyRoster = () => {
                   <th className="text-left px-4 py-4 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Break</th>
                   <th className="text-left px-4 py-4 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Net Work</th>
                   <th className="text-left px-4 py-4 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Status</th>
+                  <th className="text-left px-4 py-4 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Device & Location</th>
                   <th className="text-center px-4 py-4 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Edit</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
-                {filtered.map((staff) => (
-                  <tr key={staff.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
-                    {/* Staff */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
-                          {staff.profile_picture
-                            ? <img src={`${API_BASE}/${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover" />
-                            : <FiUser size={16} />}
+                {filtered.map((staff) => {
+                  const dev = staff.device_log;
+                  return (
+                    <tr key={staff.user_id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors group">
+                      {/* Staff */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+                            {staff.profile_picture
+                              ? <img src={`${API_BASE}/${staff.profile_picture}`} alt={staff.name} className="w-full h-full object-cover" />
+                              : <FiUser size={16} />}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800 dark:text-white text-sm">{staff.name}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{staff.designation || 'Staff'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-800 dark:text-white text-sm">{staff.name}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{staff.designation || 'Staff'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    {/* Shift */}
-                    <td className="px-4 py-4">
-                      <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg font-mono">
-                        {staff.shift_start?.slice(0,5) ?? '—'} – {staff.shift_end?.slice(0,5) ?? '—'}
-                      </span>
-                    </td>
-                    {/* Check-In */}
-                    <td className="px-4 py-4">
-                      <span className={`text-sm font-bold font-mono ${staff.check_in ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>
-                        {fmt(staff.check_in)}
-                      </span>
-                    </td>
-                    {/* Check-Out */}
-                    <td className="px-4 py-4">
-                      <div className="flex flex-col gap-1 items-start">
-                        <span className={`text-sm font-bold font-mono ${staff.check_out ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>
-                          {fmt(staff.check_out)}
+                      </td>
+                      {/* Shift */}
+                      <td className="px-4 py-4">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-lg font-mono">
+                          {staff.shift_start?.slice(0,5) ?? '—'} – {staff.shift_end?.slice(0,5) ?? '—'}
                         </span>
-                        {Number(staff.is_forgotten_checkout) === 1 && (
-                          <span 
-                            className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md cursor-help shadow-xs" 
-                            title="Staff forgot to check out. System auto checked out at shift end."
-                          >
-                            <FiAlertTriangle size={11} className="text-amber-500 shrink-0" />
-                            Auto
+                      </td>
+                      {/* Check-In */}
+                      <td className="px-4 py-4">
+                        <span className={`text-sm font-bold font-mono ${staff.check_in ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>
+                          {fmt(staff.check_in)}
+                        </span>
+                      </td>
+                      {/* Check-Out */}
+                      <td className="px-4 py-4">
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={`text-sm font-bold font-mono ${staff.check_out ? 'text-slate-700 dark:text-slate-200' : 'text-slate-300 dark:text-slate-600'}`}>
+                            {fmt(staff.check_out)}
                           </span>
+                          {Number(staff.is_forgotten_checkout) === 1 && (
+                            <span 
+                              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-800/40 px-1.5 py-0.5 rounded-md cursor-help shadow-xs" 
+                              title="Staff forgot to check out. System auto checked out at shift end."
+                            >
+                              <FiAlertTriangle size={11} className="text-amber-500 shrink-0" />
+                              Auto
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {/* Break */}
+                      <td className="px-4 py-4">
+                        <span className="text-sm font-mono text-slate-500 dark:text-slate-400">
+                          {staff.total_break_minutes > 0 ? fmtMins(staff.total_break_minutes) : '—'}
+                        </span>
+                      </td>
+                      {/* Net Work */}
+                      <td className="px-4 py-4">
+                        <span className={`text-sm font-bold font-mono ${
+                          staff.work_status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
+                          : staff.work_status === 'short'    ? 'text-amber-600 dark:text-amber-400'
+                          : staff.work_status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
+                          : 'text-slate-300 dark:text-slate-600'
+                        }`}>
+                          {staff.net_work_minutes !== null ? fmtMins(staff.net_work_minutes) : '—'}
+                          {staff.expected_work_minutes && (
+                            <span className="text-slate-400 dark:text-slate-500 font-normal text-xs"> / {fmtMins(staff.expected_work_minutes)}</span>
+                          )}
+                        </span>
+                      </td>
+                      {/* Status Badge */}
+                      <td className="px-4 py-4">
+                        <WorkStatusBadge status={staff.work_status} shortByMinutes={staff.short_by_minutes} />
+                      </td>
+                      {/* Device & Location */}
+                      <td className="px-4 py-4">
+                        {staff.attendance_id ? (
+                          <button
+                            onClick={() => setViewingDeviceStaff(staff)}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-slate-700/60 hover:bg-primary-50 dark:hover:bg-primary-500/15 text-slate-700 dark:text-slate-200 hover:text-primary-600 dark:hover:text-primary-400 border border-slate-200 dark:border-slate-700 transition-all group/dev"
+                            title="Click to view detailed device specs & location"
+                          >
+                            {dev?.device_type === 'Mobile' ? (
+                              <FiSmartphone size={13} className="text-primary-500" />
+                            ) : (
+                              <FiMonitor size={13} className="text-primary-500" />
+                            )}
+                            <span className="truncate max-w-[100px] font-bold">
+                              {dev?.device_model ? dev.device_model.split(' ')[0] : 'Device'}
+                            </span>
+                            {dev?.distance_meters !== null && dev?.distance_meters !== undefined ? (
+                              <span className={`text-[10px] font-black px-1.5 py-0.2 rounded-md ${
+                                Number(dev.is_within_geofence) === 1
+                                  ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                                  : 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300'
+                              }`}>
+                                {Math.round(dev.distance_meters)}m
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-black px-1.5 py-0.2 rounded-md bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                                IP
+                              </span>
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-slate-300 dark:text-slate-600 text-sm font-mono">—</span>
                         )}
-                      </div>
-                    </td>
-                    {/* Break */}
-                    <td className="px-4 py-4">
-                      <span className="text-sm font-mono text-slate-500 dark:text-slate-400">
-                        {staff.total_break_minutes > 0 ? fmtMins(staff.total_break_minutes) : '—'}
-                      </span>
-                    </td>
-                    {/* Net Work */}
-                    <td className="px-4 py-4">
-                      <span className={`text-sm font-bold font-mono ${
-                        staff.work_status === 'completed' ? 'text-emerald-600 dark:text-emerald-400'
-                        : staff.work_status === 'short'    ? 'text-amber-600 dark:text-amber-400'
-                        : staff.work_status === 'in_progress' ? 'text-blue-600 dark:text-blue-400'
-                        : 'text-slate-300 dark:text-slate-600'
-                      }`}>
-                        {staff.net_work_minutes !== null ? fmtMins(staff.net_work_minutes) : '—'}
-                        {staff.expected_work_minutes && (
-                          <span className="text-slate-400 dark:text-slate-500 font-normal text-xs"> / {fmtMins(staff.expected_work_minutes)}</span>
-                        )}
-                      </span>
-                    </td>
-                    {/* Status Badge */}
-                    <td className="px-4 py-4">
-                      <WorkStatusBadge status={staff.work_status} shortByMinutes={staff.short_by_minutes} />
-                    </td>
-                    {/* Edit */}
-                    <td className="px-4 py-4 text-center">
-                      <button
-                        onClick={() => setEditingStaff(staff)}
-                        className="p-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
-                        title="Edit Attendance"
-                      >
-                        <FiEdit2 size={15} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      {/* Edit */}
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={() => setEditingStaff(staff)}
+                          className="p-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-colors opacity-0 group-hover:opacity-100"
+                          title="Edit Attendance"
+                        >
+                          <FiEdit2 size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -439,6 +480,17 @@ const DailyRoster = () => {
           adminId={currentUser?.id}
           onClose={() => setEditingStaff(null)}
           onSaved={() => { setEditingStaff(null); fetchRoster(); }}
+        />
+      )}
+
+      {/* Device Details Modal */}
+      {viewingDeviceStaff && (
+        <AttendanceDeviceDetailsModal
+          isOpen={Boolean(viewingDeviceStaff)}
+          onClose={() => setViewingDeviceStaff(null)}
+          attendanceId={viewingDeviceStaff.attendance_id}
+          staffName={viewingDeviceStaff.name}
+          date={date}
         />
       )}
     </div>

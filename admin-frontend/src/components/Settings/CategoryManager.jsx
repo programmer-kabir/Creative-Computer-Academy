@@ -35,6 +35,7 @@ export const CategoryManager = ({ apiBase = '' }) => {
     icon: '🎨',
     color: 'from-blue-500 to-indigo-600',
     estimated_minutes: 90,
+    credit: 5,
     checklists: []
   });
   const [newChecklistText, setNewChecklistText] = useState('');
@@ -83,6 +84,7 @@ export const CategoryManager = ({ apiBase = '' }) => {
       icon: level === 'category' ? '🎨' : level === 'subcategory' ? '📁' : '🏷️',
       color: 'from-blue-500 to-indigo-600',
       estimated_minutes: 90,
+      credit: 5,
       checklists: []
     });
     setNewChecklistText('');
@@ -100,6 +102,7 @@ export const CategoryManager = ({ apiBase = '' }) => {
       icon: item.icon || '🏷️',
       color: item.color || 'from-blue-500 to-indigo-600',
       estimated_minutes: item.estimated_minutes || 90,
+      credit: item.credit || 5,
       checklists: Array.isArray(item.default_checklists) ? item.default_checklists : []
     });
     setNewChecklistText('');
@@ -124,6 +127,7 @@ export const CategoryManager = ({ apiBase = '' }) => {
           icon: modalTarget.icon,
           color: modalTarget.color,
           estimated_minutes: Number(modalTarget.estimated_minutes) || 90,
+          credit: Number(modalTarget.credit) || 5,
           checklists: modalTarget.checklists
         });
         if (res.data.status === 'success') {
@@ -140,6 +144,7 @@ export const CategoryManager = ({ apiBase = '' }) => {
           icon: modalTarget.icon,
           color: modalTarget.color,
           estimated_minutes: Number(modalTarget.estimated_minutes) || 90,
+          credit: Number(modalTarget.credit) || 5,
           checklists: modalTarget.checklists
         });
         if (res.data.status === 'success') {
@@ -256,9 +261,14 @@ export const CategoryManager = ({ apiBase = '' }) => {
                       {mainCat.icon || '🎨'}
                     </div>
                     <div className="flex flex-col min-w-0">
-                      <span className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">
-                        {mainCat.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-black text-slate-800 dark:text-slate-100 truncate">
+                          {mainCat.name}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-extrabold flex items-center gap-0.5 shrink-0">
+                          🪙 {mainCat.credit || 5} Credits
+                        </span>
+                      </div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                         Level 1 • {mainCat.subcategories?.length || 0} Subcategories
                       </span>
@@ -318,9 +328,14 @@ export const CategoryManager = ({ apiBase = '' }) => {
                                   {subCat.icon || '💳'}
                                 </div>
                                 <div className="flex flex-col min-w-0">
-                                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
-                                    {subCat.name}
-                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                                      {subCat.name}
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[9px] font-extrabold flex items-center gap-0.5 shrink-0">
+                                      🪙 {subCat.credit || mainCat.credit || 5} Credits
+                                    </span>
+                                  </div>
                                   <span className="text-[9px] font-semibold text-slate-400">
                                     Level 2 • {subCat.children?.length || 0} Specific Types
                                   </span>
@@ -367,6 +382,9 @@ export const CategoryManager = ({ apiBase = '' }) => {
                                         <span className="text-xs">{child.icon || '🏷️'}</span>
                                         <span className="font-bold text-slate-700 dark:text-slate-200 truncate">
                                           {child.name}
+                                        </span>
+                                        <span className="px-1.5 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[9px] font-extrabold flex items-center gap-0.5 shrink-0">
+                                          🪙 {child.credit || subCat.credit || mainCat.credit || 5} Credits
                                         </span>
                                         {child.default_checklists?.length > 0 && (
                                           <span className="px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-[9px] font-extrabold flex items-center gap-1">
@@ -460,6 +478,37 @@ export const CategoryManager = ({ apiBase = '' }) => {
                     onChange={e => setModalTarget({ ...modalTarget, name: e.target.value })}
                     className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     placeholder="e.g. Doctor / Medical"
+                  />
+                </div>
+              </div>
+
+              {/* Task Reward Credits & Estimated Minutes */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                    <span>🪙</span> Task Reward Credits
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={modalTarget.credit}
+                    onChange={e => setModalTarget({ ...modalTarget, credit: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50/50 dark:bg-amber-950/20 text-xs font-bold text-amber-900 dark:text-amber-200 outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    placeholder="5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
+                    <FiClock size={12} className="text-blue-500" /> Est. Minutes
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={modalTarget.estimated_minutes}
+                    onChange={e => setModalTarget({ ...modalTarget, estimated_minutes: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-bold text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    placeholder="90"
                   />
                 </div>
               </div>

@@ -50,6 +50,7 @@ try {
     $category_id       = !empty($data->category_id) ? (int)$data->category_id : null;
     $subcategory_id    = !empty($data->subcategory_id) ? (int)$data->subcategory_id : null;
     $child_category_id = !empty($data->child_category_id) ? (int)$data->child_category_id : null;
+    $custom_credit     = (isset($data->custom_credit) && trim((string)$data->custom_credit) !== '' && intval($data->custom_credit) > 0) ? intval($data->custom_credit) : null;
     $category_name_log = !empty($data->category) ? trim($data->category) : 'General';
 
     // Intelligent department_id resolution
@@ -135,6 +136,7 @@ try {
             'category_id'       => "ALTER TABLE `tasks` ADD COLUMN `category_id` INT NULL",
             'subcategory_id'    => "ALTER TABLE `tasks` ADD COLUMN `subcategory_id` INT NULL",
             'child_category_id' => "ALTER TABLE `tasks` ADD COLUMN `child_category_id` INT NULL",
+            'custom_credit'     => "ALTER TABLE `tasks` ADD COLUMN `custom_credit` INT NULL DEFAULT NULL",
             'creation_mode'     => "ALTER TABLE `tasks` ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'"
         ];
 
@@ -164,7 +166,7 @@ try {
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
                       creation_mode = :creation_mode,
-                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, department_id = :department_id, assigned_to = :assigned_to,
+                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, custom_credit = :custom_credit, department_id = :department_id, assigned_to = :assigned_to,
                       status = IF(status = 'Unassigned', 'To-Do', status),
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
@@ -177,7 +179,7 @@ try {
         $query = "UPDATE tasks 
                   SET title = :title, description = :description, priority = :priority, checklists = :checklists, ref_links = :ref_links, ref_image = :ref_image, visual_image = :visual_image,
                       creation_mode = :creation_mode,
-                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, department_id = :department_id,
+                      category_id = :category_id, subcategory_id = :subcategory_id, child_category_id = :child_category_id, custom_credit = :custom_credit, department_id = :department_id,
                       assign_date = COALESCE(:assign_date, assign_date),
                       deadline = :deadline, deadline_time = :deadline_time,
                       submission_link = :submission_link,
@@ -197,6 +199,7 @@ try {
     $stmt->bindParam(':category_id',       $category_id);
     $stmt->bindParam(':subcategory_id',    $subcategory_id);
     $stmt->bindParam(':child_category_id', $child_category_id);
+    $stmt->bindParam(':custom_credit',     $custom_credit);
     $stmt->bindParam(':department_id',     $department_id);
     $stmt->bindParam(':assign_date',       $assign_date);
     $stmt->bindParam(':deadline',          $deadline);

@@ -25,6 +25,15 @@ try {
     $color = isset($data->color) ? trim($data->color) : null;
     $status = isset($data->status) ? trim($data->status) : 'active';
     $estimated_minutes = isset($data->estimated_minutes) ? (int)$data->estimated_minutes : null;
+    $has_credit = array_key_exists('credit', (array)$data);
+    $credit = null;
+    if ($has_credit) {
+        if ($data->credit !== null && $data->credit !== '' && (int)$data->credit > 0) {
+            $credit = (int)$data->credit;
+        } else {
+            $credit = null;
+        }
+    }
 
     $checklists = null;
     if (isset($data->checklists) && is_array($data->checklists)) {
@@ -40,6 +49,7 @@ try {
                 name = COALESCE(:name, name),
                 icon = COALESCE(:icon, icon),
                 color = COALESCE(:color, color),
+                credit = CASE WHEN :has_credit = 1 THEN :credit ELSE credit END,
                 status = :status,
                 default_checklists = CASE WHEN :has_checklists = 1 THEN :checklists ELSE default_checklists END,
                 default_specs = CASE WHEN :has_specs = 1 THEN :specs ELSE default_specs END,
@@ -52,6 +62,8 @@ try {
         ':name' => $name,
         ':icon' => $icon,
         ':color' => $color,
+        ':has_credit' => $has_credit ? 1 : 0,
+        ':credit' => $credit,
         ':status' => $status,
         ':has_checklists' => isset($data->checklists) ? 1 : 0,
         ':checklists' => $checklists,
@@ -60,6 +72,12 @@ try {
         ':est_min' => $estimated_minutes,
         ':id' => $id
     ]);
+
+    // If cascade_credit is true, apply this credit to all child categories under this subcategory
+    if (!empty($data->cascade_credit) && $credit !== null) {
+        $stmtCascade = $db->prepare("UPDATE task_categories SET credit = :credit, updated_at = NOW() WHERE parent_id = :id");
+        $stmtCascade->execute([':credit' => $credit, ':id' => $id]);
+    }
 
     echo json_encode(["status" => "success", "message" => "Category updated successfully."]);
 } catch (PDOException $e) {

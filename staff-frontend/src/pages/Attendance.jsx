@@ -8,6 +8,8 @@ import AttendanceDisputeModal from '../components/AttendanceDisputeModal';
 import TiffinTimer from '../components/TiffinTimer';
 import useServerTime from '../hooks/useServerTime';
 import { useSearch } from '../context/SearchContext';
+import { parseDeviceInfo, getUserLocation } from '../utils/deviceFingerprint';
+import { FiShield, FiLoader } from 'react-icons/fi';
 
 const Attendance = () => {
   const { currentUser } = useAuth();
@@ -51,37 +53,55 @@ const Attendance = () => {
     }
   }, [currentUser]);
 
+  const [isPunching, setIsPunching] = useState(false);
+
   const handleCheckIn = async () => {
     setActionError('');
+    setIsPunching(true);
     try {
+      const deviceInfo = await parseDeviceInfo();
+      const location = await getUserLocation();
+
       const response = await axios.post((import.meta.env.VITE_API_BASE_URL) + 'api/attendance/check_in.php', {
-        user_id: currentUser.id
+        user_id: currentUser.id,
+        device_info: deviceInfo,
+        location: location
       });
       if (response.data.status === 'success') {
         soundFx.playPunchIn();
         fetchAttendance(); // Refresh data
       } else {
-        setActionError(response.data.message);
+        setActionError(response.data.message || 'Failed to check in.');
       }
     } catch (err) {
-      setActionError('An error occurred during check-in. Make sure you are on the office Wi-Fi.');
+      setActionError(err.response?.data?.message || 'An error occurred during check-in. Make sure you are within office premises.');
+    } finally {
+      setIsPunching(false);
     }
   };
 
   const handleCheckOut = async () => {
     setActionError('');
+    setIsPunching(true);
     try {
+      const deviceInfo = await parseDeviceInfo();
+      const location = await getUserLocation();
+
       const response = await axios.post((import.meta.env.VITE_API_BASE_URL) + 'api/attendance/check_out.php', {
-        user_id: currentUser.id
+        user_id: currentUser.id,
+        device_info: deviceInfo,
+        location: location
       });
       if (response.data.status === 'success') {
         soundFx.playPunchOut();
         fetchAttendance(); // Refresh data
       } else {
-        setActionError(response.data.message);
+        setActionError(response.data.message || 'Failed to check out.');
       }
     } catch (err) {
-      setActionError('An error occurred during check-out.');
+      setActionError(err.response?.data?.message || 'An error occurred during check-out.');
+    } finally {
+      setIsPunching(false);
     }
   };
 
@@ -413,10 +433,20 @@ const Attendance = () => {
             {!todayStatus ? (
               <button
                 onClick={handleCheckIn}
-                className="relative overflow-hidden w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider group/btn"
+                disabled={isPunching}
+                className={`relative overflow-hidden w-full py-4 bg-gradient-to-r from-primary-600 to-primary-500 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(79,70,229,0.39)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider group/btn ${isPunching ? 'opacity-80 cursor-not-allowed' : ''}`}
               >
                 <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover/btn:animate-[shimmer_1.5s_infinite]"></div>
-                <FiCheckCircle size={20} className="relative z-10" /> <span className="relative z-10">Check In Now</span>
+                {isPunching ? (
+                  <>
+                    <FiLoader size={20} className="animate-spin relative z-10" />
+                    <span className="relative z-10 text-sm">Verifying & Punching...</span>
+                  </>
+                ) : (
+                  <>
+                    <FiCheckCircle size={20} className="relative z-10" /> <span className="relative z-10">Check In Now</span>
+                  </>
+                )}
               </button>
             ) : !todayStatus.check_out ? (
               <div className="space-y-4">
@@ -429,9 +459,19 @@ const Attendance = () => {
                 </div>
                 <button
                   onClick={handleCheckOut}
-                  className="w-full py-4 bg-rose-600 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] hover:bg-rose-700 hover:shadow-[0_6px_20px_rgba(225,29,72,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider"
+                  disabled={isPunching}
+                  className={`w-full py-4 bg-rose-600 text-white font-black rounded-2xl shadow-[0_4px_14px_0_rgba(225,29,72,0.39)] hover:bg-rose-700 hover:shadow-[0_6px_20px_rgba(225,29,72,0.23)] hover:-translate-y-1 transition-all flex items-center justify-center gap-2 text-lg uppercase tracking-wider ${isPunching ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
-                  <FiLogOut size={20} /> Check Out
+                  {isPunching ? (
+                    <>
+                      <FiLoader size={20} className="animate-spin" />
+                      <span className="text-sm">Processing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FiLogOut size={20} /> Check Out
+                    </>
+                  )}
                 </button>
               </div>
             ) : (
@@ -451,6 +491,11 @@ const Attendance = () => {
                 )}
               </div>
             )}
+
+            <div className="mt-4 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-400 dark:text-slate-500">
+              <FiShield size={13} className="text-emerald-500" />
+              <span>Office Geofence & Device Protected</span>
+            </div>
           </div>
         </div>
 

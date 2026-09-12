@@ -1,48 +1,104 @@
 <?php
-require_once '../../config/cors.php';
-require_once '../../config/database.php';
-require_once '../../api/notifications/notification_helper.php';
+@ini_set('display_errors', '0');
+error_reporting(0);
+
+require_once __DIR__ . '/../../config/cors.php';
+require_once __DIR__ . '/../../config/database.php';
+if (file_exists(__DIR__ . '/../notifications/notification_helper.php')) {
+    @require_once __DIR__ . '/../notifications/notification_helper.php';
+}
+if (file_exists(__DIR__ . '/../credits/CreditHelper.php')) {
+    @require_once __DIR__ . '/../credits/CreditHelper.php';
+}
 
 $database = new Database();
 $db = $database->getConnection();
+date_default_timezone_set('Asia/Dhaka');
 
-$data = json_decode(file_get_contents("php://input"));
+if (!$db) {
+    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
+    exit;
+}
+
+// ── Auto ensure tables exist ───────────────────────────────────────────────
+try {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS task_marketplace_submissions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            task_id INT NOT NULL,
+            user_id INT NOT NULL,
+            added_by INT NOT NULL,
+            added_by_role VARCHAR(50) DEFAULT 'admin',
+            marketplace VARCHAR(100) NOT NULL,
+            custom_market VARCHAR(100) NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            approval_url VARCHAR(500) NULL,
+            reject_reason TEXT NULL,
+            submitted_date DATE NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_task_id (task_id),
+            INDEX idx_user_id (user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS task_marketplace_submission_logs (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            submission_id INT NOT NULL,
+            status_from VARCHAR(50) NULL,
+            status_to VARCHAR(50) NOT NULL,
+            changed_by INT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_sub_id (submission_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+} catch (Throwable $t) {
+    error_log("Table ensure error in marketplace_submissions: " . $t->getMessage());
+}
+
+$rawInput = file_get_contents("php://input");
+$data = json_decode($rawInput);
 $action = isset($data->action) ? trim($data->action) : '';
 
 // ── Helper: resolve staff user_id accurately from task and employees ───────
 function resolveUserId($db, $user_id, $task_id) {
     // 1. First priority: look up the employee assigned to the task and get their actual user_id
     if (!empty($task_id)) {
-        $stmt = $db->prepare("
-            SELECT e.user_id 
-            FROM tasks t
-            INNER JOIN employees e ON t.assigned_to = e.id
-            WHERE t.id = :tid
-            LIMIT 1
-        ");
-        $stmt->execute([':tid' => $task_id]);
-        $uid = $stmt->fetchColumn();
-        if ($uid) return (int)$uid;
+        try {
+            $stmt = $db->prepare("
+                SELECT e.user_id 
+                FROM tasks t
+                INNER JOIN employees e ON t.assigned_to = e.id
+                WHERE t.id = :tid
+                LIMIT 1
+            ");
+            $stmt->execute([':tid' => $task_id]);
+            $uid = $stmt->fetchColumn();
+            if ($uid) return (int)$uid;
+        } catch (Throwable $e) {}
     }
 
     // 2. If user_id was passed and matches an employee's record (employees.id), get employees.user_id
     if (!empty($user_id)) {
-        $stmt2 = $db->prepare("SELECT user_id FROM employees WHERE id = :eid LIMIT 1");
-        $stmt2->execute([':eid' => $user_id]);
-        $uid2 = $stmt2->fetchColumn();
-        if ($uid2) return (int)$uid2;
+        try {
+            $stmt2 = $db->prepare("SELECT user_id FROM employees WHERE id = :eid LIMIT 1");
+            $stmt2->execute([':eid' => $user_id]);
+            $uid2 = $stmt2->fetchColumn();
+            if ($uid2) return (int)$uid2;
 
-        // 3. Check if user_id is already an employee's user_id (employees.user_id)
-        $stmt3 = $db->prepare("SELECT user_id FROM employees WHERE user_id = :uid LIMIT 1");
-        $stmt3->execute([':uid' => $user_id]);
-        $uid3 = $stmt3->fetchColumn();
-        if ($uid3) return (int)$uid3;
+            // 3. Check if user_id is already an employee's user_id (employees.user_id)
+            $stmt3 = $db->prepare("SELECT user_id FROM employees WHERE user_id = :uid LIMIT 1");
+            $stmt3->execute([':uid' => $user_id]);
+            $uid3 = $stmt3->fetchColumn();
+            if ($uid3) return (int)$uid3;
 
-        // 4. Fallback: valid user in users table
-        $stmt4 = $db->prepare("SELECT id FROM users WHERE id = :uid LIMIT 1");
-        $stmt4->execute([':uid' => $user_id]);
-        $uid4 = $stmt4->fetchColumn();
-        if ($uid4) return (int)$uid4;
+            // 4. Fallback: valid user in users table
+            $stmt4 = $db->prepare("SELECT id FROM users WHERE id = :uid LIMIT 1");
+            $stmt4->execute([':uid' => $user_id]);
+            $uid4 = $stmt4->fetchColumn();
+            if ($uid4) return (int)$uid4;
+        } catch (Throwable $e) {}
     }
 
     return (int)$user_id;
@@ -63,16 +119,20 @@ function insertSubmissionLog($db, $submission_id, $status_from, $status_to, $cha
             ':s_to'       => $status_to,
             ':changed_by' => (int)$changed_by,
         ]);
-    } catch (Exception $e) {
-        // Silently continue if table not yet created
+    } catch (Throwable $e) {
+        // Silently continue if log table issue
     }
 }
 
 // ── Helper: get task title ─────────────────────────────────────────────────
 function getTaskTitle($db, $task_id) {
-    $stmt = $db->prepare("SELECT title FROM tasks WHERE id = :tid LIMIT 1");
-    $stmt->execute([':tid' => $task_id]);
-    return $stmt->fetchColumn() ?: 'Unknown Task';
+    try {
+        $stmt = $db->prepare("SELECT title FROM tasks WHERE id = :tid LIMIT 1");
+        $stmt->execute([':tid' => $task_id]);
+        return $stmt->fetchColumn() ?: 'Unknown Task';
+    } catch (Throwable $e) {
+        return 'Task #' . $task_id;
+    }
 }
 
 // ── GET — fetch all submissions for a task ──────────────────────────────────
@@ -147,6 +207,16 @@ if ($action === 'add') {
         // Record initial status log
         insertSubmissionLog($db, $new_id, null, $status, $added_by);
 
+        // 🪙 Trigger Marketplace Upload Credit (+1 Credit for Dayal Stock or External Marketplace)
+        if (class_exists('CreditHelper')) {
+            CreditHelper::handleMarketplaceUploadCredit($db, $new_id, $added_by);
+
+            // If created directly in approved or rejected state
+            if ($status === 'approved' || $status === 'rejected') {
+                CreditHelper::handleMarketplaceStatusChangeCredit($db, $new_id, 'pending', $status, $added_by);
+            }
+        }
+
         // Notify staff user
         $task_title = getTaskTitle($db, $task_id);
         if ($user_id) {
@@ -160,7 +230,8 @@ if ($action === 'add') {
         }
 
         echo json_encode(['status' => 'success', 'id' => $new_id, 'message' => 'Submission added']);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        error_log("Marketplace add error: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
     exit;
@@ -211,9 +282,14 @@ if ($action === 'update') {
             ':id'            => $id,
         ]);
 
-        // Record status change log
+        // Record status change log & trigger Credit Logic
         if ($new_status !== $row['status']) {
             insertSubmissionLog($db, $id, $row['status'], $new_status, $updated_by);
+
+            // 🪙 Trigger Status Change Credit (+2 for External Approved, -1 for External Rejected, 0 for Dayal Stock)
+            if (class_exists('CreditHelper')) {
+                CreditHelper::handleMarketplaceStatusChangeCredit($db, $id, $row['status'], $new_status, $updated_by, $new_reason);
+            }
         }
 
         // Notify staff if status changed
@@ -255,7 +331,8 @@ if ($action === 'update') {
         }
 
         echo json_encode(['status' => 'success', 'message' => 'Submission updated']);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
+        error_log("Marketplace update error: " . $e->getMessage());
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
     exit;
@@ -282,7 +359,7 @@ if ($action === 'get_logs') {
         $stmt->execute([':sid' => $submission_id]);
         $logs = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         echo json_encode(['status' => 'success', 'data' => $logs, 'logs' => $logs]);
-    } catch (\Throwable $e) {
+    } catch (Throwable $e) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage(), 'data' => [], 'logs' => []]);
     }
     exit;
@@ -303,12 +380,12 @@ if ($action === 'delete') {
         try {
             $logStmt = $db->prepare("DELETE FROM task_marketplace_submission_logs WHERE submission_id = :id");
             $logStmt->execute([':id' => $id]);
-        } catch (Exception $e) {}
+        } catch (Throwable $e) {}
 
         $stmt = $db->prepare("DELETE FROM task_marketplace_submissions WHERE id = :id");
         $stmt->execute([':id' => $id]);
         echo json_encode(['status' => 'success', 'message' => 'Submission record deleted successfully']);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
     exit;

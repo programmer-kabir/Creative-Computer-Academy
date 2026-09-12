@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -7,12 +7,15 @@ import ThemeToggle from '../components/ThemeToggle';
 import {
   FiHome, FiUsers, FiAward, FiLogOut, FiMenu, FiX, FiShield, FiClock,
   FiUser, FiSettings, FiCheckCircle, FiPieChart, FiAlertOctagon, FiSidebar,
-  FiLayers, FiChevronRight,  FiActivity
+  FiLayers, FiChevronRight, FiActivity
 } from 'react-icons/fi';
 import { Toaster, toast } from 'sonner';
 import Pusher from 'pusher-js';
+import { HiSparkles } from 'react-icons/hi';
+import CreditWalletModal from '../components/CreditWalletModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const rawApiBase = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = rawApiBase.replace(/\/+$/, '');
 
 const navItems = [
   { to: '/', icon: FiHome, label: 'Dashboard', badgeKey: null },
@@ -23,6 +26,7 @@ const navItems = [
   { to: '/reports', icon: FiPieChart, label: 'Reports', badgeKey: null },
   { to: '/team', icon: FiUsers, label: 'My Team', badgeKey: null },
   { to: '/leaderboard', icon: FiAward, label: 'Leaderboard', badgeKey: null },
+  { to: '/credits', icon: HiSparkles, label: 'Credit Wallet', badgeKey: null },
   { to: '/profile', icon: FiUser, label: 'Profile', badgeKey: null },
   { to: '/settings', icon: FiSettings, label: 'Settings', badgeKey: null },
 ];
@@ -32,6 +36,7 @@ const ReviewerLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   // Sidebar toggle state (persisted in localStorage)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
@@ -43,18 +48,16 @@ const ReviewerLayout = ({ children }) => {
     }
   });
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('cca_reviewer_sidebar_open', JSON.stringify(next));
-      } catch { }
-      return next;
-    });
-  };
+  useEffect(() => {
+    try {
+      localStorage.setItem('cca_reviewer_sidebar_open', JSON.stringify(isSidebarOpen));
+    } catch { }
+  }, [isSidebarOpen]);
 
-  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar
-  React.useEffect(() => {
+  const toggleSidebar = () => setIsSidebarOpen(prev => !prev);
+
+  // Keyboard shortcut: Ctrl + B to toggle sidebar
+  useEffect(() => {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
         e.preventDefault();
@@ -64,6 +67,33 @@ const ReviewerLayout = ({ children }) => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Reviewer Credit Wallet state
+  const [wallet, setWallet] = useState(null);
+
+  const fetchWallet = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/credits/get_wallet.php?user_id=${currentUser.id}&portal=reviewer`);
+      const data = await res.json();
+      if (data?.status === 'success' && data.wallet) {
+        setWallet(data.wallet);
+      }
+    } catch (e) {
+      console.error('Failed to fetch reviewer wallet:', e);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchWallet();
+    const handleCreditUpdate = () => fetchWallet();
+    window.addEventListener('new-notification-received', handleCreditUpdate);
+    window.addEventListener('credit-updated', handleCreditUpdate);
+    return () => {
+      window.removeEventListener('new-notification-received', handleCreditUpdate);
+      window.removeEventListener('credit-updated', handleCreditUpdate);
+    };
+  }, [currentUser]);
 
   React.useEffect(() => {
     if (!currentUser) return;
@@ -93,7 +123,7 @@ const ReviewerLayout = ({ children }) => {
   };
 
   const avatar = currentUser?.profile_picture
-    ? `${API_BASE}${currentUser.profile_picture}`
+    ? `${API_BASE}/${currentUser.profile_picture}`
     : null;
 
   // Find current active page title for the header
@@ -136,38 +166,35 @@ const ReviewerLayout = ({ children }) => {
               end={to === '/'}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
-                `relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${
-                  isActive
-                    ? isRejected
-                      ? 'bg-rose-500/15 text-rose-500 font-bold border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
-                      : isPending
+                `relative flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group ${isActive
+                  ? isRejected
+                    ? 'bg-rose-500/15 text-rose-500 font-bold border border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
+                    : isPending
                       ? 'bg-amber-500/15 text-amber-500 font-bold border border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
                       : 'bg-brand-500/15 text-brand-400 font-bold border border-brand-500/30 shadow-[0_0_20px_rgba(99,102,241,0.15)]'
-                    : isRejected
+                  : isRejected
                     ? 'text-white/50 hover:text-rose-400 hover:bg-rose-500/10'
                     : isPending
-                    ? 'text-white/50 hover:text-amber-400 hover:bg-amber-500/10'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'text-white/50 hover:text-amber-400 hover:bg-amber-500/10'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
                 }`
               }
             >
               <div className="flex items-center gap-3">
-                <span className={`p-1.5 rounded-lg transition-transform duration-200 group-hover:scale-110 ${
-                  isActive
-                    ? isRejected ? 'bg-rose-500/20 text-rose-500' : isPending ? 'bg-amber-500/20 text-amber-500' : 'bg-brand-500/20 text-brand-400'
-                    : 'bg-white/5 text-white/60 group-hover:text-white'
-                }`}>
+                <span className={`p-1.5 rounded-lg transition-transform duration-200 group-hover:scale-110 ${isActive
+                  ? isRejected ? 'bg-rose-500/20 text-rose-500' : isPending ? 'bg-amber-500/20 text-amber-500' : 'bg-brand-500/20 text-brand-400'
+                  : 'bg-white/5 text-white/60 group-hover:text-white'
+                  }`}>
                   <Icon size={15} />
                 </span>
                 <span className="tracking-tight">{label}</span>
               </div>
-              
+
               {isActive && (
                 <motion.div
                   layoutId="activePill"
-                  className={`w-1.5 h-4 rounded-full ${
-                    isRejected ? 'bg-rose-500' : isPending ? 'bg-amber-500' : 'bg-brand-500'
-                  }`}
+                  className={`w-1.5 h-4 rounded-full ${isRejected ? 'bg-rose-500' : isPending ? 'bg-amber-500' : 'bg-brand-500'
+                    }`}
                   transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                 />
               )}
@@ -228,9 +255,8 @@ const ReviewerLayout = ({ children }) => {
 
       {/* Desktop Sidebar */}
       <aside
-        className={`hidden lg:block fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'w-64 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full pointer-events-none'
-        }`}
+        className={`hidden lg:block fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-64 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full pointer-events-none'
+          }`}
       >
         <div className="w-64 h-full">
           <SidebarContent />
@@ -263,9 +289,8 @@ const ReviewerLayout = ({ children }) => {
 
       {/* Main Wrapper */}
       <div
-        className={`relative z-10 min-h-screen flex flex-col transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? 'lg:pl-64' : 'lg:pl-0'
-        }`}
+        className={`relative z-10 min-h-screen flex flex-col transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:pl-64' : 'lg:pl-0'
+          }`}
       >
         {/* Floating Glass Topbar */}
         <header className="sticky top-0 z-30 px-4 lg:px-8 py-3.5 bg-dark-900/70 backdrop-blur-2xl border-b border-white/5 shadow-xs transition-colors">
@@ -281,11 +306,10 @@ const ReviewerLayout = ({ children }) => {
                     toggleSidebar();
                   }
                 }}
-                className={`p-2 rounded-xl border transition-all duration-200 flex items-center justify-center shrink-0 cursor-pointer active:scale-95 ${
-                  isSidebarOpen
-                    ? 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10'
-                    : 'bg-brand-500/20 text-brand-400 border-brand-500/30 hover:bg-brand-500/30 ring-2 ring-brand-500/20'
-                }`}
+                className={`p-2 rounded-xl border transition-all duration-200 flex items-center justify-center shrink-0 cursor-pointer active:scale-95 ${isSidebarOpen
+                  ? 'bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border-white/10'
+                  : 'bg-brand-500/20 text-brand-400 border-brand-500/30 hover:bg-brand-500/30 ring-2 ring-brand-500/20'
+                  }`}
                 title={isSidebarOpen ? 'Collapse sidebar (Ctrl+B)' : 'Expand sidebar (Ctrl+B)'}
                 aria-label="Toggle Sidebar"
               >
@@ -304,8 +328,19 @@ const ReviewerLayout = ({ children }) => {
               </div>
             </div>
 
-            {/* Right: Quick Status + Theme Toggle + Notifications */}
+            {/* Right: Quick Status + Credits + Theme Toggle + Notifications */}
             <div className="flex items-center gap-3">
+              {/* Reviewer Credits Badge */}
+              <button
+                type="button"
+                onClick={() => setIsWalletModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 transition-all text-xs font-bold shadow-xs cursor-pointer active:scale-95"
+                title="Your Reviewer Credit Wallet"
+              >
+                <HiSparkles size={14} className="text-amber-400 shrink-0" />
+                <span>{wallet !== null ? `${wallet.balance} pts` : '0 pts'}</span>
+              </button>
+
               {/* Online Reviewer Status Pill */}
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -335,6 +370,14 @@ const ReviewerLayout = ({ children }) => {
           </AnimatePresence>
         </main>
       </div>
+
+      {/* Reviewer Credit Wallet Modal */}
+      <CreditWalletModal
+        isOpen={isWalletModalOpen}
+        onClose={() => setIsWalletModalOpen(false)}
+        user={currentUser}
+        onBalanceChange={() => fetchWallet()}
+      />
     </div>
   );
 };

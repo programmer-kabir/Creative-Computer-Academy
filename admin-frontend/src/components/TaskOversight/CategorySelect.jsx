@@ -292,7 +292,8 @@ export const CategorySelect = ({
       subcategory_id: item.subcategory_id || null,
       child_category_id: item.child_category_id || null,
       category_path: fullPath,
-      icon: item.icon
+      icon: item.icon,
+      credit: item.credit || 5
     });
 
     if (onTemplateSelect && item.checklists && item.checklists.length > 0) {
@@ -558,7 +559,8 @@ export const CategorySelect = ({
                               category_name: activeCategory.name,
                               subcategory_name: sub.name,
                               full_path: subPath,
-                              icon: sub.icon || activeCategory.icon
+                              icon: sub.icon || activeCategory.icon,
+                              credit: sub.credit || activeCategory.credit || 5
                             })}
                             className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 group transition-colors"
                           >
@@ -602,6 +604,7 @@ export const CategorySelect = ({
                                     child_name: child.name,
                                     full_path: childPath,
                                     icon: child.icon || sub.icon || activeCategory.icon,
+                                    credit: child.credit || sub.credit || activeCategory.credit || 5,
                                     checklists: child.default_checklists || [],
                                     specs: child.default_specs || null,
                                     estimated_minutes: child.estimated_minutes || 90

@@ -27,6 +27,9 @@ if(isset($data->user_id)) {
                               tc_main.name AS main_category_name,
                               tc_sub.name AS sub_category_name,
                               tc_child.name AS child_category_name,
+                              tc_child.credit AS child_credit,
+                              tc_sub.credit AS sub_credit,
+                              tc_main.credit AS main_credit,
                               tfd.final_file_url,
                               tfd.final_image_url,
                               tfd.fix_notes,
@@ -52,6 +55,24 @@ if(isset($data->user_id)) {
         $today_date = date('Y-m-d');
         
         while($row = $task_stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Calculate effective reward credit
+            if (isset($row['custom_credit']) && $row['custom_credit'] !== null && intval($row['custom_credit']) > 0) {
+                $row['reward_credit'] = intval($row['custom_credit']);
+                $row['is_custom_credit'] = true;
+            } elseif (!empty($row['child_credit']) && intval($row['child_credit']) > 0) {
+                $row['reward_credit'] = intval($row['child_credit']);
+                $row['is_custom_credit'] = false;
+            } elseif (!empty($row['sub_credit']) && intval($row['sub_credit']) > 0) {
+                $row['reward_credit'] = intval($row['sub_credit']);
+                $row['is_custom_credit'] = false;
+            } elseif (!empty($row['main_credit']) && intval($row['main_credit']) > 0) {
+                $row['reward_credit'] = intval($row['main_credit']);
+                $row['is_custom_credit'] = false;
+            } else {
+                $row['reward_credit'] = 5;
+                $row['is_custom_credit'] = false;
+            }
+
             $row['is_delayed'] = false;
             $row['deadline_status'] = null; // 'overdue', 'due_today', 'upcoming', null
 

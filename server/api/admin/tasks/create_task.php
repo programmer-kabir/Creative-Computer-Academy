@@ -76,6 +76,7 @@ try {
             'category_id'       => "ALTER TABLE `tasks` ADD COLUMN `category_id` INT NULL",
             'subcategory_id'    => "ALTER TABLE `tasks` ADD COLUMN `subcategory_id` INT NULL",
             'child_category_id' => "ALTER TABLE `tasks` ADD COLUMN `child_category_id` INT NULL",
+            'custom_credit'     => "ALTER TABLE `tasks` ADD COLUMN `custom_credit` INT NULL DEFAULT NULL",
             'creation_mode'     => "ALTER TABLE `tasks` ADD COLUMN `creation_mode` ENUM('manual', 'agentic') DEFAULT 'manual'"
         ];
 
@@ -95,6 +96,7 @@ try {
     $category_id       = !empty($data->category_id) ? (int)$data->category_id : null;
     $subcategory_id    = !empty($data->subcategory_id) ? (int)$data->subcategory_id : null;
     $child_category_id = !empty($data->child_category_id) ? (int)$data->child_category_id : null;
+    $custom_credit     = (isset($data->custom_credit) && trim((string)$data->custom_credit) !== '' && intval($data->custom_credit) > 0) ? intval($data->custom_credit) : null;
     $category_name_log = !empty($data->category) ? trim($data->category) : 'General';
 
     // 6. Intelligent department_id resolution
@@ -115,8 +117,8 @@ try {
         } catch (\Throwable $th) {}
     }
 
-    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, creation_mode, created_by, assigned_to, category_id, subcategory_id, child_category_id, department_id, status, assign_date, deadline, deadline_time, submission_link, created_at, updated_at) 
-              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :creation_mode, :created_by, :assigned_to, :category_id, :subcategory_id, :child_category_id, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link, NOW(), NOW())";
+    $query = "INSERT INTO tasks (title, description, priority, checklists, ref_links, ref_image, visual_image, creation_mode, created_by, assigned_to, category_id, subcategory_id, child_category_id, custom_credit, department_id, status, assign_date, deadline, deadline_time, submission_link, created_at, updated_at) 
+              VALUES (:title, :description, :priority, :checklists, :ref_links, :ref_image, :visual_image, :creation_mode, :created_by, :assigned_to, :category_id, :subcategory_id, :child_category_id, :custom_credit, :department_id, :status, :assign_date, :deadline, :deadline_time, :submission_link, NOW(), NOW())";
               
     $stmt = $db->prepare($query);
 
@@ -179,6 +181,7 @@ try {
         ':category_id'       => $category_id,
         ':subcategory_id'    => $subcategory_id,
         ':child_category_id' => $child_category_id,
+        ':custom_credit'     => $custom_credit,
         ':department_id'     => $department_id,
         ':status'            => $initial_status,
         ':assign_date'       => !empty($data->assign_date) ? $data->assign_date : date('Y-m-d'),

@@ -8,6 +8,7 @@ import NotificationBell from '../components/NotificationBell';
 import ThemeToggle from '../components/ThemeToggle';
 import HeaderClock from '../components/HeaderClock';
 import HeaderShiftStatus from '../components/HeaderShiftStatus';
+import HeaderCreditBadge from '../components/HeaderCreditBadge';
 import HeaderProfileDropdown from '../components/HeaderProfileDropdown';
 import CommandPalette from '../components/CommandPalette';
 import { Toaster, toast } from 'sonner';
@@ -214,6 +215,9 @@ const AuthenticatedLayout = ({ children }) => {
               <HiSparkles size={13} className={isBrandKitPage ? 'text-amber-300' : 'text-amber-500 animate-pulse'} />
               <span className="hidden sm:inline">Brand Kit</span>
             </button>
+
+            {/* Live Credit Wallet Badge */}
+            <HeaderCreditBadge />
 
             {/* Dark/Light Theme Switcher - always visible */}
             <ThemeToggle />

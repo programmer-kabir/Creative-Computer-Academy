@@ -1,12 +1,15 @@
 <?php
 require_once '../../../config/cors.php';
 require_once '../../../config/database.php';
+require_once '../../attendance/AttendanceSecurityHelper.php';
 
 $database = new Database();
 $db = $database->getConnection();
 date_default_timezone_set('Asia/Dhaka');
 
 $date = isset($_GET['date']) ? $_GET['date'] : date('Y-m-d');
+
+AttendanceSecurityHelper::ensureTables($db);
 
 try {
     // Get all active staff with their shift info
@@ -47,6 +50,29 @@ try {
         $break_stmt->execute([':user_id' => $row['user_id'], ':date' => $date]);
         $break_data = $break_stmt->fetch(PDO::FETCH_ASSOC);
         $row['total_break_minutes'] = (int)($break_data['total_break_minutes'] ?? 0);
+
+        // Fetch device log summary if attendance_id exists
+        $row['device_log'] = null;
+        if (!empty($row['attendance_id'])) {
+            $log_stmt = $db->prepare("
+                SELECT id, punch_type, ip_address, network_type, device_type, device_brand, device_model, 
+                       os_name, browser_name, distance_meters, is_within_geofence, trust_score, 
+                       fraud_flags, verification_status, latitude, longitude
+                FROM attendance_device_logs 
+                WHERE attendance_id = :att_id 
+                ORDER BY id DESC LIMIT 1
+            ");
+            $log_stmt->execute([':att_id' => $row['attendance_id']]);
+            $dev_log = $log_stmt->fetch(PDO::FETCH_ASSOC);
+            if ($dev_log) {
+                if (!empty($dev_log['fraud_flags'])) {
+                    $dev_log['fraud_flags'] = json_decode($dev_log['fraud_flags'], true) ?: [];
+                } else {
+                    $dev_log['fraud_flags'] = [];
+                }
+                $row['device_log'] = $dev_log;
+            }
+        }
 
         // Calculate net work duration & whether they completed their shift
         $row['net_work_minutes'] = null;

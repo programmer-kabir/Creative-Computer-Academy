@@ -45,6 +45,39 @@ function ensureCategoryTableExists($db) {
             } catch (Exception $ex) {}
         }
 
+        // Ensure credit column on task_categories is NULLABLE (allowing child to inherit from subcategory)
+        try {
+            $checkCredit = $db->query("SHOW COLUMNS FROM `task_categories` LIKE 'credit'")->fetch();
+            if (!$checkCredit) {
+                $db->exec("ALTER TABLE `task_categories` ADD COLUMN `credit` INT NULL DEFAULT NULL AFTER `estimated_minutes`");
+            } else {
+                // Ensure it is nullable
+                $db->exec("ALTER TABLE `task_categories` MODIFY COLUMN `credit` INT NULL DEFAULT NULL");
+            }
+
+            // Cleanup: child categories should have NULL credit so they inherit from subcategory
+            $db->exec("UPDATE `task_categories` SET `credit` = NULL WHERE `level` = 'child' AND `credit` = 5");
+
+            // Ensure subcategories and main categories have appropriate default credits if currently NULL
+            $db->exec("UPDATE `task_categories` SET `credit` = 7 WHERE `slug` LIKE '%business-card%' AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 10 WHERE `slug` LIKE '%logo%' AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 8 WHERE (`slug` LIKE '%flyer%' OR `slug` LIKE '%poster%' OR `slug` LIKE '%brochure%') AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 6 WHERE `slug` LIKE '%social-media%' AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 8 WHERE `slug` LIKE '%resume%' AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 5 WHERE `slug` LIKE '%letterhead%' AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 12 WHERE (`slug` LIKE '%frontend%' OR `slug` LIKE '%fullstack%' OR `slug` LIKE '%web%') AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 10 WHERE (`slug` LIKE '%video%' OR `slug` LIKE '%motion%' OR `slug` LIKE '%reels%') AND (`credit` IS NULL OR `credit` = 0) AND `level` = 'subcategory'");
+            $db->exec("UPDATE `task_categories` SET `credit` = 5 WHERE `level` = 'category' AND (`credit` IS NULL OR `credit` = 0)");
+        } catch (Exception $ex) {}
+
+        // Ensure custom_credit column on tasks table
+        try {
+            $checkCustom = $db->query("SHOW COLUMNS FROM `tasks` LIKE 'custom_credit'")->fetch();
+            if (!$checkCustom) {
+                $db->exec("ALTER TABLE `tasks` ADD COLUMN `custom_credit` INT NULL DEFAULT NULL AFTER `child_category_id`");
+            }
+        } catch (Exception $ex) {}
+
         // Check if seed is needed
         $count = $db->query("SELECT COUNT(*) FROM `task_categories`")->fetchColumn();
         if ($count == 0) {

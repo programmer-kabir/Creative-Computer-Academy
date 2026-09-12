@@ -50,6 +50,8 @@ export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplica
                             <img 
                                 src={`${apiBase}${firstImg}`} 
                                 alt="Task Thumbnail" 
+                                loading="lazy"
+                                decoding="async"
                                 className="w-full h-full object-contain bg-white dark:bg-slate-900 group-hover:scale-105 transition-transform duration-500 ease-out" 
                             />
                             <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -62,6 +64,8 @@ export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplica
                         <img 
                             src="/no-image-placeholder.jpg" 
                             alt="No Image Available" 
+                            loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-90" 
                         />
                     </div>
@@ -114,6 +118,17 @@ export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplica
                     >
                         <span className="text-[10px]">🏷️</span>
                         <span className="truncate">{task.category.replace(/ > /g, ' › ')}</span>
+                    </span>
+                )}
+
+                {/* Reward Credit Badge */}
+                {(task.reward_credit !== undefined && task.reward_credit !== null) && (
+                    <span 
+                        title={task.is_custom_credit ? "Custom Task Credit" : "Category Reward Credit"}
+                        className="text-[10px] font-extrabold text-amber-800 dark:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-400/50 dark:border-amber-600/40 tracking-tight flex items-center gap-1 shadow-2xs"
+                    >
+                        <span>🪙</span>
+                        <span>+{task.reward_credit} {task.is_custom_credit ? '(Custom)' : ''}</span>
                     </span>
                 )}
             </div>
@@ -180,7 +195,9 @@ export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplica
 
             {hasRemainingText && remainingHtml ? (
                 <div className="relative flex-1 overflow-hidden">
-                    <div className="task-description-content text-xs line-clamp-2 text-slate-600 dark:text-slate-300" dangerouslySetInnerHTML={{ __html: remainingHtml }} />
+                    <p className="text-xs line-clamp-2 text-slate-600 dark:text-slate-300 font-normal leading-relaxed">
+                        {remainingHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}
+                    </p>
                     <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-t from-white dark:from-slate-800 to-transparent pointer-events-none" />
                 </div>
             ) : !jsonData ? (
@@ -194,7 +211,7 @@ export const TaskCard = React.memo(({ task, isReview, apiBase, onEdit, onDuplica
             <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-900/60 px-2 py-1.5 rounded-xl border border-slate-200/60 dark:border-slate-800 flex-1 min-w-0">
                 <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex-shrink-0 border border-white dark:border-slate-600 shadow-2xs">
                     {task.assigned_to_avatar ? (
-                        <img src={`${apiBase}${task.assigned_to_avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+                        <img src={`${apiBase}${task.assigned_to_avatar}`} alt="Avatar" loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-[9px] uppercase">
                             {task.assigned_to_name ? task.assigned_to_name.charAt(0) : '?'}

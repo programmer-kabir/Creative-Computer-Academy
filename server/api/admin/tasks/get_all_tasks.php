@@ -19,6 +19,9 @@ try {
             tc_main.name as main_category_name,
             tc_sub.name as sub_category_name,
             tc_child.name as child_category_name,
+            tc_child.credit as child_credit,
+            tc_sub.credit as sub_credit,
+            tc_main.credit as main_credit,
             u.name as assigned_to_name,
             u.profile_picture as assigned_to_avatar
         FROM tasks t
@@ -104,6 +107,25 @@ try {
             $row['final_delivery'] = $del_by_task[$t_id] ?? null;
             $row['blueprint_variants'] = $bv_by_task[$t_id] ?? [];
             $row['review'] = $rev_by_task[$t_id] ?? null;
+
+            // Calculate effective reward credit
+            if (isset($row['custom_credit']) && $row['custom_credit'] !== null && intval($row['custom_credit']) > 0) {
+                $row['reward_credit'] = intval($row['custom_credit']);
+                $row['is_custom_credit'] = true;
+            } elseif (!empty($row['child_credit']) && intval($row['child_credit']) > 0) {
+                $row['reward_credit'] = intval($row['child_credit']);
+                $row['is_custom_credit'] = false;
+            } elseif (!empty($row['sub_credit']) && intval($row['sub_credit']) > 0) {
+                $row['reward_credit'] = intval($row['sub_credit']);
+                $row['is_custom_credit'] = false;
+            } elseif (!empty($row['main_credit']) && intval($row['main_credit']) > 0) {
+                $row['reward_credit'] = intval($row['main_credit']);
+                $row['is_custom_credit'] = false;
+            } else {
+                $row['reward_credit'] = 5;
+                $row['is_custom_credit'] = false;
+            }
+
             if (empty($row['category'])) {
                 $row['category'] = $row['category_name'] ?? '';
             }

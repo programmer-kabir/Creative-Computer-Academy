@@ -1,6 +1,9 @@
 <?php
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
+if (file_exists('../credits/CreditHelper.php')) {
+    require_once '../credits/CreditHelper.php';
+}
 
 $database = new Database();
 $db = $database->getConnection();
@@ -25,6 +28,9 @@ try {
     $old_status = $old_stmt->fetchColumn();
 
     if (!$old_status) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
         echo json_encode(["status" => "error", "message" => "Task not found."]);
         exit;
     }
@@ -76,8 +82,29 @@ try {
                 ':tags' => $tags_val
             ]);
         } catch (Exception $ex) {}
+
+        // Credit Rewards: Staff (+Category.credit) and Reviewer (+Reviewer.credit)
+        if (class_exists('CreditHelper')) {
+            try {
+                $reward_credit = isset($data->reward_credit) && intval($data->reward_credit) > 0 ? intval($data->reward_credit) : null;
+                CreditHelper::rewardTaskCompletion($db, $data->task_id, $reviewer_id, $reward_credit);
+                CreditHelper::rewardReviewerApproval($db, $data->task_id, $reviewer_id);
+            } catch (Exception $ex) {
+                error_log("Credit reward error on task completion: " . $ex->getMessage());
+            }
+        }
     } else if ($status === 'Rejected') {
         $rejection_reason = isset($data->rejection_reason) ? $data->rejection_reason : null;
+
+        // Credit Penalty for Staff (-1 Credit) & Reward for Reviewer (+1 QA Credit)
+        if (class_exists('CreditHelper')) {
+            try {
+                CreditHelper::penalizeTaskRejection($db, $data->task_id, $reviewer_id, $rejection_reason);
+                CreditHelper::rewardReviewerRejection($db, $data->task_id, $reviewer_id, $rejection_reason);
+            } catch (Exception $ex) {
+                error_log("Credit penalty/reward error on task rejection: " . $ex->getMessage());
+            }
+        }
         
         $rejection_image = null;
         if (isset($_FILES['rejection_image']) && $_FILES['rejection_image']['error'] === UPLOAD_ERR_OK) {
@@ -270,7 +297,9 @@ try {
         }
     }
 
-    $db->commit();
+    if ($db->inTransaction()) {
+        $db->commit();
+    }
     echo json_encode(["status" => "success", "message" => "Task marked as " . $status, "debug" => $debug_log]);
 
 } catch(Throwable $e) {

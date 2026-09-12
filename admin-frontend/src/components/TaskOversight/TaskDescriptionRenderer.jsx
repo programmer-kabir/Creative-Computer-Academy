@@ -166,15 +166,24 @@ export const extractJsonFromHtml = (htmlContent) => {
     return { jsonData, remainingHtml, hasRemainingText };
 };
 
+// Strip hardcoded light inline font colors so rich text is crystal clear in both light and dark mode
+const sanitizeInlineColors = (html) => {
+    if (!html) return html;
+    return html
+        .replace(/color:\s*(#fff|#ffffff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*[0-9.]+\s*\)|#f8fafc|#f1f5f9|#e2e8f0|#cbd5e1|#94a3b8)/gi, 'color: inherit')
+        .replace(/background-color:\s*(#fff|#ffffff|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|#000|#000000|black)/gi, 'background-color: transparent');
+};
+
 export const DescriptionRenderer = ({ htmlContent }) => {
     const { jsonData, remainingHtml, hasRemainingText } = extractJsonFromHtml(htmlContent);
+    const sanitizedHtml = sanitizeInlineColors(remainingHtml);
 
     return (
         <div className="space-y-4">
             {jsonData && (
-                <div className="bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <div className="bg-slate-50/70 dark:bg-slate-800/50 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs">
                     <div className="mb-4 flex items-center justify-between">
-                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-widest flex items-center gap-2">
+                        <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest flex items-center gap-2">
                             <FiCode size={16} className="text-blue-500" />
                             Structured JSON Data
                         </h4>
@@ -184,8 +193,8 @@ export const DescriptionRenderer = ({ htmlContent }) => {
             )}
             {(!jsonData || hasRemainingText) && (
                 <div
-                    className="bg-slate-50 dark:bg-slate-800/50 p-5 rounded-xl text-slate-700 dark:text-slate-300 text-sm border border-slate-100 dark:border-slate-700 prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-2 prose-li:my-0 leading-normal task-description-content"
-                    dangerouslySetInnerHTML={{ __html: remainingHtml || '<p class="italic text-slate-400">No description provided.</p>' }}
+                    className="bg-slate-50/80 dark:bg-slate-800/50 p-5 rounded-2xl text-slate-800 dark:text-slate-200 text-sm border border-slate-200/80 dark:border-slate-700 prose prose-sm max-w-none prose-slate dark:prose-invert prose-p:my-2 prose-headings:mb-3 prose-headings:mt-4 prose-ul:my-2 prose-li:my-0 leading-normal task-description-content"
+                    dangerouslySetInnerHTML={{ __html: sanitizedHtml || '<p class="italic text-slate-400">No description provided.</p>' }}
                 />
             )}
         </div>

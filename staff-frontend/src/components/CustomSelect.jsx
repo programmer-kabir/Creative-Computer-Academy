@@ -74,8 +74,8 @@ export default function CustomSelect({
           disabled ? 'opacity-60 cursor-not-allowed bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700' : ''
         } ${
           isOpen
-            ? 'bg-white dark:bg-slate-900 border-blue-500 dark:border-blue-400 ring-3 ring-blue-500/20 shadow-md shadow-blue-500/10 text-slate-900 dark:text-white'
-            : 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-xs hover:border-blue-300 dark:hover:border-blue-600'
+            ? 'bg-[#ffffff] dark:bg-slate-900 border-blue-500 dark:border-blue-400 ring-3 ring-blue-500/20 shadow-md shadow-blue-500/10 text-slate-900 dark:text-slate-100'
+            : 'bg-[#ffffff] dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-850 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-xs hover:border-blue-300 dark:hover:border-blue-600'
         }`}
       >
         <div className="flex items-center gap-2.5 truncate flex-1 min-w-0">
@@ -95,7 +95,7 @@ export default function CustomSelect({
               {selectedOpt.avatar && (
                 <img src={selectedOpt.avatar} alt="" className="w-5 h-5 rounded-full object-cover shrink-0" />
               )}
-              <span className="truncate font-semibold text-slate-900 dark:text-white">
+              <span className="truncate font-semibold text-slate-900 dark:text-slate-100">
                 {selectedOpt.label}
               </span>
               {selectedOpt.subtext && (
@@ -128,7 +128,7 @@ export default function CustomSelect({
 
       {/* Dropdown Popup Menu */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full mt-1.5 z-[9999] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 p-1.5 space-y-1 max-h-72 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-[9999] rounded-2xl bg-[#ffffff] dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl shadow-slate-900/15 dark:shadow-black/50 p-1.5 space-y-1 max-h-72 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 backdrop-blur-xl">
           {/* Search Box inside dropdown */}
           {shouldShowSearch && (
             <div className="p-1.5 pb-2 border-b border-slate-100 dark:border-slate-800 shrink-0">

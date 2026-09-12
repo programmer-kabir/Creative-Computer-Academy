@@ -481,6 +481,29 @@ const Tasks = () => {
     }
   }, [currentUser]);
 
+  // Deep link handler: switch to relevant tab and open task details modal automatically
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const urlTaskId = params.get('taskId') || location.state?.taskId;
+    const targetTab = location.state?.activeTab;
+
+    if (urlTaskId && tasks.length > 0) {
+      const taskToOpen = tasks.find(t => String(t.id) === String(urlTaskId));
+      if (taskToOpen) {
+        setSelectedTask(taskToOpen);
+        if (taskToOpen.status) {
+          const tabNames = ['Unassigned', 'To-Do', 'In Progress', 'In Review', 'Rejected', 'Completed'];
+          const matchingTab = tabNames.find(tab => tab.toLowerCase() === taskToOpen.status.toLowerCase());
+          if (matchingTab) {
+            setActiveTab(matchingTab);
+          }
+        }
+      } else if (targetTab) {
+        setActiveTab(targetTab);
+      }
+    }
+  }, [location.search, location.state, tasks]);
+
   // Load comments when a task is selected
   useEffect(() => {
     if (selectedTask?.id) {
