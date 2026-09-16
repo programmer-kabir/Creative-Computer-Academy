@@ -5,8 +5,9 @@ import AdminLayout from './layouts/AdminLayout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import StaffDirectory from './pages/StaffDirectory';
+import ReviewerDirectory from './pages/ReviewerDirectory';
 import StudentDirectory from './pages/StudentDirectory';
-import CoursesAndBatches from './pages/CoursesAndBatches';
+import CoursesAndCurriculum from './pages/CoursesAndCurriculum';
 import StaffProfile from './pages/StaffProfile';
 import TaskOversight from './pages/TaskOversight';
 import Reports from './pages/Reports';
@@ -21,6 +22,8 @@ import { Toaster } from 'sonner';
 import LeaveManagement from './pages/LeaveManagement';
 import DatabaseManager from './pages/DatabaseManager';
 import BrandResources from './pages/BrandResources';
+import AcademyBlog from './pages/AcademyBlog';
+import BlogDetails from './pages/BlogDetails';
 import NotFound from './pages/NotFound';
 
 // Mock empty pages to avoid errors
@@ -58,15 +61,27 @@ function App() {
             </ProtectedRoute>
           } />
 
+          <Route path="/reviewers" element={
+            <ProtectedRoute>
+              <AdminLayout><ReviewerDirectory /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/students" element={
             <ProtectedRoute>
               <AdminLayout><StudentDirectory /></AdminLayout>
             </ProtectedRoute>
           } />
 
+          <Route path="/courses" element={
+            <ProtectedRoute>
+              <AdminLayout><CoursesAndCurriculum /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
           <Route path="/courses-batches" element={
             <ProtectedRoute>
-              <AdminLayout><CoursesAndBatches /></AdminLayout>
+              <AdminLayout><CoursesAndCurriculum /></AdminLayout>
             </ProtectedRoute>
           } />
 
@@ -127,6 +142,18 @@ function App() {
           <Route path="/brand-resources" element={
             <ProtectedRoute>
               <AdminLayout><BrandResources /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/blogs" element={
+            <ProtectedRoute>
+              <AdminLayout><AcademyBlog /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/blogs/:id" element={
+            <ProtectedRoute>
+              <AdminLayout><BlogDetails /></AdminLayout>
             </ProtectedRoute>
           } />
 

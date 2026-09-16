@@ -6,7 +6,7 @@ import {
   FiCalendar, FiX, FiInfo, FiLink, FiDownload,
   FiSend, FiMessageSquare, FiTrash2, FiEdit2, FiImage, FiFlag,
   FiPauseCircle, FiCheckSquare, FiCode, FiExternalLink, FiUploadCloud,
-  FiPackage, FiFileText, FiAlertTriangle, FiAlertCircle, FiStar, FiAward
+  FiPackage, FiFileText, FiAlertTriangle, FiAlertCircle, FiStar, FiAward, FiLock
 } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import MarketplaceSubmissions from '../../components/MarketplaceSubmissions';
@@ -15,6 +15,7 @@ import TaskDeliverablesViewer from '../../components/TaskDeliverablesViewer';
 import AgenticBlueprintViewer from '../../components/AgenticBlueprintViewer';
 import AIQualityScanner from '../../components/AIQualityScanner';
 import { downloadFile } from '../../utils/fileDownloader';
+import DownloadStartPromptModal from './DownloadStartPromptModal';
 
 const TaskDetailsModal = (props) => {
   const {
@@ -34,6 +35,71 @@ const TaskDetailsModal = (props) => {
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [taskTab, setTaskTab] = useState('brief'); // 'brief' | 'deliverables' | 'reviewer_final'
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [cooldownSecs, setCooldownSecs] = useState(0);
+  const [pendingDownload, setPendingDownload] = useState(null);
+
+  const handleSafeDownload = (url, fileName = null) => {
+    if (!selectedTask || !url) return;
+    if (selectedTask.status === 'To-Do' || selectedTask.status === 'Rejected') {
+      setPendingDownload({ url, fileName });
+    } else {
+      downloadFile(url, fileName);
+    }
+  };
+
+  const handleConfirmStartAndDownload = async () => {
+    if (!pendingDownload || !selectedTask) return;
+    const { url, fileName } = pendingDownload;
+    setPendingDownload(null);
+
+    if (handleStartTask) {
+      await handleStartTask(null, selectedTask.id);
+    }
+    downloadFile(url, fileName);
+  };
+
+  useEffect(() => {
+    if (selectedTask?.status !== 'In Progress') {
+      setCooldownSecs(0);
+      return;
+    }
+
+    const computeRemaining = () => {
+      const startTimeStr = selectedTask.in_progress_at || selectedTask.session_start_time || selectedTask.updated_at || selectedTask.created_at;
+      if (!startTimeStr) return 0;
+
+      const parsedStart = new Date(startTimeStr.replace(' ', 'T')).getTime();
+      if (isNaN(parsedStart)) return 0;
+
+      const now = Date.now();
+      const elapsedSecs = Math.max(0, Math.floor((now - parsedStart) / 1000));
+      const minReqSecs = 1 * 60; 
+      return Math.max(0, minReqSecs - elapsedSecs);
+    };
+
+    const initialRem = computeRemaining();
+    setCooldownSecs(initialRem);
+
+    if (initialRem <= 0) return;
+
+    const timer = setInterval(() => {
+      setCooldownSecs(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [selectedTask?.id, selectedTask?.status, selectedTask?.in_progress_at, selectedTask?.session_start_time]);
+
+  const formatCooldown = (secs) => {
+    const mins = Math.floor(secs / 60);
+    const remSecs = secs % 60;
+    return `${mins}m ${remSecs < 10 ? '0' : ''}${remSecs}s`;
+  };
 
   const blueprintData = React.useMemo(() => {
     if (!selectedTask?.blueprint_data) return null;
@@ -147,6 +213,38 @@ const TaskDetailsModal = (props) => {
                     {selectedTask.title}
                   </h2>
 
+                  {/* View-Only Mode Banner for To-Do / Rejected */}
+                  {(selectedTask.status === 'To-Do' || selectedTask.status === 'Rejected') && (
+                    <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 border border-blue-500/30 dark:border-blue-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 shadow-inner">
+                          <FiEye size={22} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                              {selectedTask.status === 'Rejected' ? 'Revision Needed (View Mode)' : 'Viewing Mode'}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">
+                              Timer Not Started
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 font-medium mt-0.5 leading-snug">
+                            You are currently previewing this task. Click start when you are ready to begin working.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => handleStartTask && handleStartTask(e, selectedTask.id)}
+                        className="w-full sm:w-auto px-5 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-lg shadow-blue-500/25 active:scale-95 transition-all flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+                      >
+                        <FiPlayCircle size={16} />
+                        <span>{selectedTask.status === 'Rejected' ? 'Restart & Fix Task' : 'Start Task Now'}</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* If Rejected: Sleek Rejection Alert Card */}
                   {selectedTask.status === 'Rejected' && (selectedTask.rejection_reason || selectedTask.rejection_image) && (
                     <div className="p-4 sm:p-5 rounded-2xl bg-red-50 dark:bg-gradient-to-br dark:from-red-950/40 dark:via-red-900/20 dark:to-slate-900/50 border border-red-200 dark:border-red-500/30 shadow-lg space-y-3 animate-in fade-in duration-200">
@@ -247,7 +345,7 @@ const TaskDetailsModal = (props) => {
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${taskTab === 'markets'
                           ? 'bg-violet-500/15 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300 border border-violet-500/40 shadow-sm shadow-violet-500/10'
                           : 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
-                        }`}
+                          }`}
                       >
                         <span>📦</span>
                         <span>Markets</span>
@@ -289,7 +387,7 @@ const TaskDetailsModal = (props) => {
                                 const url = selectedTask.final_delivery.final_image_url.startsWith('http')
                                   ? selectedTask.final_delivery.final_image_url
                                   : `${API_BASE}${selectedTask.final_delivery.final_image_url}`;
-                                downloadFile(url, `${selectedTask.id}_final_preview.jpg`);
+                                handleSafeDownload(url, `${selectedTask.id}_final_preview.jpg`);
                               }}
                               className="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-100 dark:bg-white/10 dark:hover:bg-white/20 text-slate-700 dark:text-white text-xs font-bold transition-all flex items-center gap-2 border border-slate-200 dark:border-white/10 shadow-sm"
                             >
@@ -305,7 +403,7 @@ const TaskDetailsModal = (props) => {
                                 const url = selectedTask.final_delivery.final_file_url.startsWith('http')
                                   ? selectedTask.final_delivery.final_file_url
                                   : `${API_BASE}${selectedTask.final_delivery.final_file_url}`;
-                                downloadFile(url);
+                                handleSafeDownload(url);
                               }}
                               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-2 shadow-md shadow-blue-500/20"
                             >
@@ -339,7 +437,7 @@ const TaskDetailsModal = (props) => {
                                 const url = selectedTask.final_delivery.final_image_url.startsWith('http')
                                   ? selectedTask.final_delivery.final_image_url
                                   : `${API_BASE}${selectedTask.final_delivery.final_image_url}`;
-                                downloadFile(url, `${selectedTask.id}_final_preview.jpg`);
+                                handleSafeDownload(url, `${selectedTask.id}_final_preview.jpg`);
                               }}
                               className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-xs font-bold flex items-center gap-1 hover:underline"
                             >
@@ -392,10 +490,22 @@ const TaskDetailsModal = (props) => {
                           </span>
                         </div>
 
+                        {selectedTask.status === 'In Progress' && cooldownSecs > 0 && (
+                          <div className="flex items-center gap-2.5 p-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs font-semibold animate-in fade-in">
+                            <FiLock size={16} className="text-amber-500 shrink-0 animate-pulse" />
+                            <span>
+                              To ensure work quality, a minimum 20-minute active work session is required before submission. Unlocks in: <strong className="font-mono text-amber-900 dark:text-amber-200">{formatCooldown(cooldownSecs)}</strong>
+                            </span>
+                          </div>
+                        )}
+
                         <TaskFileUploader
                           files={submissionFiles}
                           setFiles={setSubmissionFiles}
                           taskId={selectedTask.id}
+                          userId={currentUser?.id}
+                          disabled={selectedTask.status === 'In Progress' && cooldownSecs > 0}
+                          lockRemainingText={formatCooldown(cooldownSecs)}
                         />
 
                         {/* Optional Submission Link Input */}
@@ -406,10 +516,14 @@ const TaskDetailsModal = (props) => {
                           </label>
                           <input
                             type="url"
-                            placeholder="https://drive.google.com/... or https://figma.com/..."
+                            placeholder={selectedTask.status === 'In Progress' && cooldownSecs > 0 ? "Link submission locked during 20-min work period..." : "https://drive.google.com/... or https://figma.com/..."}
                             value={submissionLink || ''}
                             onChange={(e) => setSubmissionLink(e.target.value)}
-                            className="w-full bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/30 outline-none focus:border-blue-500 focus:bg-white dark:focus:bg-white/[0.07] transition-all font-mono"
+                            disabled={selectedTask.status === 'In Progress' && cooldownSecs > 0}
+                            className={`w-full border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-xs text-slate-800 dark:text-white placeholder-slate-400 dark:placeholder-white/30 outline-none transition-all font-mono ${selectedTask.status === 'In Progress' && cooldownSecs > 0
+                                ? 'bg-slate-100 dark:bg-white/[0.02] cursor-not-allowed opacity-60'
+                                : 'bg-white dark:bg-white/[0.04] focus:border-blue-500 focus:bg-white dark:focus:bg-white/[0.07]'
+                              }`}
                           />
                         </div>
 
@@ -496,8 +610,8 @@ const TaskDetailsModal = (props) => {
                                   key={star}
                                   size={20}
                                   className={`${star <= ratingVal
-                                      ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
-                                      : 'text-slate-300 dark:text-slate-700'
+                                    ? 'fill-amber-400 text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+                                    : 'text-slate-300 dark:text-slate-700'
                                     }`}
                                 />
                               ))}
@@ -682,7 +796,7 @@ const TaskDetailsModal = (props) => {
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            downloadFile(fullUrl);
+                                            handleSafeDownload(fullUrl);
                                           }}
                                           className="p-2 rounded-xl bg-black/70 hover:bg-emerald-600 text-white transition-all shadow-lg backdrop-blur-sm flex items-center gap-1 text-xs font-bold"
                                           title="Download Original High-Res Image"
@@ -734,7 +848,7 @@ const TaskDetailsModal = (props) => {
                                           type="button"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            downloadFile(fullUrl);
+                                            handleSafeDownload(fullUrl);
                                           }}
                                           className="p-1.5 rounded-xl bg-black/70 hover:bg-emerald-600 text-white transition-all shadow-lg backdrop-blur-sm flex items-center gap-1 text-xs font-bold"
                                           title="Download Original High-Res Image"
@@ -1056,11 +1170,10 @@ const TaskDetailsModal = (props) => {
                         setTaskTab('deliverables');
                         setIsScannerOpen(prev => !prev);
                       }}
-                      className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer ${
-                        isScannerOpen
+                      className={`px-3 sm:px-3.5 py-1.5 rounded-xl font-bold text-[11px] sm:text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-xs cursor-pointer ${isScannerOpen
                           ? 'bg-cyan-500 text-white shadow-md shadow-cyan-500/30'
                           : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30'
-                      }`}
+                        }`}
                     >
                       <HiSparkles size={13} className={isScannerOpen ? 'text-white' : 'text-amber-400 animate-pulse'} />
                       <span>{isScannerOpen ? 'Hide Scanner' : '✨ AI Inspector'}</span>
@@ -1099,18 +1212,33 @@ const TaskDetailsModal = (props) => {
                   <button
                     type="button"
                     onClick={() => {
+                      if (cooldownSecs > 0) return;
                       if (taskTab !== 'deliverables') {
                         setTaskTab('deliverables');
                       }
                       handleSubmitWork(submissionLink?.trim() || selectedTask.submission_link, submissionFiles);
                     }}
-                    disabled={isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all shadow-md shadow-blue-950/20 flex items-center justify-center gap-2 text-xs disabled:opacity-40 active:scale-95"
+                    disabled={cooldownSecs > 0 || isSubmittingWork || (submissionFiles.length === 0 && !submissionLink?.trim() && !selectedTask.submission_link)}
+                    className={`px-5 py-2 font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs active:scale-95 cursor-pointer ${cooldownSecs > 0
+                        ? 'bg-slate-200 dark:bg-white/10 text-slate-500 dark:text-white/40 cursor-not-allowed border border-slate-300 dark:border-white/10 shadow-none'
+                        : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-950/20 disabled:opacity-40'
+                      }`}
+                    title={cooldownSecs > 0 ? `Minimum 20 minutes of work required before submitting (Remaining: ${formatCooldown(cooldownSecs)})` : 'Submit Work for Review'}
                   >
                     {isSubmittingWork ? (
                       <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    ) : <FiCheckCircle size={14} />}
-                    <span>{isSubmittingWork ? 'Submitting...' : 'Submit Work for Review'}</span>
+                    ) : cooldownSecs > 0 ? (
+                      <FiLock size={14} className="text-amber-500 dark:text-amber-400 animate-pulse" />
+                    ) : (
+                      <FiCheckCircle size={14} />
+                    )}
+                    <span>
+                      {isSubmittingWork
+                        ? 'Submitting...'
+                        : cooldownSecs > 0
+                          ? `Available in ${formatCooldown(cooldownSecs)}`
+                          : 'Submit Work for Review'}
+                    </span>
                   </button>
                 ) : selectedTask.status === 'Rejected' ? (
                   <button
@@ -1193,7 +1321,7 @@ const TaskDetailsModal = (props) => {
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                downloadFile(lightboxImage);
+                handleSafeDownload(lightboxImage);
               }}
               className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:text-emerald-300 transition-colors outline-none cursor-pointer"
               title="Download Original High-Res File"
@@ -1229,6 +1357,14 @@ const TaskDetailsModal = (props) => {
         </div>,
         document.body
       )}
+
+      {/* Auto-Start & Download Confirmation Modal */}
+      <DownloadStartPromptModal
+        isOpen={!!pendingDownload}
+        onClose={() => setPendingDownload(null)}
+        onConfirm={handleConfirmStartAndDownload}
+        pendingDownload={pendingDownload}
+      />
     </>
   );
 };

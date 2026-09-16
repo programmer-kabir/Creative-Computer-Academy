@@ -71,6 +71,35 @@ if(isset($data->task_id) && isset($data->user_id) && isset($data->status)) {
                 }
             }
 
+            // Strict Security Rule: Minimum 20 minutes in 'In Progress' before submitting for review
+            if ($status === 'In Review') {
+                $find_log = $db->prepare("SELECT created_at FROM task_logs WHERE task_id = :task_id AND status_to = 'In Progress' ORDER BY id DESC LIMIT 1");
+                $find_log->execute([':task_id' => $task_id]);
+                $in_prog_log = $find_log->fetch(PDO::FETCH_ASSOC);
+
+                $in_prog_time = null;
+                if ($in_prog_log && !empty($in_prog_log['created_at'])) {
+                    $in_prog_time = strtotime($in_prog_log['created_at']);
+                } elseif (!empty($task['session_start_time'])) {
+                    $in_prog_time = strtotime($task['session_start_time']);
+                }
+
+                if ($in_prog_time) {
+                    $elapsed_secs = time() - $in_prog_time;
+                    $min_required_secs = 60;
+                    if ($elapsed_secs < $min_required_secs) {
+                        $remaining_secs = $min_required_secs - $elapsed_secs;
+                        $rem_mins = ceil($remaining_secs / 60);
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "To maintain work quality and integrity, you must spend at least 20 minutes on the task before submitting for review. Approximately {$rem_mins} minute(s) remaining.",
+                            "remaining_seconds" => $remaining_secs
+                        ]);
+                        exit;
+                    }
+                }
+            }
+
             // Determine timer update part
             $timerUpdate = "";
             if ($status === 'In Progress') {

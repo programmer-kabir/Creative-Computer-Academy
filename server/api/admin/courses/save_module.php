@@ -14,6 +14,7 @@ if (!$data || empty($data->course_id) || empty($data->title)) {
 
 try {
     $course_id = intval($data->course_id);
+    $milestone_id = !empty($data->milestone_id) ? intval($data->milestone_id) : null;
     $module_no = !empty($data->module_no) ? intval($data->module_no) : 1;
     $title = trim($data->title);
     $description = !empty($data->description) ? trim($data->description) : '';
@@ -24,6 +25,7 @@ try {
         $id = intval($data->id);
         $stmt = $db->prepare("
             UPDATE course_modules SET
+                milestone_id = :mid,
                 module_no = :mno,
                 title = :title,
                 description = :desc,
@@ -32,6 +34,7 @@ try {
             WHERE id = :id
         ");
         $stmt->execute([
+            ':mid' => $milestone_id,
             ':mno' => $module_no,
             ':title' => $title,
             ':desc' => $description,
@@ -42,11 +45,12 @@ try {
         echo json_encode(["status" => "success", "message" => "Module updated successfully."]);
     } else {
         $stmt = $db->prepare("
-            INSERT INTO course_modules (course_id, module_no, title, description, duration_classes, status)
-            VALUES (:cid, :mno, :title, :desc, :dur, :status)
+            INSERT INTO course_modules (course_id, milestone_id, module_no, title, description, duration_classes, status)
+            VALUES (:cid, :mid, :mno, :title, :desc, :dur, :status)
         ");
         $stmt->execute([
             ':cid' => $course_id,
+            ':mid' => $milestone_id,
             ':mno' => $module_no,
             ':title' => $title,
             ':desc' => $description,

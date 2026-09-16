@@ -1,20 +1,14 @@
 <?php
-header("Access-Control-Allow-Origin: *");
-header("Content-Type: application/json; charset=UTF-8");
-header("Access-Control-Allow-Methods: POST");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    exit;
-}
-
 require_once '../../config/database.php';
+require_once '../../config/cors.php';
+require_once '../../config/PusherHelper.php';
+require_once 'BreakDbHelper.php';
 
 date_default_timezone_set('Asia/Dhaka');
 
 $database = new Database();
 $db = $database->getConnection();
+BreakDbHelper::ensureSchema($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -29,12 +23,12 @@ $end_time = date('Y-m-d H:i:s');
 try {
     if (isset($data->break_id)) {
         // Admin force end
-        $query = "SELECT id, start_time FROM employee_breaks WHERE id = :id AND status = 'Active'";
+        $query = "SELECT id, user_id, break_type, start_time FROM employee_breaks WHERE id = :id AND status = 'Active'";
         $stmt = $db->prepare($query);
         $stmt->execute([':id' => $data->break_id]);
     } else {
         // Staff self end
-        $query = "SELECT id, start_time FROM employee_breaks WHERE user_id = :user_id AND status = 'Active' ORDER BY id DESC LIMIT 1";
+        $query = "SELECT id, user_id, break_type, start_time FROM employee_breaks WHERE user_id = :user_id AND status = 'Active' ORDER BY id DESC LIMIT 1";
         $stmt = $db->prepare($query);
         $stmt->execute([':user_id' => $data->user_id]);
     }
@@ -45,15 +39,22 @@ try {
     }
 
     $break_record = $stmt->fetch(PDO::FETCH_ASSOC);
-    $break_id = $break_record['id'];
+    $break_id = (int)$break_record['id'];
+    $user_id = (int)$break_record['user_id'];
+    $break_type = $break_record['break_type'];
     $start_time = $break_record['start_time'];
 
     // Calculate duration in minutes
     $start_ts = strtotime($start_time);
     $end_ts = strtotime($end_time);
-    $duration_minutes = round(abs($end_ts - $start_ts) / 60);
+    $duration_minutes = max(1, round(abs($end_ts - $start_ts) / 60));
 
-    $update_query = "UPDATE employee_breaks SET end_time = :end_time, duration_minutes = :duration, status = 'Completed' WHERE id = :id";
+    $update_query = "UPDATE employee_breaks 
+                     SET end_time = :end_time, 
+                         duration_minutes = :duration, 
+                         status = 'Completed', 
+                         updated_at = :end_time 
+                     WHERE id = :id";
     $update_stmt = $db->prepare($update_query);
     
     if ($update_stmt->execute([
@@ -61,7 +62,32 @@ try {
         ':duration' => $duration_minutes,
         ':id' => $break_id
     ])) {
-        echo json_encode(["status" => "success", "message" => "Break ended successfully.", "duration" => $duration_minutes]);
+        // Realtime notification via Pusher
+        try {
+            $pusher = new PusherHelper();
+            $pusherPayload = [
+                "break_id" => $break_id,
+                "user_id" => $user_id,
+                "break_type" => $break_type,
+                "status" => "Completed",
+                "duration_minutes" => $duration_minutes,
+                "end_time" => $end_time
+            ];
+            $pusher->trigger('staff-breaks', 'break-ended', $pusherPayload);
+            $pusher->trigger("user-channel-{$user_id}", 'break-ended', $pusherPayload);
+        } catch (Throwable $pe) {}
+
+        echo json_encode([
+            "status" => "success", 
+            "message" => "Break ended successfully.", 
+            "duration" => $duration_minutes,
+            "data" => [
+                "break_id" => $break_id,
+                "user_id" => $user_id,
+                "duration_minutes" => $duration_minutes,
+                "end_time" => $end_time
+            ]
+        ]);
     } else {
         echo json_encode(["status" => "error", "message" => "Failed to end break."]);
     }

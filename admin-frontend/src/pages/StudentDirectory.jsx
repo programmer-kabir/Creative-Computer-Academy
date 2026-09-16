@@ -20,8 +20,6 @@ const EMPTY_STUDENT_FORM = {
   guardian_phone: '',
   course_id: '',
   course_name: '',
-  batch_id: '',
-  batch_no: '',
   student_code: '',
   enrollment_date: new Date().toISOString().split('T')[0],
   password: '',
@@ -53,12 +51,10 @@ const StudentDirectory = () => {
   const [loading, setLoading] = useState(true);
   const [departments, setDepartments] = useState([]);
   const [courses, setCourses] = useState([]);
-  const [batches, setBatches] = useState([]);
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [courseFilter, setCourseFilter] = useState('all');
-  const [batchFilter, setBatchFilter] = useState('all');
 
   // Student Form Modal state
   const [showStudentModal, setShowStudentModal] = useState(false);
@@ -71,26 +67,29 @@ const StudentDirectory = () => {
   const [promoteFormData, setPromoteFormData] = useState(EMPTY_PROMOTE_FORM);
   const [promoting, setPromoting] = useState(false);
 
-  // Batch Transfer Modal state
+  // Course Transfer Modal state
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [transferData, setTransferData] = useState({ user_id: '', student_name: '', current_batch: '', new_batch_id: '', new_batch_code: '', new_course_id: '', new_course_name: '' });
+  const [transferData, setTransferData] = useState({ user_id: '', student_name: '', current_course: '', new_course_id: '', new_course_name: '' });
   const [transferring, setTransferring] = useState(false);
+
+  // Multi-Course Enrollment Modal state
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [enrollData, setEnrollData] = useState({ user_id: '', student_name: '', course_id: '', admin_override: true });
+  const [enrolling, setEnrolling] = useState(false);
 
   // Fetch initial dependencies
   const fetchAllData = async () => {
     try {
       setLoading(true);
-      const [stuRes, deptRes, crsRes, batRes] = await Promise.all([
+      const [stuRes, deptRes, crsRes] = await Promise.all([
         axios.get(`${API_BASE}api/admin/students/get_students.php`),
         axios.get(`${API_BASE}api/admin/departments/get_departments.php`),
-        axios.get(`${API_BASE}api/admin/courses/get_courses.php`),
-        axios.get(`${API_BASE}api/admin/batches/get_batches.php`)
+        axios.get(`${API_BASE}api/admin/courses/get_courses.php`)
       ]);
 
       if (stuRes.data.status === 'success') setStudents(stuRes.data.data || []);
       if (deptRes.data.status === 'success') setDepartments(deptRes.data.data || []);
       if (crsRes.data.status === 'success') setCourses(crsRes.data.data || []);
-      if (batRes.data.status === 'success') setBatches(batRes.data.data || []);
     } catch (err) {
       console.error(err);
       toast.error('Network error loading student directory.');
@@ -176,35 +175,58 @@ const StudentDirectory = () => {
     }
   };
 
-  // Handle Batch Transfer Submit
+  // Handle Course Transfer Submit
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
-    if (!transferData.new_batch_id && !transferData.new_batch_code) {
-      toast.error('Please select a new batch.');
+    if (!transferData.new_course_id && !transferData.new_course_name) {
+      toast.error('Please select a target course.');
       return;
     }
 
     try {
       setTransferring(true);
-      const res = await axios.post(`${API_BASE}api/admin/batches/transfer_student.php`, {
+      const res = await axios.post(`${API_BASE}api/admin/students/transfer_course.php`, {
         user_id: transferData.user_id,
-        new_batch_id: transferData.new_batch_id,
-        new_batch_code: transferData.new_batch_code,
         new_course_id: transferData.new_course_id,
         new_course_name: transferData.new_course_name
       });
 
       if (res.data.status === 'success') {
-        toast.success(res.data.message || 'Student transferred successfully!');
+        toast.success(res.data.message || 'Course transferred successfully!');
         setShowTransferModal(false);
         refreshStudents();
       } else {
         toast.error(res.data.message || 'Transfer failed.');
       }
     } catch (err) {
-      toast.error('Error transferring batch.');
+      toast.error('Error transferring student.');
     } finally {
       setTransferring(false);
+    }
+  };
+
+  // Handle Multi-Course Enrollment
+  const handleEnrollSubmit = async (e) => {
+    e.preventDefault();
+    if (!enrollData.user_id || !enrollData.course_id) {
+      toast.error('Please select a course to enroll.');
+      return;
+    }
+
+    try {
+      setEnrolling(true);
+      const res = await axios.post(`${API_BASE}api/admin/students/enroll_student.php`, enrollData);
+      if (res.data.status === 'success') {
+        toast.success(res.data.message || 'Enrolled in course successfully!');
+        setShowEnrollModal(false);
+        refreshStudents();
+      } else {
+        toast.error(res.data.message || 'Failed to enroll student in course.');
+      }
+    } catch (err) {
+      toast.error('Error enrolling student.');
+    } finally {
+      setEnrolling(false);
     }
   };
 
@@ -224,13 +246,6 @@ const StudentDirectory = () => {
     }
   };
 
-  // Available batches for selected course in modal
-  const batchesForSelectedCourse = batches.filter(b => {
-    if (studentFormData.course_id) return String(b.course_id) === String(studentFormData.course_id);
-    if (studentFormData.course_name) return b.course_title === studentFormData.course_name || b.course_code_ref === studentFormData.course_name;
-    return true;
-  });
-
   // Filtered list
   const filteredStudents = students.filter(s => {
     const q = search.toLowerCase();
@@ -238,8 +253,7 @@ const StudentDirectory = () => {
       (s.name && s.name.toLowerCase().includes(q)) ||
       (s.email && s.email.toLowerCase().includes(q)) ||
       (s.student_code && s.student_code.toLowerCase().includes(q)) ||
-      (s.course_name && s.course_name.toLowerCase().includes(q)) ||
-      (s.batch_no && s.batch_no.toLowerCase().includes(q));
+      (s.course_name && s.course_name.toLowerCase().includes(q));
 
     const matchStatus =
       statusFilter === 'all' ? true :
@@ -247,14 +261,12 @@ const StudentDirectory = () => {
       s.student_status === statusFilter;
 
     const matchCourse = courseFilter === 'all' ? true : s.course_name === courseFilter;
-    const matchBatch = batchFilter === 'all' ? true : s.batch_no === batchFilter;
 
-    return matchSearch && matchStatus && matchCourse && matchBatch;
+    return matchSearch && matchStatus && matchCourse;
   });
 
   // Unique lists for filters
   const uniqueCourses = courses.length > 0 ? courses.map(c => c.title) : Array.from(new Set(students.map(s => s.course_name).filter(Boolean)));
-  const uniqueBatches = batches.length > 0 ? batches.map(b => b.batch_code) : Array.from(new Set(students.map(s => s.batch_no).filter(Boolean)));
 
   // KPIs
   const totalCount = students.length;
@@ -263,7 +275,7 @@ const StudentDirectory = () => {
   const presentTodayCount = students.filter(s => s.today_attendance_status === 'Present' || s.today_check_in).length;
 
   return (
-    <div className="  space-y-6 mx-auto">
+    <div className="space-y-6 mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-700 shadow-xs">
         <div>
@@ -272,9 +284,9 @@ const StudentDirectory = () => {
               <FiBookOpen size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Student Directory & Cohort Hub</h1>
+              <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Student Directory & Enrollments</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Manage enrolled students, dynamic batch assignments, one-click batch switching, and Staff promotion.
+                Manage enrolled students, multi-course access, and Staff promotion.
               </p>
             </div>
           </div>
@@ -283,13 +295,10 @@ const StudentDirectory = () => {
         <button
           onClick={() => {
             const defaultCourseObj = courses[0] || null;
-            const defaultBatchObj = defaultCourseObj ? batches.find(b => String(b.course_id) === String(defaultCourseObj.id)) : batches[0];
             setStudentFormData({
               ...EMPTY_STUDENT_FORM,
               course_id: defaultCourseObj ? defaultCourseObj.id : '',
               course_name: defaultCourseObj ? defaultCourseObj.title : 'Graphic Design & Multimedia',
-              batch_id: defaultBatchObj ? defaultBatchObj.id : '',
-              batch_no: defaultBatchObj ? defaultBatchObj.batch_code : 'Batch-01',
               student_code: `STU-${Math.floor(1000 + Math.random() * 9000)}`
             });
             setIsEditMode(false);
@@ -351,7 +360,7 @@ const StudentDirectory = () => {
           <FiSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
           <input
             type="text"
-            placeholder="Search by student name, code, email, course, batch..."
+            placeholder="Search by student name, code, email, course..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:text-white"
@@ -360,7 +369,7 @@ const StudentDirectory = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           {/* Course filter */}
-          <div className="w-48">
+          <div className="w-56">
             <CustomSelect
               value={courseFilter}
               onChange={(val) => setCourseFilter(val)}
@@ -374,23 +383,8 @@ const StudentDirectory = () => {
             />
           </div>
 
-          {/* Batch filter */}
-          <div className="w-44">
-            <CustomSelect
-              value={batchFilter}
-              onChange={(val) => setBatchFilter(val)}
-              placeholder="All Batches"
-              icon={FiLayers}
-              searchable={true}
-              options={[
-                { value: 'all', label: 'All Batches' },
-                ...uniqueBatches.map(b => ({ value: b, label: b }))
-              ]}
-            />
-          </div>
-
           {/* Status filter */}
-          <div className="w-44">
+          <div className="w-48">
             <CustomSelect
               value={statusFilter}
               onChange={(val) => setStatusFilter(val)}
@@ -428,11 +422,11 @@ const StudentDirectory = () => {
               <thead className="bg-slate-50/80 dark:bg-slate-900/40 text-slate-500 dark:text-slate-400 font-bold border-b border-slate-100 dark:border-slate-700">
                 <tr>
                   <th className="px-6 py-4">Student</th>
-                  <th className="px-6 py-4">Batch & Code</th>
-                  <th className="px-6 py-4">Course</th>
+                  <th className="px-6 py-4">Student ID</th>
+                  <th className="px-6 py-4">Enrolled Course</th>
                   <th className="px-6 py-4">Attendance (Shared)</th>
                   <th className="px-6 py-4">Status & Role</th>
-                  <th className="px-6 py-4 text-right">Actions & Transfers</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
@@ -463,9 +457,8 @@ const StudentDirectory = () => {
 
                       <td className="px-6 py-4">
                         <span className="font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/40 px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                          {stu.batch_no || 'Batch-01'}
+                          {stu.student_code || 'N/A'}
                         </span>
-                        <p className="text-[11px] font-mono font-semibold text-slate-400 mt-1">{stu.student_code || 'N/A'}</p>
                       </td>
 
                       <td className="px-6 py-4">
@@ -511,24 +504,40 @@ const StudentDirectory = () => {
 
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Transfer Batch button */}
+                          {/* Transfer Course button */}
                           <button
                             onClick={() => {
                               setTransferData({
                                 user_id: stu.id,
                                 student_name: stu.name,
-                                current_batch: stu.batch_no || '',
-                                new_batch_id: batches[0]?.id || '',
-                                new_batch_code: batches[0]?.batch_code || '',
-                                new_course_id: batches[0]?.course_id || '',
-                                new_course_name: stu.course_name || ''
+                                current_course: stu.course_name || '',
+                                new_course_id: courses[0]?.id || '',
+                                new_course_name: courses[0]?.title || ''
                               });
                               setShowTransferModal(true);
                             }}
-                            title="Transfer Student to Another Batch"
-                            className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors"
+                            title="Transfer Student to Another Course"
+                            className="p-2 text-slate-400 hover:text-blue-600 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors cursor-pointer"
                           >
                             <FiRepeat size={16} />
+                          </button>
+
+                          {/* Multi-Course Enroll button */}
+                          <button
+                            onClick={() => {
+                              const targetCourse = courses[0]?.id || '';
+                              setEnrollData({
+                                user_id: stu.id,
+                                student_name: stu.name,
+                                course_id: targetCourse,
+                                admin_override: true
+                              });
+                              setShowEnrollModal(true);
+                            }}
+                            title="Enroll in Additional Course (Multi-Course)"
+                            className="p-2 text-slate-400 hover:text-indigo-600 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer"
+                          >
+                            <FiLayers size={16} />
                           </button>
 
                           {!isPromoted && (
@@ -552,8 +561,6 @@ const StudentDirectory = () => {
                                 guardian_phone: stu.guardian_phone || '',
                                 course_id: stu.course_id || courses.find(c => c.title === stu.course_name)?.id || '',
                                 course_name: stu.course_name || '',
-                                batch_id: stu.batch_id || batches.find(b => b.batch_code === stu.batch_no)?.id || '',
-                                batch_no: stu.batch_no || '',
                                 student_code: stu.student_code || '',
                                 enrollment_date: stu.enrollment_date || new Date().toISOString().split('T')[0],
                                 password: '',
@@ -562,7 +569,7 @@ const StudentDirectory = () => {
                               setIsEditMode(true);
                               setShowStudentModal(true);
                             }}
-                            className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+                            className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors cursor-pointer"
                             title="Edit Student"
                           >
                             <FiEdit2 size={16} />
@@ -570,7 +577,7 @@ const StudentDirectory = () => {
 
                           <button
                             onClick={() => handleDeleteStudent(stu.id, stu.name)}
-                            className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors"
+                            className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/30 transition-colors cursor-pointer"
                             title="Deactivate Student"
                           >
                             <FiTrash2 size={16} />
@@ -599,10 +606,10 @@ const StudentDirectory = () => {
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">
                     {isEditMode ? 'Edit Student Details' : 'Enroll New Student'}
                   </h2>
-                  <p className="text-xs text-slate-400">Select Course & Batch cohort to assign student.</p>
+                  <p className="text-xs text-slate-400">Select Course for student access.</p>
                 </div>
               </div>
-              <button onClick={() => setShowStudentModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-white">
+              <button onClick={() => setShowStudentModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-white cursor-pointer">
                 <FiX size={20} />
               </button>
             </div>
@@ -634,57 +641,28 @@ const StudentDirectory = () => {
                 </div>
               </div>
 
-              {/* Dynamic Course & Batch Selectors */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Course *</label>
-                  <CustomSelect
-                    value={studentFormData.course_id || (courses.find(c => c.title === studentFormData.course_name)?.id || '')}
-                    onChange={(selCid) => {
-                      const cObj = courses.find(c => String(c.id) === String(selCid));
-                      const matchingBatches = batches.filter(b => String(b.course_id) === String(selCid));
-                      const firstBatch = matchingBatches[0];
-                      setStudentFormData({
-                        ...studentFormData,
-                        course_id: selCid,
-                        course_name: cObj ? cObj.title : studentFormData.course_name,
-                        batch_id: firstBatch ? firstBatch.id : '',
-                        batch_no: firstBatch ? firstBatch.batch_code : ''
-                      });
-                    }}
-                    placeholder="Select Course"
-                    icon={FiBookOpen}
-                    searchable={true}
-                    options={courses.map(c => ({
-                      value: c.id,
-                      label: c.title,
-                      badge: c.course_code
-                    }))}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Batch Cohort *</label>
-                  <CustomSelect
-                    value={studentFormData.batch_id || (batches.find(b => b.batch_code === studentFormData.batch_no)?.id || '')}
-                    onChange={(selBid) => {
-                      const bObj = batches.find(b => String(b.id) === String(selBid));
-                      setStudentFormData({
-                        ...studentFormData,
-                        batch_id: selBid,
-                        batch_no: bObj ? bObj.batch_code : studentFormData.batch_no
-                      });
-                    }}
-                    placeholder="Select Batch"
-                    icon={FiLayers}
-                    searchable={true}
-                    options={batchesForSelectedCourse.map(b => ({
-                      value: b.id,
-                      label: `${b.batch_code} - ${b.batch_name}`,
-                      subtext: b.schedule_days
-                    }))}
-                  />
-                </div>
+              {/* Course Selection */}
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Course *</label>
+                <CustomSelect
+                  value={studentFormData.course_id || (courses.find(c => c.title === studentFormData.course_name)?.id || '')}
+                  onChange={(selCid) => {
+                    const cObj = courses.find(c => String(c.id) === String(selCid));
+                    setStudentFormData({
+                      ...studentFormData,
+                      course_id: selCid,
+                      course_name: cObj ? cObj.title : studentFormData.course_name
+                    });
+                  }}
+                  placeholder="Select Course"
+                  icon={FiBookOpen}
+                  searchable={true}
+                  options={courses.map(c => ({
+                    value: c.id,
+                    label: c.title,
+                    badge: c.course_code
+                  }))}
+                />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -741,14 +719,14 @@ const StudentDirectory = () => {
                 <button
                   type="button"
                   onClick={() => setShowStudentModal(false)}
-                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs"
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingStudent}
-                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50"
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-md transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {savingStudent ? 'Saving...' : isEditMode ? 'Update Student' : 'Enroll Student'}
                 </button>
@@ -759,7 +737,7 @@ const StudentDirectory = () => {
         document.body
       )}
 
-      {/* Modal 2: Batch Transfer Modal */}
+      {/* Modal 2: Course Transfer Modal */}
       {showTransferModal && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-md p-6 border border-blue-200 dark:border-blue-800">
@@ -769,43 +747,41 @@ const StudentDirectory = () => {
                   <FiRepeat size={20} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 dark:text-white">Batch Cohort Transfer</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white">Course Transfer</h3>
                   <p className="text-xs text-slate-400">{transferData.student_name}</p>
                 </div>
               </div>
-              <button onClick={() => setShowTransferModal(false)} className="p-1 text-slate-400 hover:text-white">
+              <button onClick={() => setShowTransferModal(false)} className="p-1 text-slate-400 hover:text-white cursor-pointer">
                 <FiX size={18} />
               </button>
             </div>
 
             <form onSubmit={handleTransferSubmit} className="mt-4 space-y-4">
               <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl text-xs space-y-1">
-                <p className="text-slate-400 font-medium">Current Batch: <span className="font-bold text-slate-800 dark:text-slate-200">{transferData.current_batch || 'N/A'}</span></p>
+                <p className="text-slate-400 font-medium">Current Course: <span className="font-bold text-slate-800 dark:text-slate-200">{transferData.current_course || 'N/A'}</span></p>
                 <p className="text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold">✓ Past attendance history & assignments will remain intact.</p>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Select New Target Batch *</label>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Select Target Course *</label>
                 <select
                   required
-                  value={transferData.new_batch_id || ''}
+                  value={transferData.new_course_id || ''}
                   onChange={(e) => {
-                    const selBid = e.target.value;
-                    const bObj = batches.find(b => String(b.id) === String(selBid));
+                    const selCid = e.target.value;
+                    const cObj = courses.find(c => String(c.id) === String(selCid));
                     setTransferData({
                       ...transferData,
-                      new_batch_id: selBid,
-                      new_batch_code: bObj?.batch_code || '',
-                      new_course_id: bObj?.course_id || '',
-                      new_course_name: bObj?.course_title || transferData.new_course_name
+                      new_course_id: selCid,
+                      new_course_name: cObj?.title || ''
                     });
                   }}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-indigo-600 dark:text-indigo-400 cursor-pointer"
                 >
-                  <option value="">Select Target Batch</option>
-                  {batches.map(b => (
-                    <option key={b.id} value={b.id}>
-                      {b.batch_code} - {b.batch_name} ({b.course_title})
+                  <option value="">Select Target Course</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.course_code})
                     </option>
                   ))}
                 </select>
@@ -815,16 +791,16 @@ const StudentDirectory = () => {
                 <button
                   type="button"
                   onClick={() => setShowTransferModal(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={transferring}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs shadow-md disabled:opacity-50 cursor-pointer"
                 >
-                  {transferring ? 'Transferring...' : 'Confirm Batch Transfer'}
+                  {transferring ? 'Transferring...' : 'Confirm Course Transfer'}
                 </button>
               </div>
             </form>
@@ -851,7 +827,7 @@ const StudentDirectory = () => {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowPromoteModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-white">
+              <button onClick={() => setShowPromoteModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-white cursor-pointer">
                 <FiX size={20} />
               </button>
             </div>
@@ -920,16 +896,90 @@ const StudentDirectory = () => {
                 <button
                   type="button"
                   onClick={() => setShowPromoteModal(false)}
-                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs"
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={promoting}
-                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50"
+                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-purple-500/25 transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {promoting ? 'Promoting...' : 'Confirm & Promote to Staff'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Modal 4: Multi-Course Enrollment Modal */}
+      {showEnrollModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-lg border border-indigo-200 dark:border-indigo-800 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 bg-gradient-to-r from-indigo-600/10 via-purple-600/10 to-transparent border-b border-indigo-100 dark:border-indigo-900/50">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-500/20">
+                  <FiLayers size={22} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white">
+                    Enroll in Additional Course
+                  </h2>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold">
+                    Student: <span className="font-black text-slate-900 dark:text-white">{enrollData.student_name}</span>
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowEnrollModal(false)} className="p-2 rounded-xl text-slate-400 hover:text-white cursor-pointer">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEnrollSubmit} className="p-6 space-y-4">
+              <div className="p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-2xl border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-900 dark:text-indigo-300">
+                ✨ <b>Multi-Course Enrollment:</b> This will add a second/parallel enrollment for this student. They can seamlessly switch between their courses on the Student Portal!
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Select Target Course *
+                </label>
+                <select
+                  required
+                  value={enrollData.course_id}
+                  onChange={(e) => {
+                    setEnrollData({
+                      ...enrollData,
+                      course_id: e.target.value
+                    });
+                  }}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white cursor-pointer"
+                >
+                  <option value="">-- Choose Course --</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.course_code}) [{c.category}]
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setShowEnrollModal(false)}
+                  className="px-5 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-400 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={enrolling}
+                  className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs shadow-lg shadow-indigo-500/25 transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {enrolling ? 'Enrolling...' : 'Confirm Additional Enrollment'}
                 </button>
               </div>
             </form>

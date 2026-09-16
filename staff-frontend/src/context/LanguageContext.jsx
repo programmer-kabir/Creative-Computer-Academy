@@ -21,6 +21,8 @@ const dictionary = {
     credits_wallet: "Credit Wallet",
     message: "Message",
     brand_kit: "Brand Kit",
+    breaks_log: "Breaks Log",
+    academy_feed: "Academy Feed",
   },
   bn: {
     dashboard: "ড্যাশবোর্ড",
@@ -38,6 +40,8 @@ const dictionary = {
     credits_wallet: "ক্রেডিট ওয়ালেট",
     message: "মেসেজ",
     brand_kit: "ব্র্যান্ড কিট",
+    breaks_log: "ব্রেক লগ",
+    academy_feed: "অ্যাকাডেমি ফিড",
   }
 };
 

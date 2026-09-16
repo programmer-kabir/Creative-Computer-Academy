@@ -20,9 +20,7 @@ try {
     $phone = isset($data->phone) ? trim($data->phone) : '';
     $guardian_phone = isset($data->guardian_phone) ? trim($data->guardian_phone) : '';
     $course_id = !empty($data->course_id) ? intval($data->course_id) : null;
-    $batch_id = !empty($data->batch_id) ? intval($data->batch_id) : null;
     $course_name = isset($data->course_name) ? trim($data->course_name) : '';
-    $batch_no = isset($data->batch_no) ? trim($data->batch_no) : 'Batch-01';
 
     // If course_id is provided, fetch title to keep synced
     if ($course_id) {
@@ -35,19 +33,6 @@ try {
         $c_chk->execute([':title' => $course_name, ':code' => $course_name]);
         $c_res = $c_chk->fetch(PDO::FETCH_ASSOC);
         if ($c_res) $course_id = intval($c_res['id']);
-    }
-
-    // If batch_id is provided, fetch batch_code to keep synced
-    if ($batch_id) {
-        $b_chk = $db->prepare("SELECT batch_code FROM batches WHERE id = :bid LIMIT 1");
-        $b_chk->execute([':bid' => $batch_id]);
-        $b_res = $b_chk->fetch(PDO::FETCH_ASSOC);
-        if ($b_res) $batch_no = $b_res['batch_code'];
-    } else if (!empty($batch_no)) {
-        $b_chk = $db->prepare("SELECT id FROM batches WHERE batch_code = :bcode OR batch_name = :bname LIMIT 1");
-        $b_chk->execute([':bcode' => $batch_no, ':bname' => $batch_no]);
-        $b_res = $b_chk->fetch(PDO::FETCH_ASSOC);
-        if ($b_res) $batch_id = intval($b_res['id']);
     }
 
     $enrollment_date = !empty($data->enrollment_date) ? $data->enrollment_date : date('Y-m-d');
@@ -86,13 +71,12 @@ try {
         if ($chk_stu->rowCount() > 0) {
             $up_stu = $db->prepare("
                 UPDATE students 
-                SET student_code = :code, course_id = :course_id, batch_id = :batch_id, guardian_phone = :gphone, enrollment_date = :edate, status = :status, updated_at = :up_time 
+                SET student_code = :code, course_id = :course_id, guardian_phone = :gphone, enrollment_date = :edate, status = :status, updated_at = :up_time 
                 WHERE user_id = :user_id
             ");
             $up_stu->execute([
                 ':code' => $student_code,
                 ':course_id' => $course_id,
-                ':batch_id' => $batch_id,
                 ':gphone' => $guardian_phone,
                 ':edate' => $enrollment_date,
                 ':status' => $status,
@@ -101,14 +85,13 @@ try {
             ]);
         } else {
             $ins_stu = $db->prepare("
-                INSERT INTO students (user_id, student_code, course_id, batch_id, guardian_phone, enrollment_date, status, created_at, updated_at) 
-                VALUES (:user_id, :code, :course_id, :batch_id, :gphone, :edate, :status, :cr_time, :up_time)
+                INSERT INTO students (user_id, student_code, course_id, guardian_phone, enrollment_date, status, created_at, updated_at) 
+                VALUES (:user_id, :code, :course_id, :gphone, :edate, :status, :cr_time, :up_time)
             ");
             $ins_stu->execute([
                 ':user_id' => $user_id,
                 ':code' => $student_code,
                 ':course_id' => $course_id,
-                ':batch_id' => $batch_id,
                 ':gphone' => $guardian_phone,
                 ':edate' => $enrollment_date,
                 ':status' => $status,
@@ -150,14 +133,13 @@ try {
 
         // Insert into students table
         $ins_stu = $db->prepare("
-            INSERT INTO students (user_id, student_code, course_id, batch_id, guardian_phone, enrollment_date, status, created_at, updated_at) 
-            VALUES (:user_id, :code, :course_id, :batch_id, :gphone, :edate, :status, :cr_time, :up_time)
+            INSERT INTO students (user_id, student_code, course_id, guardian_phone, enrollment_date, status, created_at, updated_at) 
+            VALUES (:user_id, :code, :course_id, :gphone, :edate, :status, :cr_time, :up_time)
         ");
         $ins_stu->execute([
             ':user_id' => $user_id,
             ':code' => $student_code,
             ':course_id' => $course_id,
-            ':batch_id' => $batch_id,
             ':gphone' => $guardian_phone,
             ':edate' => $enrollment_date,
             ':status' => $status,

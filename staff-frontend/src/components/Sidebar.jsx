@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FiHome, FiClock, FiList, FiCalendar, FiUser, FiLogOut, FiFileText, FiMessageSquare, FiSettings, FiX } from 'react-icons/fi';
+import { FiHome, FiClock, FiList, FiCalendar, FiUser, FiLogOut, FiFileText, FiMessageSquare, FiSettings, FiX, FiCoffee, FiBookOpen } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import { FaCoins } from 'react-icons/fa6';
 import { useAuth } from '../context/AuthContext';
@@ -66,7 +66,11 @@ const Sidebar = ({ isOpen = true, onClose }) => {
     { name: 'Dashboard', transKey: 'dashboard', path: '/', icon: <FiHome size={19} /> },
     { name: 'Message', transKey: 'message', path: '/messages', icon: <FiMessageSquare size={19} /> },
     { name: 'Attendance', transKey: 'attendance', path: '/attendance', icon: <FiClock size={19} /> },
+    ...(currentUser?.id !== 2
+      ? [{ name: 'Breaks Log', transKey: 'breaks_log', path: '/breaks', icon: <FiCoffee size={19} className="text-amber-500 group-hover:text-amber-400" /> }]
+      : []),
     { name: 'Tasks', transKey: 'tasks', path: '/tasks', icon: <FiList size={19} /> },
+    { name: 'Academy Feed', transKey: 'academy_feed', path: '/feed', icon: <FiBookOpen size={19} className="text-indigo-400 group-hover:text-indigo-300" /> },
     { name: 'Credit Wallet', transKey: 'credits_wallet', path: '/credits', icon: <FaCoins size={18} className="text-amber-500 group-hover:text-amber-400" /> },
     { name: 'Leave', transKey: 'leave', path: '/leave', icon: <FiCalendar size={19} /> },
     { name: 'Reports', transKey: 'reports', path: '/reports', icon: <FiFileText size={19} /> },

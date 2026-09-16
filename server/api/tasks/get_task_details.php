@@ -44,6 +44,8 @@ try {
             t.created_at,
             t.updated_at,
             t.assign_date,
+            (SELECT created_at FROM task_logs WHERE task_id = t.id AND status_to = 'In Progress' ORDER BY id DESC LIMIT 1) AS in_progress_at,
+            NOW() AS server_now,
             t.reviewed_by,
             t.reviewed_at,
             t.custom_credit,

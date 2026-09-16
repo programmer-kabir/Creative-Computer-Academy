@@ -400,7 +400,7 @@ const Tasks = () => {
   }, [tasks]);
 
   const handleToggleTimer = async (e, task) => {
-    e.stopPropagation();
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     try {
       const isRunning = task.timer_status === 'Running';
       const endpoint = isRunning ? 'pause_timer.php' : 'start_timer.php';
@@ -666,7 +666,7 @@ const Tasks = () => {
   };
 
   const handleStartTask = async (e, taskId) => {
-    e.stopPropagation(); // Prevent opening modal
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation(); // Prevent opening modal
     try {
       const response = await axios.post((import.meta.env.VITE_API_BASE_URL) + 'api/tasks/update_task_status.php', {
         user_id: currentUser.id,

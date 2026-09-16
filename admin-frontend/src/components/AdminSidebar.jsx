@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { FiGrid, FiUsers, FiCheckSquare, FiClock, FiCalendar, FiSettings, FiLogOut, FiBarChart2, FiMessageSquare, FiDatabase, FiChevronDown, FiBookOpen, FiLayers } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiCheckSquare, FiClock, FiCalendar, FiSettings, FiLogOut, FiBarChart2, FiMessageSquare, FiDatabase, FiChevronDown, FiBookOpen, FiLayers, FiAward } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -65,12 +65,13 @@ const AdminSidebar = ({ isOpen = true }) => {
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <FiGrid size={18} /> },
     { name: 'Staff Directory', path: '/staff', icon: <FiUsers size={18} /> },
+    { name: 'Reviewer Directory', path: '/reviewers', icon: <FiAward size={18} /> },
     {
       name: 'Students & Academics',
       icon: <FiBookOpen size={18} />,
       subItems: [
         { name: 'Student Directory', path: '/students' },
-        { name: 'Courses & Batches', path: '/courses-batches' }
+        { name: 'Courses & Curriculum', path: '/courses' }
       ]
     },
     { name: 'Task Oversight', path: '/tasks', icon: <FiCheckSquare size={18} /> },
@@ -93,6 +94,7 @@ const AdminSidebar = ({ isOpen = true }) => {
         { name: 'Reviewer Reports', path: '/reviewer-report' }
       ]
     },
+    { name: 'Academy Feed / Blog', path: '/blogs', icon: <FiBookOpen size={18} className="text-indigo-500" /> },
     { name: 'Message', path: '/messages', icon: <FiMessageSquare size={18} /> },
     { name: 'Brand Kit & Assets', path: '/brand-resources', icon: <HiSparkles size={18} className="text-amber-400" /> },
     { name: 'Database Manager', path: '/database', icon: <FiDatabase size={18} /> },

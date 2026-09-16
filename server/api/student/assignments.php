@@ -2,6 +2,8 @@
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
 
+date_default_timezone_set('Asia/Dhaka');
+
 $database = new Database();
 $db = $database->getConnection();
 
@@ -10,10 +12,23 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($method === 'GET') {
         $user_id = isset($_GET['user_id']) ? intval($_GET['user_id']) : 0;
+        $course_id = isset($_GET['course_id']) ? intval($_GET['course_id']) : 0;
 
-        $stmt = $db->prepare("
+        $params = [':user_id' => $user_id];
+        $where_clauses = [];
+
+        if ($course_id > 0) {
+            $where_clauses[] = "a.course_id = :course_id";
+            $params[':course_id'] = $course_id;
+        }
+
+        $where_sql = !empty($where_clauses) ? "WHERE " . implode(" AND ", $where_clauses) : "";
+
+        $sql = "
             SELECT 
                 a.*,
+                c.title AS course_title,
+                c.course_code,
                 s.id AS submission_id,
                 s.submission_link,
                 s.notes AS student_notes,
@@ -22,10 +37,14 @@ try {
                 s.status AS submission_status,
                 s.submitted_at
             FROM student_assignments a
+            LEFT JOIN courses c ON a.course_id = c.id
             LEFT JOIN student_submissions s ON a.id = s.assignment_id AND s.user_id = :user_id
+            {$where_sql}
             ORDER BY a.due_date DESC
-        ");
-        $stmt->execute([':user_id' => $user_id]);
+        ";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
         $assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         echo json_encode(["status" => "success", "data" => $assignments]);

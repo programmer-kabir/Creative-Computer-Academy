@@ -4,14 +4,17 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   FiClock, FiCheckCircle, FiCalendar, FiBookOpen,
-  FiAward, FiArrowRight, FiCheckSquare, FiAlertCircle, FiUserCheck
+  FiAward, FiArrowRight, FiCheckSquare, FiUserCheck,
+  FiLayers, FiChevronRight, FiPlayCircle, FiVideo, FiFolder
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
+import { useCourse } from '../context/CourseContext';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const Dashboard = () => {
   const { currentUser } = useAuth();
+  const { activeCourse, courses } = useCourse();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -27,12 +30,14 @@ const Dashboard = () => {
     if (!currentUser?.id) return;
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}api/student/dashboard.php?user_id=${currentUser.id}`);
+      const courseParam = activeCourse?.course_id ? `&course_id=${activeCourse.course_id}` : '';
+      const enrParam = activeCourse?.enrollment_id ? `&enrollment_id=${activeCourse.enrollment_id}` : '';
+      const res = await axios.get(`${API_BASE}api/student/dashboard.php?user_id=${currentUser.id}${courseParam}${enrParam}`);
       if (res.data.status === 'success') {
         setDashboardData(res.data.data);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch dashboard data:', err);
     } finally {
       setLoading(false);
     }
@@ -40,9 +45,9 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currentUser]);
+  }, [currentUser?.id, activeCourse?.course_id]);
 
-  // Handle Quick Check-In (Shared Attendance Table)
+  // Handle Quick Check-In
   const handleCheckIn = async () => {
     try {
       setCheckingIn(true);
@@ -51,13 +56,13 @@ const Dashboard = () => {
       });
 
       if (res.data.status === 'success') {
-        toast.success(res.data.message || 'Checked in successfully!');
+        toast.success(res.data.message || 'Attendance recorded successfully!');
         fetchDashboardData();
       } else {
         toast.error(res.data.message || 'Check-in failed.');
       }
     } catch (err) {
-      toast.error('Check-in error. Make sure you are connected to the network.');
+      toast.error('Check-in error.');
     } finally {
       setCheckingIn(false);
     }
@@ -87,38 +92,92 @@ const Dashboard = () => {
   const student = dashboardData?.student || currentUser;
   const stats = dashboardData?.stats || { attendance_rate: 100, present_days: 0, late_days: 0, total_days: 0 };
   const todayAtt = dashboardData?.today_attendance;
+  const modules = dashboardData?.modules || [];
+  const assignmentSummary = dashboardData?.assignment_summary || { total: 0, submitted: 0, pending: 0 };
 
   return (
-    <div className="p-6 md:p-8 space-y-6 mx-auto">
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 mx-auto">
+      {/* Multi-Course Alert Bar if enrolled in > 1 courses */}
+      {courses && courses.length > 1 && (
+        <div className="bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-pink-500/10 dark:from-indigo-950/40 dark:via-purple-950/40 dark:to-pink-950/40 border border-indigo-200/80 dark:border-indigo-800/80 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="p-1.5 rounded-lg bg-indigo-600 text-white font-black">
+              <FiLayers size={14} />
+            </span>
+            <span className="text-slate-700 dark:text-slate-200 font-medium">
+              You have access to <b className="text-indigo-600 dark:text-indigo-400">{courses.length} Courses</b>. Currently viewing: <b className="text-slate-900 dark:text-white">{activeCourse?.course_title}</b>.
+            </span>
+          </div>
+          <span className="hidden md:inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 dark:text-indigo-400">
+            <span>Switch course from header anytime</span>
+            <FiChevronRight size={12} />
+          </span>
+        </div>
+      )}
+
       {/* Hero Banner with Course & Today's Attendance Check-in */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Welcome Card */}
-        <div className="lg:col-span-2 bg-gradient-to-tr from-indigo-900 via-indigo-800 to-purple-900 text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between">
-          <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-indigo-200 mb-3 border border-white/10">
-              <FiAward size={14} />
-              <span>Creative Computer Academy Student</span>
+        {/* Welcome Card with Course Banner & Thumbnail Pic */}
+        <div className="lg:col-span-2 bg-gradient-to-tr from-indigo-950 via-slate-900 to-indigo-900 text-white p-6 md:p-8 rounded-3xl shadow-xl relative overflow-hidden flex flex-col justify-between border border-slate-700/40 min-h-[220px]">
+          {/* Background Course Banner if available */}
+          {(activeCourse?.banner_url || student?.banner_url) && (
+            <div 
+              className="absolute inset-0 bg-cover bg-center opacity-25 mix-blend-luminosity scale-105 transition-transform duration-700 pointer-events-none"
+              style={{ backgroundImage: `url(${activeCourse?.banner_url || student?.banner_url})` }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-indigo-950/80 to-transparent pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-4">
+              {/* Course Picture / Thumbnail Avatar */}
+              {(activeCourse?.thumbnail_url || student?.thumbnail_url) ? (
+                <img 
+                  src={activeCourse?.thumbnail_url || student?.thumbnail_url} 
+                  alt="Course Pic" 
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-indigo-400/40 shadow-lg bg-indigo-950 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-indigo-600/30 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
+                  <FiBookOpen size={28} />
+                </div>
+              )}
+
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-bold text-indigo-200 mb-2 border border-white/10">
+                  <FiAward size={13} className="text-amber-400" />
+                  <span>{activeCourse?.course_category || student?.course_category || 'Self-Paced Course'}</span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white drop-shadow-sm">
+                  Hello, {student?.name || 'Student'}! 👋
+                </h1>
+                <p className="text-indigo-200 text-sm mt-1 max-w-xl">
+                  Active Course: <span className="text-white font-bold">{activeCourse?.course_title || student?.course_name || 'Professional Course'}</span> (<span className="text-amber-300 font-bold">{activeCourse?.course_code || 'CCA'}</span>)
+                </p>
+              </div>
             </div>
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight">
-              Hello, {student?.name || 'Student'}! 👋
-            </h1>
-            <p className="text-indigo-200 text-sm mt-1 max-w-xl">
-              Enrolled in <span className="text-white font-bold">{student?.course_name || student?.student_info?.course_name || 'Professional Course'}</span> ({student?.batch_no || student?.student_info?.batch_no || 'Batch-01'}).
-            </p>
+
+            <Link
+              to={`/learn${activeCourse?.course_id ? `/${activeCourse.course_id}` : ''}`}
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-xs sm:text-sm shadow-lg shadow-emerald-950/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 shrink-0 border border-emerald-300/30"
+            >
+              <FiPlayCircle size={18} />
+              <span>Continue Learning 🎬</span>
+            </Link>
           </div>
 
           <div className="relative z-10 grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 pt-6 border-t border-white/10">
             <div>
-              <p className="text-xs text-indigo-300 font-semibold">Student Code</p>
-              <p className="text-lg font-black font-mono mt-0.5">{student?.student_code || student?.student_info?.student_code || 'CCA-STU'}</p>
+              <p className="text-xs text-indigo-300 font-semibold">Student ID</p>
+              <p className="text-lg font-black font-mono mt-0.5">{student?.student_code || activeCourse?.student_code || 'CCA-STU'}</p>
             </div>
             <div>
-              <p className="text-xs text-indigo-300 font-semibold">Overall Attendance</p>
-              <p className="text-lg font-black text-emerald-400 mt-0.5">{stats.attendance_rate}%</p>
+              <p className="text-xs text-indigo-300 font-semibold">Course Modules</p>
+              <p className="text-lg font-black text-amber-300 mt-0.5">{modules.length} Modules</p>
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <p className="text-xs text-indigo-300 font-semibold">Present Days</p>
-              <p className="text-lg font-black mt-0.5">{stats.present_days} Days</p>
+              <p className="text-xs text-indigo-300 font-semibold">Overall Attendance</p>
+              <p className="text-lg font-black text-emerald-400 mt-0.5">{stats.attendance_rate}%</p>
             </div>
           </div>
         </div>
@@ -189,20 +248,20 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-indigo-600 dark:text-indigo-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Attendance Rate</span>
-            <FiUserCheck size={20} />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Video Modules</span>
+            <FiPlayCircle size={20} />
           </div>
-          <p className="text-2xl font-black text-slate-900 dark:text-white">{stats.attendance_rate}%</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Calculated from total class sessions</p>
+          <p className="text-2xl font-black text-slate-900 dark:text-white">{modules.length}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Structured lessons & syllabus</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Present</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Attendance</span>
             <FiCheckCircle size={20} />
           </div>
-          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.present_days} Days</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Attended on time</p>
+          <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{stats.attendance_rate}%</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">{stats.present_days} Days Attended</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -211,7 +270,7 @@ const Dashboard = () => {
             <FiClock size={20} />
           </div>
           <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{stats.late_days || 0} Days</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Recorded late arrivals</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">Recorded late check-ins</p>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs">
@@ -219,85 +278,95 @@ const Dashboard = () => {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Assignments</span>
             <FiCheckSquare size={20} />
           </div>
-          <p className="text-2xl font-black text-purple-600 dark:text-purple-400">Active</p>
+          <div className="flex items-baseline gap-1.5">
+            <p className="text-2xl font-black text-purple-600 dark:text-purple-400">{assignmentSummary.submitted}</p>
+            <p className="text-xs font-bold text-slate-400">/ {assignmentSummary.total} Total</p>
+          </div>
           <Link to="/assignments" className="text-[11px] text-purple-600 dark:text-purple-400 font-bold hover:underline flex items-center gap-1 mt-0.5">
-            <span>View Tasks</span>
+            <span>{assignmentSummary.pending > 0 ? `${assignmentSummary.pending} Pending` : 'All Completed'}</span>
             <FiArrowRight size={10} />
           </Link>
         </div>
       </div>
 
-      {/* My Batch Schedule & Course Curriculum Row */}
-      {dashboardData?.batch_info && (
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 rounded-2xl">
-                <FiCalendar size={22} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-black text-slate-900 dark:text-white text-base">
-                    {dashboardData.batch_info.batch_name}
-                  </h3>
-                  <span className="font-mono text-xs font-black bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                    {dashboardData.batch_info.batch_code}
-                  </span>
-                </div>
-                <p className="text-xs text-slate-400 mt-0.5">{dashboardData.batch_info.course_title}</p>
-              </div>
+      {/* Course Curriculum & Recorded Modules Row */}
+      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 rounded-2xl">
+              <FiBookOpen size={22} />
             </div>
-
-            <div className="flex flex-wrap items-center gap-4 text-xs font-semibold">
-              <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center gap-2">
-                <span className="text-slate-400">Days:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{dashboardData.batch_info.schedule_days}</span>
-              </div>
-              <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center gap-2">
-                <span className="text-slate-400">Time:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{dashboardData.batch_info.schedule_time}</span>
-              </div>
-              <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl flex items-center gap-2">
-                <span className="text-slate-400">Lab:</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200">{dashboardData.batch_info.lab_room || 'Main Lab'}</span>
-              </div>
-              {dashboardData.batch_info.instructor_name && (
-                <div className="px-3.5 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-xl flex items-center gap-1.5 font-bold">
-                  <span>👨‍🏫 Lead: {dashboardData.batch_info.instructor_name}</span>
-                </div>
-              )}
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white text-base">
+                {activeCourse?.course_title || 'Course Curriculum'}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Complete syllabus & recorded video lectures ({modules.length} Modules)
+              </p>
             </div>
           </div>
 
-          {/* Curriculum Modules */}
-          {dashboardData.modules && dashboardData.modules.length > 0 && (
-            <div className="mt-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Course Modules & Syllabus ({dashboardData.modules.length} Modules)
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {dashboardData.modules.map((mod) => (
-                  <div
-                    key={mod.id}
-                    className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 flex items-start gap-3"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center shrink-0 text-xs">
-                      M{mod.module_no}
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">{mod.title}</h5>
-                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">{mod.description || 'Theory & Practical Tasks'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <span className="px-3 py-1 rounded-xl text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+              ⚡ Self-Paced 24/7 Access
+            </span>
+            <Link
+              to="/courses"
+              className="px-3.5 py-1 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <span>Explore All Courses</span>
+              <FiArrowRight size={12} />
+            </Link>
+          </div>
         </div>
-      )}
+
+        {modules.length === 0 ? (
+          <div className="py-12 text-center text-slate-400 text-sm">
+            <FiFolder size={32} className="mx-auto mb-2 opacity-40" />
+            Modules are being uploaded for this course.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {modules.map((mod) => (
+              <div
+                key={mod.id}
+                className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-black text-[10px] uppercase">
+                      Module {mod.module_no}
+                    </span>
+                    <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                      <FiVideo size={12} /> {mod.duration_classes || 6} Classes
+                    </span>
+                  </div>
+
+                  <h5 className="font-bold text-slate-900 dark:text-white text-xs leading-snug">
+                    {mod.title}
+                  </h5>
+                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                    {mod.description || 'Core theory, practical demonstrations & video tutorials.'}
+                  </p>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <FiCheckCircle size={11} /> Unlocked
+                  </span>
+                  <button
+                    onClick={() => toast.info(`Starting Module ${mod.module_no}: ${mod.title}`)}
+                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Watch Lessons</span>
+                    <FiPlayCircle size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Quick Navigation Cards & Recent Attendance Table */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -368,7 +437,7 @@ const Dashboard = () => {
               </div>
               <FiArrowRight size={18} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Assignments & Tasks</h4>
+            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Course Assignments</h4>
             <p className="text-xs text-slate-400 mt-1">Submit your practical projects, assignments, and view reviewer feedback.</p>
           </Link>
 
@@ -382,8 +451,8 @@ const Dashboard = () => {
               </div>
               <FiArrowRight size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Course Resources & Assets</h4>
-            <p className="text-xs text-slate-400 mt-1">Download class materials, design templates, and software resources.</p>
+            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Download Resources</h4>
+            <p className="text-xs text-slate-400 mt-1">Download class materials, design templates, and software tools.</p>
           </Link>
 
           <Link
@@ -397,7 +466,7 @@ const Dashboard = () => {
               <FiArrowRight size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
             </div>
             <h4 className="font-bold text-slate-900 dark:text-white mt-4">Digital Student ID Card</h4>
-            <p className="text-xs text-slate-400 mt-1">View official academy student card, batch details, and profile.</p>
+            <p className="text-xs text-slate-400 mt-1">View official academy student card and enrolled courses.</p>
           </Link>
         </div>
       </div>

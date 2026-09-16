@@ -169,20 +169,20 @@ export default function SystemOverviewTab({
       });
     }
 
-    // 3. Reviewer Deliveries (24 files in batch folders)
+    // 3. Reviewer Deliveries (24 files in course module folders)
     for (let i = 24; i >= 1; i--) {
-      const batchNum = Math.ceil(i / 4);
+      const moduleNum = Math.ceil(i / 4);
       const ext = i % 3 === 0 ? 'zip' : (i % 2 === 0 ? 'pdf' : 'png');
       const size = ext === 'zip' ? 145000000 : (ext === 'pdf' ? 12000000 : 6500000);
       const daysAgo = Math.floor((24 - i) / 2);
       const date = new Date(Date.now() - daysAgo * 86400000 - 14400000).toISOString();
       const fileName = `reviewer_delivery_item_${i}_approved.${ext}`;
-      const key = `reviewer/batch_${batchNum}/${fileName}`;
+      const key = `reviewer/course_module_${moduleNum}/${fileName}`;
 
       files.push({
         name: fileName,
         key: key,
-        folder: `reviewer/batch_${batchNum}/`,
+        folder: `reviewer/course_module_${moduleNum}/`,
         parentFolder: 'reviewer/',
         category: 'reviewer',
         size: size + ((i * 98765) % 8000000),
@@ -195,17 +195,17 @@ export default function SystemOverviewTab({
 
     // 4. Student Submissions (15 files)
     for (let i = 15; i >= 1; i--) {
-      const batchNum = Math.ceil(i / 5);
+      const courseNum = Math.ceil(i / 5);
       const ext = i % 3 === 0 ? 'zip' : (i % 2 === 0 ? 'psd' : 'pdf');
       const size = ext === 'zip' ? 68000000 : (ext === 'psd' ? 48000000 : 5200000);
       const date = new Date(Date.now() - (15 - i) * 86400000 - 18000000).toISOString();
       const fileName = `student_submission_${i}.${ext}`;
-      const key = `student_submissions/batch_${batchNum}/${fileName}`;
+      const key = `student_submissions/course_${courseNum}/${fileName}`;
 
       files.push({
         name: fileName,
         key: key,
-        folder: `student_submissions/batch_${batchNum}/`,
+        folder: `student_submissions/course_${courseNum}/`,
         parentFolder: 'student_submissions/',
         category: 'submissions',
         size: size + ((i * 54321) % 4000000),

@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   FiGrid, FiClock, FiCheckSquare, FiBookOpen,
-  FiUser, FiLogOut, FiAward
+  FiUser, FiLogOut, FiAward, FiCompass, FiPlayCircle
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +21,8 @@ const StudentSidebar = ({ isOpen = true }) => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <FiGrid size={18} /> },
+    { name: 'Video Classroom', path: '/learn', icon: <FiPlayCircle size={18} /> },
+    { name: 'Explore All Courses', path: '/courses', icon: <FiCompass size={18} /> },
     { name: 'Daily Attendance', path: '/attendance', icon: <FiClock size={18} /> },
     { name: 'Assignments & Projects', path: '/assignments', icon: <FiCheckSquare size={18} /> },
     { name: 'Course Resources', path: '/resources', icon: <FiBookOpen size={18} /> },
@@ -36,8 +38,16 @@ const StudentSidebar = ({ isOpen = true }) => {
       {/* Brand Header */}
       <div>
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100 dark:border-slate-800">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-500/20 shrink-0">
-            CCA
+          <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-800 shadow-xs">
+            <img
+              src="/favicons.png"
+              alt="CCA Logo"
+              className="w-full h-full object-contain p-1"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = '/cca_logo.png';
+              }}
+            />
           </div>
           {isOpen && (
             <div className="overflow-hidden">

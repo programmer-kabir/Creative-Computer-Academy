@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 import AttendanceDeviceDetailsModal from '../components/AttendanceDeviceDetailsModal';
+import BreakRequestsWidget from '../components/BreakRequestsWidget';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -274,6 +275,9 @@ const DailyRoster = () => {
           )}
         </div>
       </div>
+
+      {/* Real-time Break Requests & Live Breaks Widget */}
+      {isToday && <BreakRequestsWidget />}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

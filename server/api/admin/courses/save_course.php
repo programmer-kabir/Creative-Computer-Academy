@@ -22,6 +22,9 @@ try {
     $fee_amount = isset($data->fee_amount) ? floatval($data->fee_amount) : 0.00;
     $status = !empty($data->status) ? $data->status : 'active';
 
+    $thumbnail_url = !empty($data->thumbnail_url) ? trim($data->thumbnail_url) : null;
+    $banner_url = !empty($data->banner_url) ? trim($data->banner_url) : null;
+
     $now_bd = date('Y-m-d H:i:s');
 
     if (!empty($data->id)) {
@@ -30,6 +33,8 @@ try {
             UPDATE courses SET
                 title = :title,
                 category = :cat,
+                thumbnail_url = :thumb,
+                banner_url = :banner,
                 course_code = :code,
                 description = :desc,
                 duration_months = :dur,
@@ -42,6 +47,8 @@ try {
         $stmt->execute([
             ':title' => $title,
             ':cat' => $category,
+            ':thumb' => $thumbnail_url,
+            ':banner' => $banner_url,
             ':code' => $course_code,
             ':desc' => $description,
             ':dur' => $duration_months,
@@ -56,16 +63,18 @@ try {
     } else {
         $stmt = $db->prepare("
             INSERT INTO courses (
-                title, category, course_code, description, duration_months, total_classes, fee_amount, status,
+                title, category, thumbnail_url, banner_url, course_code, description, duration_months, total_classes, fee_amount, status,
                 created_at, updated_at
             ) VALUES (
-                :title, :cat, :code, :desc, :dur, :tot, :fee, :status,
+                :title, :cat, :thumb, :banner, :code, :desc, :dur, :tot, :fee, :status,
                 :cr_time, :up_time
             )
         ");
         $stmt->execute([
             ':title' => $title,
             ':cat' => $category,
+            ':thumb' => $thumbnail_url,
+            ':banner' => $banner_url,
             ':code' => $course_code,
             ':desc' => $description,
             ':dur' => $duration_months,

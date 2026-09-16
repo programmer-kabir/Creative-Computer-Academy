@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import StudentSidebar from '../components/StudentSidebar';
 import ThemeToggle from '../components/ThemeToggle';
+import CourseSwitcher from '../components/CourseSwitcher';
 import { useAuth } from '../context/AuthContext';
 import { Toaster } from 'sonner';
 import { FiSidebar } from 'react-icons/fi';
@@ -16,7 +17,7 @@ const StudentLayout = ({ children }) => {
       
       <div className="flex-1 flex flex-col h-full overflow-hidden min-w-0">
         {/* Header Bar */}
-        <header className="h-16 shrink-0 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-30 transition-colors">
+        <header className="h-16 shrink-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 z-30 transition-colors">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -25,20 +26,19 @@ const StudentLayout = ({ children }) => {
             >
               <FiSidebar size={18} />
             </button>
-            <div>
-              <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">
-                Welcome back, {currentUser?.name || 'Student'}! 👋
+            <div className="hidden lg:block">
+              <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
+                Welcome, {currentUser?.name || 'Student'}! 👋
               </h2>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            {/* Dynamic Multi-Course Switcher */}
+            <CourseSwitcher />
+
+            {/* Theme Toggle */}
             <ThemeToggle />
-            <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700">
-              <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-bold text-xs rounded-full border border-indigo-200 dark:border-indigo-800">
-                {currentUser?.student_info?.batch_no || 'Batch-01'}
-              </span>
-            </div>
           </div>
         </header>
 

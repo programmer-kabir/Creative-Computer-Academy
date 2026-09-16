@@ -30,12 +30,19 @@ const Attendance = () => {
         user_id: currentUser.id
       });
       if (res.data.status === 'success') {
-        const logs = res.data.attendance || [];
+        const logs = res.data.history || res.data.attendance || res.data.data || [];
         setAttendanceLogs(logs);
 
         const today = new Date().toISOString().split('T')[0];
-        const tLog = logs.find(l => l.date === today);
-        setTodayLog(tLog || null);
+        if (res.data.today && res.data.today.check_in) {
+          setTodayLog({
+            ...res.data.today,
+            date: today
+          });
+        } else {
+          const tLog = logs.find(l => l.date === today);
+          setTodayLog(tLog || null);
+        }
       }
     } catch (err) {
       console.error(err);

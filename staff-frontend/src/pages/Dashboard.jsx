@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { FiCheckCircle, FiClock, FiList, FiAlertCircle, FiXCircle, FiPlayCircle, FiPauseCircle, FiEye, FiAward, FiStar, FiTarget, FiArrowRight } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiList, FiAlertCircle, FiXCircle, FiPlayCircle, FiPauseCircle, FiEye, FiAward, FiStar, FiTarget, FiArrowRight, FiCoffee } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import TiffinTimer from '../components/TiffinTimer';
+import ActiveBreakWidget from '../components/ActiveBreakWidget';
 import AnimatedCounter from '../components/AnimatedCounter';
 
 const Dashboard = () => {
@@ -17,6 +18,7 @@ const Dashboard = () => {
   const [leaderboardTab, setLeaderboardTab] = useState('attendance');
   const [timeFilter, setTimeFilter] = useState('daily');
   const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [hasActiveBreak, setHasActiveBreak] = useState(false);
   
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -78,6 +80,23 @@ const Dashboard = () => {
     </div>
   );
 
+  // Dynamic time-based greeting helper
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return { text: 'Good morning', emoji: '🌅' };
+    }
+    if (hour >= 12 && hour < 17) {
+      return { text: 'Good afternoon', emoji: '☀️' };
+    }
+    if (hour >= 17 && hour < 22) {
+      return { text: 'Good evening', emoji: '🌆' };
+    }
+    return { text: 'Good night', emoji: '🌙' };
+  };
+
+  const { text: greetingText, emoji: greetingEmoji } = getGreeting();
+
   // Calculate task stats
   const todoTasks = tasks.filter(t => t.status === 'To-Do');
   const inProgressTasks = tasks.filter(t => t.status === 'In Progress');
@@ -99,7 +118,7 @@ const Dashboard = () => {
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <h1 className="text-3xl sm:text-4xl font-black mb-2 flex items-center gap-3">
-              Welcome back, {currentUser?.name?.split(' ')[0]}! <span className="origin-bottom-right animate-wave inline-block">👋</span>
+              {greetingText}, {currentUser?.name?.split(' ')[0]}! <span className="origin-bottom-right animate-wave inline-block">{greetingEmoji}</span>
             </h1>
             <p className="text-primary-200/80 font-medium text-sm sm:text-base max-w-lg leading-relaxed">
               Here is your workspace overview for today. You currently have <strong className="text-white bg-white/10 dark:bg-slate-800/10 px-2 py-0.5 rounded-md">{todoTasks.length + inProgressTasks.length}</strong> active tasks requiring your attention.
@@ -127,6 +146,9 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Active Break Live Timer / Pending Banner (Only visible during break, hidden for user 2) */}
+      <ActiveBreakWidget onBreakChange={({ activeBreak }) => setHasActiveBreak(!!activeBreak)} />
 
       {/* Tiffin Timer - visible to all staff except user 2 */}
       <TiffinTimer />

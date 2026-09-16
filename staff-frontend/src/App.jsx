@@ -17,6 +17,9 @@ const Messages = React.lazy(() => import('./pages/Messages'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const BrandKit = React.lazy(() => import('./pages/BrandKit'));
 const Credits = React.lazy(() => import('./pages/Credits'));
+const Breaks = React.lazy(() => import('./pages/Breaks'));
+const BlogFeed = React.lazy(() => import('./pages/BlogFeed'));
+const BlogDetails = React.lazy(() => import('./pages/BlogDetails'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
@@ -57,6 +60,30 @@ function App() {
               <ProtectedRoute>
                 <AuthenticatedLayout>
                   <Attendance />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/breaks" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <Breaks />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/feed" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <BlogFeed />
+                </AuthenticatedLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/feed/:id" element={
+              <ProtectedRoute>
+                <AuthenticatedLayout>
+                  <BlogDetails />
                 </AuthenticatedLayout>
               </ProtectedRoute>
             } />

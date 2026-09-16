@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSearch } from '../context/SearchContext';
@@ -11,9 +11,11 @@ import HeaderShiftStatus from '../components/HeaderShiftStatus';
 import HeaderCreditBadge from '../components/HeaderCreditBadge';
 import HeaderProfileDropdown from '../components/HeaderProfileDropdown';
 import CommandPalette from '../components/CommandPalette';
+import BreakRequestModal from '../components/BreakRequestModal';
+import BreakLockOverlay from '../components/BreakLockOverlay';
 import { Toaster, toast } from 'sonner';
 import Pusher from 'pusher-js';
-import { FiSearch, FiX, FiSidebar, FiMenu } from 'react-icons/fi';
+import { FiSearch, FiX, FiSidebar, FiMenu, FiCoffee } from 'react-icons/fi';
 import { HiSparkles } from 'react-icons/hi';
 
 const AuthenticatedLayout = ({ children }) => {
@@ -25,8 +27,9 @@ const AuthenticatedLayout = ({ children }) => {
   const isBrandKitPage = location.pathname === '/brand-kit';
   const searchInputRef = useRef(null);
 
-  // Command Palette State
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
+  // Command Palette & Break Modal State
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [isBreakModalOpen, setIsBreakModalOpen] = useState(false);
 
   // Sidebar toggle state (persisted in localStorage for desktop, closed by default on small mobile)
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(() => {
@@ -202,6 +205,19 @@ const AuthenticatedLayout = ({ children }) => {
               <HeaderClock />
             </div>
 
+            {/* Custom Break Request Button - visible to all staff except User ID 2 */}
+            {currentUser?.id !== 2 && (
+              <button
+                type="button"
+                onClick={() => setIsBreakModalOpen(true)}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl font-bold text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 transition-all shadow-2xs hover:shadow-sm active:scale-95 cursor-pointer"
+                title="Request Personal / Emergency Break"
+              >
+                <FiCoffee size={13} className="text-amber-500" />
+                <span className="hidden md:inline">Take Break</span>
+              </button>
+            )}
+
             {/* Brand Kit Quick Launcher - hidden on mobile */}
             <button
               type="button"
@@ -234,6 +250,12 @@ const AuthenticatedLayout = ({ children }) => {
           </div>
         </header>
 
+        {/* Break Request Modal */}
+        <BreakRequestModal
+          isOpen={isBreakModalOpen}
+          onClose={() => setIsBreakModalOpen(false)}
+        />
+
         {/* Global Spotlight / Command Palette */}
         <CommandPalette
           isOpen={isCommandPaletteOpen}
@@ -242,7 +264,10 @@ const AuthenticatedLayout = ({ children }) => {
         />
 
         {/* Main Content Viewport with Mobile Bottom Nav Padding */}
-        <main className={`flex-1 flex flex-col min-h-0 ${isMessagesPage ? 'p-0 pb-16 lg:pb-0 overflow-hidden' : 'p-3 sm:p-6 pb-20 lg:pb-6 overflow-y-auto custom-scrollbar'}`}>
+        <main className={`relative flex-1 flex flex-col min-h-0 ${isMessagesPage ? 'p-0 pb-16 lg:pb-0 overflow-hidden' : 'p-3 sm:p-6 pb-20 lg:pb-6 overflow-y-auto custom-scrollbar'}`}>
+          {/* Active Non-Tiffin Break Lock Overlay (Sidebar remains clickable) */}
+          <BreakLockOverlay />
+
           <div className={`mx-auto w-full ${isMessagesPage ? 'h-full flex-1 flex flex-col min-h-0' : ''}`}>
             {children}
           </div>

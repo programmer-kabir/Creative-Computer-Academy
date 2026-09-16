@@ -23,6 +23,8 @@ if(isset($data->user_id)) {
 
         // Step 2: Fetch tasks assigned to this employee (only up to today) OR tasks in the Unassigned pool
         $task_query = "SELECT t.*, 
+                              (SELECT created_at FROM task_logs WHERE task_id = t.id AND status_to = 'In Progress' ORDER BY id DESC LIMIT 1) AS in_progress_at,
+                              NOW() AS server_now,
                               COALESCE(tc_child.name, tc_sub.name, tc_main.name, '') AS category_name,
                               tc_main.name AS main_category_name,
                               tc_sub.name AS sub_category_name,

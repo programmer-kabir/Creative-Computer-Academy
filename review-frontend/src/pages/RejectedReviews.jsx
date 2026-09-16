@@ -701,23 +701,97 @@ const RejectedReviews = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4  gap-4">
           {filteredTasks.map((t) => (
             <div
               key={t.task_id}
               onClick={() => openTask(t)}
-              className="glass-card rounded-2xl p-5 border border-slate-200 dark:border-red-500/20 hover:border-rose-400 dark:hover:border-red-500/50 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[180px] relative group bg-white dark:bg-dark-900/60 shadow-xs hover:shadow-md"
+              className="glass-card rounded-2xl p-5 border border-slate-200 dark:border-red-500/20 hover:border-rose-400 dark:hover:border-red-500/50 hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between min-h-[180px] relative group bg-white dark:bg-dark-900/60 shadow-xs hover:shadow-md overflow-hidden"
             >
-              {/* Rejected badge */}
-              <div className="absolute top-3 right-3">
-                <span className="px-2.5 py-0.5 rounded-full border text-[10px] font-bold text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 bg-rose-50 dark:bg-rose-500/10">
-                  Rejected
-                </span>
-              </div>
+              {/* Task Card Thumbnail Banner (like Admin Panel) */}
+              {(() => {
+                let firstImg = null;
+                if (t.visual_image) {
+                  try {
+                    const parsed = Array.isArray(t.visual_image) ? t.visual_image : JSON.parse(t.visual_image);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      firstImg = parsed[0];
+                    } else if (typeof parsed === 'string' && parsed) {
+                      firstImg = parsed;
+                    }
+                  } catch (e) {
+                    if (typeof t.visual_image === 'string' && t.visual_image.trim()) {
+                      const cleaned = t.visual_image.replace(/[\[\]"]/g, '').split(',')[0].trim();
+                      if (cleaned) firstImg = cleaned;
+                    }
+                  }
+                }
+                if (!firstImg && t.final_image_url) firstImg = t.final_image_url;
+                if (!firstImg && t.ref_image) firstImg = t.ref_image;
+                if (!firstImg && (t.deliverables || t.files)) {
+                  try {
+                    const files = typeof (t.deliverables || t.files) === 'string' ? JSON.parse(t.deliverables || t.files) : (t.deliverables || t.files);
+                    if (Array.isArray(files)) {
+                      const imgF = files.find(f => {
+                        const p = typeof f === 'string' ? f : (f?.file_path || f?.path || f?.url || '');
+                        return /\.(png|jpe?g|webp|gif|svg)$/i.test(p);
+                      });
+                      if (imgF) firstImg = typeof imgF === 'string' ? imgF : (imgF.file_path || imgF.path || imgF.url);
+                    }
+                  } catch (e) { }
+                }
+
+                const srcUrl = firstImg
+                  ? (firstImg.startsWith('http') ? firstImg : `${API_BASE}${firstImg.startsWith('/') ? firstImg.substring(1) : firstImg}`)
+                  : '/no-image-placeholder.jpg';
+
+                return (
+                  <div className="w-[calc(100%+2.5rem)] h-36 -mt-5 -mx-5 mb-3.5 bg-slate-900 border-b border-rose-500/20 overflow-hidden relative flex-shrink-0">
+                    {firstImg ? (
+                      <div className="relative w-full h-full overflow-hidden bg-slate-950/20">
+                        <img
+                          src={srcUrl}
+                          alt="Task Work"
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-contain bg-slate-900/40 group-hover:scale-105 transition-transform duration-500 ease-out"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/no-image-placeholder.jpg';
+                            e.currentTarget.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-80';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                      </div>
+                    ) : (
+                      <div className="relative w-full h-full overflow-hidden bg-slate-900/80">
+                        <img
+                          src="/no-image-placeholder.jpg"
+                          alt="No Image Available"
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-80"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                      </div>
+                    )}
+
+                    <div className="absolute top-2.5 right-2.5 z-10">
+                      <span className="px-2.5 py-0.5 rounded-full border text-[10px] font-bold text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-500/30 bg-rose-50/90 dark:bg-rose-950/80 backdrop-blur-md shadow-sm">
+                        Rejected
+                      </span>
+                    </div>
+
+                    <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 z-10 shadow-md">
+                      <FiEye size={10} /> Inspect
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 {/* Top row: Avatar + Priority */}
-                <div className="flex items-center gap-2.5 mb-3 pr-20">
+                <div className="flex items-center gap-2.5 mb-3">
                   <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/10 overflow-hidden flex-shrink-0 border border-slate-200 dark:border-rose-500/30">
                     {t.staff_avatar
                       ? <img src={`${API_BASE}${t.staff_avatar}`} className="w-full h-full object-cover" alt="" />
@@ -902,12 +976,12 @@ const RejectedReviews = () => {
                   <button
                     type="button"
                     onClick={() => setModalTab('credits')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-bold text-xs shadow-xs hover:border-amber-500/60 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/80 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-300 font-bold text-xs shadow-xs hover:bg-amber-200/80 dark:hover:border-amber-500/60 transition-all cursor-pointer"
                     title="Click to view full credit breakdown"
                   >
-                    <FaCoins size={14} className="text-amber-500 dark:text-amber-400 shrink-0" />
-                    <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80">Reviewer QA:</span>
-                    <span className="font-extrabold text-amber-700 dark:text-amber-300">
+                    <FaCoins size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300/80">Reviewer QA:</span>
+                    <span className="font-black text-amber-950 dark:text-amber-200">
                       +{systemSettings.reviewer_rejection_credit || 1} Credit{(systemSettings.reviewer_rejection_credit || 1) > 1 ? 's' : ''}
                     </span>
                   </button>
@@ -916,11 +990,11 @@ const RejectedReviews = () => {
                   <button
                     type="button"
                     onClick={() => setModalTab('credits')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 font-bold text-xs shadow-xs hover:border-rose-500/60 transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-100/80 dark:bg-rose-500/15 border border-rose-300 dark:border-rose-500/30 text-rose-900 dark:text-rose-300 font-bold text-xs shadow-xs hover:bg-rose-200/80 dark:hover:border-rose-500/60 transition-all cursor-pointer"
                     title="Click to view full staff credit & penalty history"
                   >
-                    <span className="text-[11px] text-rose-700/80 dark:text-rose-400/80">Staff Penalty:</span>
-                    <span className="font-extrabold text-rose-700 dark:text-rose-400">
+                    <span className="text-[11px] font-bold text-rose-800 dark:text-rose-400/80">Staff Penalty:</span>
+                    <span className="font-black text-rose-950 dark:text-rose-200">
                       -{systemSettings.staff_rejection_penalty || 1} Credit{(systemSettings.staff_rejection_penalty || 1) > 1 ? 's' : ''}
                     </span>
                   </button>
@@ -1188,14 +1262,14 @@ const RejectedReviews = () => {
                                 <div
                                   key={idx}
                                   className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${isCompleted
-                                      ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/25 text-emerald-800 dark:text-emerald-300'
-                                      : 'bg-slate-50 dark:bg-dark-800/60 border-slate-200 dark:border-dark-700 text-slate-800 dark:text-slate-200'
+                                    ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/25 text-emerald-800 dark:text-emerald-300'
+                                    : 'bg-slate-50 dark:bg-dark-800/60 border-slate-200 dark:border-dark-700 text-slate-800 dark:text-slate-200'
                                     }`}
                                 >
                                   <div
                                     className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${isCompleted
-                                        ? 'bg-emerald-500 border-emerald-500 text-[#ffffff] shadow-xs'
-                                        : 'border-slate-300 dark:border-dark-600 bg-[#ffffff] dark:bg-dark-800'
+                                      ? 'bg-emerald-500 border-emerald-500 text-[#ffffff] shadow-xs'
+                                      : 'border-slate-300 dark:border-dark-600 bg-[#ffffff] dark:bg-dark-800'
                                       }`}
                                   >
                                     {isCompleted ? (

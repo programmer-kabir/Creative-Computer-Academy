@@ -823,7 +823,7 @@ const CompletedReviews = () => {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4  gap-5">
             {tasks.map((t, index) => {
               const itemNumber = (pagination.from || 1) + index;
               return (
@@ -836,7 +836,82 @@ const CompletedReviews = () => {
                   }}
                 >
                   {/* Subtle top light sheen on hover */}
-                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10" />
+
+                  {/* Task Card Thumbnail Banner (like Admin Panel) */}
+                  {(() => {
+                    let firstImg = null;
+                    if (t.visual_image) {
+                      try {
+                        const parsed = Array.isArray(t.visual_image) ? t.visual_image : JSON.parse(t.visual_image);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                          firstImg = parsed[0];
+                        } else if (typeof parsed === 'string' && parsed) {
+                          firstImg = parsed;
+                        }
+                      } catch (e) {
+                        if (typeof t.visual_image === 'string' && t.visual_image.trim()) {
+                          const cleaned = t.visual_image.replace(/[\[\]"]/g, '').split(',')[0].trim();
+                          if (cleaned) firstImg = cleaned;
+                        }
+                      }
+                    }
+                    if (!firstImg && t.final_image_url) firstImg = t.final_image_url;
+                    if (!firstImg && t.ref_image) firstImg = t.ref_image;
+                    if (!firstImg && (t.deliverables || t.files)) {
+                      try {
+                        const files = typeof (t.deliverables || t.files) === 'string' ? JSON.parse(t.deliverables || t.files) : (t.deliverables || t.files);
+                        if (Array.isArray(files)) {
+                          const imgF = files.find(f => {
+                            const p = typeof f === 'string' ? f : (f?.file_path || f?.path || f?.url || '');
+                            return /\.(png|jpe?g|webp|gif|svg)$/i.test(p);
+                          });
+                          if (imgF) firstImg = typeof imgF === 'string' ? imgF : (imgF.file_path || imgF.path || imgF.url);
+                        }
+                      } catch (e) { }
+                    }
+
+                    const srcUrl = firstImg
+                      ? (firstImg.startsWith('http') ? firstImg : `${API_BASE}${firstImg.startsWith('/') ? firstImg.substring(1) : firstImg}`)
+                      : '/no-image-placeholder.jpg';
+
+                    return (
+                      <div className="w-[calc(100%+2.5rem)] lg:w-[calc(100%+3rem)] h-36 sm:h-40 -mt-5 lg:-mt-6 -mx-5 lg:-mx-6 mb-3.5 bg-slate-900 border-b border-white/10 overflow-hidden relative flex-shrink-0">
+                        {firstImg ? (
+                          <div className="relative w-full h-full overflow-hidden bg-slate-950/20">
+                            <img
+                              src={srcUrl}
+                              alt="Task Work"
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-contain bg-slate-900/40 group-hover:scale-105 transition-transform duration-500 ease-out"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = '/no-image-placeholder.jpg';
+                                e.currentTarget.className = 'w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-80';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                          </div>
+                        ) : (
+                          <div className="relative w-full h-full overflow-hidden bg-slate-900/80">
+                            <img
+                              src="/no-image-placeholder.jpg"
+                              alt="No Image Available"
+                              loading="lazy"
+                              decoding="async"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out opacity-80"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                          </div>
+                        )}
+
+                        <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-md text-white text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1 z-10 shadow-md">
+                          <FiEye size={10} /> Inspect Work
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   <div>
                     {/* Top row: Profile & Priority */}
@@ -1173,12 +1248,12 @@ const CompletedReviews = () => {
                     <button
                       type="button"
                       onClick={() => setModalTab('credits')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-amber-500/15 border border-amber-500/30 text-amber-500 dark:text-amber-400 font-bold text-xs shadow-xs hover:border-amber-500/60 transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/80 dark:bg-amber-500/15 border border-amber-300 dark:border-amber-500/30 text-amber-900 dark:text-amber-300 font-bold text-xs shadow-xs hover:bg-amber-200/80 dark:hover:border-amber-500/60 transition-all cursor-pointer"
                       title="Click to view full credit breakdown"
                     >
-                      <FaCoins size={14} className="text-amber-400 shrink-0" />
-                      <span className="text-[11px] text-amber-600/80 dark:text-amber-300/80">Reviewer:</span>
-                      <span className="font-extrabold text-amber-600 dark:text-amber-300">
+                      <FaCoins size={14} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-300/80">Reviewer:</span>
+                      <span className="font-black text-amber-950 dark:text-amber-200">
                         +{(activeReviewTask.final_file_url || activeReviewTask.final_image_url) ? 2 : 1} Credit
                       </span>
                     </button>
@@ -1187,11 +1262,11 @@ const CompletedReviews = () => {
                     <button
                       type="button"
                       onClick={() => setModalTab('credits')}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 font-bold text-xs shadow-xs hover:border-emerald-500/60 transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-100/80 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/30 text-emerald-900 dark:text-emerald-300 font-bold text-xs shadow-xs hover:bg-emerald-200/80 dark:hover:border-emerald-500/60 transition-all cursor-pointer"
                       title="Click to view full staff credit & penalty history"
                     >
-                      <span className="text-[11px] text-emerald-600/80 dark:text-emerald-300/80">Staff:</span>
-                      <span className="font-extrabold text-emerald-600 dark:text-emerald-300">
+                      <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300/80">Staff:</span>
+                      <span className="font-black text-emerald-950 dark:text-emerald-200">
                         +{activeReviewTask.credit || activeReviewTask.category_credit || 5} Credits
                       </span>
                     </button>
@@ -1568,15 +1643,13 @@ const CompletedReviews = () => {
                               return (
                                 <div
                                   key={idx}
-                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
-                                    isCompleted
+                                  className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${isCompleted
                                       ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/25 text-emerald-800 dark:text-emerald-300'
                                       : 'bg-slate-50 dark:bg-dark-800/60 border-slate-200 dark:border-dark-700 text-slate-800 dark:text-slate-200'
                                     }`}
                                 >
                                   <div
-                                    className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${
-                                      isCompleted
+                                    className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 border transition-all ${isCompleted
                                         ? 'bg-emerald-500 border-emerald-500 text-[#ffffff] shadow-xs'
                                         : 'border-slate-300 dark:border-dark-600 bg-[#ffffff] dark:bg-dark-800'
                                       }`}
@@ -1588,8 +1661,7 @@ const CompletedReviews = () => {
                                     )}
                                   </div>
                                   <span
-                                    className={`text-xs font-medium ${
-                                      isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
+                                    className={`text-xs font-medium ${isCompleted ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'
                                       }`}
                                   >
                                     {cl.title}

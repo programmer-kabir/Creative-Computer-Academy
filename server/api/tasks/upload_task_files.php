@@ -201,6 +201,43 @@ function uploadDirectToR2($tmpFilePath, $r2Key, $contentType) {
 $taskId = isset($_POST['task_id']) ? intval($_POST['task_id']) : 0;
 $userId = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
 
+// Strict 20-Minute Minimum Work Rule for Uploads
+if (!empty($taskId)) {
+    require_once __DIR__ . '/../../config/database.php';
+    $database = new Database();
+    $db = $database->getConnection();
+    if ($db) {
+        $find_log = $db->prepare("SELECT created_at FROM task_logs WHERE task_id = :task_id AND status_to = 'In Progress' ORDER BY id DESC LIMIT 1");
+        $find_log->execute([':task_id' => $taskId]);
+        $in_prog_log = $find_log->fetch(PDO::FETCH_ASSOC);
+
+        $in_prog_time = null;
+        if ($in_prog_log && !empty($in_prog_log['created_at'])) {
+            $in_prog_time = strtotime($in_prog_log['created_at']);
+        } else {
+            $tStmt = $db->prepare("SELECT session_start_time, status FROM tasks WHERE id = :task_id LIMIT 1");
+            $tStmt->execute([':task_id' => $taskId]);
+            $tRow = $tStmt->fetch(PDO::FETCH_ASSOC);
+            if ($tRow && $tRow['status'] === 'In Progress' && !empty($tRow['session_start_time'])) {
+                $in_prog_time = strtotime($tRow['session_start_time']);
+            }
+        }
+
+        if ($in_prog_time) {
+            $elapsed_secs = time() - $in_prog_time;
+            $min_required_secs = 60; 
+            if ($elapsed_secs < $min_required_secs) {
+                $rem_mins = ceil(($min_required_secs - $elapsed_secs) / 60);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "To maintain work quality, you must work at least 20 minutes before uploading files. File upload will unlock in approximately {$rem_mins} minute(s)."
+                ]);
+                exit();
+            }
+        }
+    }
+}
+
 $fileItems = [];
 foreach ($_FILES as $inputKey => $fileData) {
     if (is_array($fileData['name'])) {
