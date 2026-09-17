@@ -93,7 +93,13 @@ try {
 
     // 4. Attendance stats
     $today = date('Y-m-d');
-    $att_today_stmt = $db->prepare("SELECT check_in, check_out, status FROM attendance WHERE user_id = :user_id AND date = :today LIMIT 1");
+    $att_today_stmt = $db->prepare("
+        SELECT check_in, check_out, status 
+        FROM attendance 
+        WHERE user_id = :user_id AND (date = :today OR date = CURDATE()) 
+        ORDER BY date DESC, id DESC 
+        LIMIT 1
+    ");
     $att_today_stmt->execute([':user_id' => $user_id, ':today' => $today]);
     $today_att = $att_today_stmt->fetch(PDO::FETCH_ASSOC);
 

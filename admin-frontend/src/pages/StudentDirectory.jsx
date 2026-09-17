@@ -9,6 +9,7 @@ import {
   FiRepeat, FiLayers
 } from 'react-icons/fi';
 import CustomSelect from '../components/CustomSelect';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -76,6 +77,17 @@ const StudentDirectory = () => {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [enrollData, setEnrollData] = useState({ user_id: '', student_name: '', course_id: '', admin_override: true });
   const [enrolling, setEnrolling] = useState(false);
+
+  // Modern Confirmation Modal state
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Deactivate',
+    confirmVariant: 'danger',
+    loading: false,
+    onConfirm: null
+  });
 
   // Fetch initial dependencies
   const fetchAllData = async () => {
@@ -231,19 +243,32 @@ const StudentDirectory = () => {
   };
 
   // Handle Deactivate
-  const handleDeleteStudent = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to deactivate ${name}'s account?`)) return;
-    try {
-      const res = await axios.post(`${API_BASE}api/admin/students/delete_student.php`, { id });
-      if (res.data.status === 'success') {
-        toast.success('Student account deactivated.');
-        refreshStudents();
-      } else {
-        toast.error(res.data.message || 'Failed to delete student.');
+  const handleDeleteStudent = (id, name) => {
+    setDeleteConfirm({
+      isOpen: true,
+      title: 'Deactivate Student Account?',
+      message: `Are you sure you want to deactivate ${name}'s account? The student will no longer be able to log in to the portal.`,
+      confirmText: 'Deactivate Student',
+      confirmVariant: 'danger',
+      loading: false,
+      onConfirm: async () => {
+        try {
+          setDeleteConfirm(prev => ({ ...prev, loading: true }));
+          const res = await axios.post(`${API_BASE}api/admin/students/delete_student.php`, { id });
+          if (res.data.status === 'success') {
+            toast.success('Student account deactivated.');
+            setDeleteConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
+            refreshStudents();
+          } else {
+            toast.error(res.data.message || 'Failed to delete student.');
+            setDeleteConfirm(prev => ({ ...prev, loading: false }));
+          }
+        } catch (err) {
+          toast.error('Server error deactivating student.');
+          setDeleteConfirm(prev => ({ ...prev, loading: false }));
+        }
       }
-    } catch (err) {
-      toast.error('Server error deactivating student.');
-    }
+    });
   };
 
   // Filtered list
@@ -253,14 +278,18 @@ const StudentDirectory = () => {
       (s.name && s.name.toLowerCase().includes(q)) ||
       (s.email && s.email.toLowerCase().includes(q)) ||
       (s.student_code && s.student_code.toLowerCase().includes(q)) ||
-      (s.course_name && s.course_name.toLowerCase().includes(q));
+      (s.course_name && s.course_name.toLowerCase().includes(q)) ||
+      (s.all_course_names && s.all_course_names.some(c => c.toLowerCase().includes(q)));
 
     const matchStatus =
       statusFilter === 'all' ? true :
       statusFilter === 'promoted' ? s.student_status === 'promoted_to_staff' || s.role === 'staff' :
       s.student_status === statusFilter;
 
-    const matchCourse = courseFilter === 'all' ? true : s.course_name === courseFilter;
+    const matchCourse = courseFilter === 'all' ? true : (
+      s.course_name === courseFilter || 
+      (s.all_course_names && s.all_course_names.includes(courseFilter))
+    );
 
     return matchSearch && matchStatus && matchCourse;
   });
@@ -462,10 +491,32 @@ const StudentDirectory = () => {
                       </td>
 
                       <td className="px-6 py-4">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
-                          {stu.course_name}
-                        </span>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Enrolled: {stu.enrollment_date || 'N/A'}</p>
+                        {stu.enrolled_courses && stu.enrolled_courses.length > 0 ? (
+                          <div className="space-y-1.5 max-w-xs">
+                            {stu.enrolled_courses.map((ec, cIdx) => (
+                              <div key={cIdx} className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200 text-xs">
+                                  {ec.course_name}
+                                </span>
+                                {ec.course_code && (
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-mono border border-indigo-100 dark:border-indigo-900">
+                                    {ec.course_code}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                            {stu.courses_count > 1 && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-50 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                {stu.courses_count} Courses Enrolled
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="font-semibold text-slate-400 text-xs">
+                            {stu.course_name || 'No active courses'}
+                          </span>
+                        )}
+                        <p className="text-[11px] text-slate-400 mt-1">Enrolled: {stu.enrollment_date || 'N/A'}</p>
                       </td>
 
                       <td className="px-6 py-4">
@@ -987,6 +1038,12 @@ const StudentDirectory = () => {
         </div>,
         document.body
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        {...deleteConfirm}
+        onCancel={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

@@ -14,6 +14,7 @@ const Resources = React.lazy(() => import('./pages/Resources'));
 const Profile = React.lazy(() => import('./pages/Profile'));
 const BrowseCourses = React.lazy(() => import('./pages/BrowseCourses'));
 const CoursePlayer = React.lazy(() => import('./pages/CoursePlayer'));
+const FoundationsLab = React.lazy(() => import('./pages/FoundationsLab'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
@@ -62,6 +63,14 @@ function App() {
                 <ProtectedRoute>
                   <StudentLayout>
                     <Dashboard />
+                  </StudentLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/foundations" element={
+                <ProtectedRoute>
+                  <StudentLayout>
+                    <FoundationsLab />
                   </StudentLayout>
                 </ProtectedRoute>
               } />

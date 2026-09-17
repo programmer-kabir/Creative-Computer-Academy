@@ -21,6 +21,7 @@ const StudentSidebar = ({ isOpen = true }) => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/', icon: <FiGrid size={18} /> },
+    { name: 'Foundations & Typing Lab', path: '/foundations', icon: <FiAward size={18} /> },
     { name: 'Video Classroom', path: '/learn', icon: <FiPlayCircle size={18} /> },
     { name: 'Explore All Courses', path: '/courses', icon: <FiCompass size={18} /> },
     { name: 'Daily Attendance', path: '/attendance', icon: <FiClock size={18} /> },

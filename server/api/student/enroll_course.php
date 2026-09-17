@@ -2,8 +2,15 @@
 require_once '../../config/cors.php';
 require_once '../../config/database.php';
 
+date_default_timezone_set('Asia/Dhaka');
+
 $database = new Database();
 $db = $database->getConnection();
+
+if (!$db) {
+    echo json_encode(["status" => "error", "message" => "Database connection error."]);
+    exit;
+}
 
 $data = json_decode(file_get_contents("php://input"));
 
@@ -45,7 +52,8 @@ try {
         if ($existing['status'] === 'active') {
             echo json_encode([
                 "status" => "info",
-                "message" => "You are already actively enrolled in " . $course['title'] . "!"
+                "message" => "You are already actively enrolled in " . $course['title'] . "!",
+                "course" => $course
             ]);
             exit;
         } else {
@@ -66,12 +74,19 @@ try {
         }
     }
 
-    // 4. Generate student code or inherit existing student code
-    $code_stmt = $db->prepare("SELECT student_code FROM students WHERE user_id = :uid AND student_code IS NOT NULL LIMIT 1");
-    $code_stmt->execute([':uid' => $user_id]);
-    $existing_code = $code_stmt->fetchColumn();
+    // 4. Generate distinct Unique Student Enrollment Code
+    $cleanCourseCode = strtoupper(substr(preg_replace('/[^A-Za-z0-9]/', '', $course['course_code']), 0, 6));
+    if (empty($cleanCourseCode)) $cleanCourseCode = 'CRS' . $course_id;
+    
+    $student_code = "STU-{$user_id}-{$cleanCourseCode}";
+    
+    // Check if this exact code already exists in students table
+    $codeChk = $db->prepare("SELECT COUNT(*) FROM students WHERE student_code = :code");
+    $codeChk->execute([':code' => $student_code]);
+    if ($codeChk->fetchColumn() > 0) {
+        $student_code .= '-' . strtoupper(substr(uniqid(), -3));
+    }
 
-    $student_code = $existing_code ?: 'STU-' . strtoupper(substr(uniqid(), -6));
     $now_bd = date('Y-m-d H:i:s');
     $today = date('Y-m-d');
 
@@ -95,6 +110,7 @@ try {
         "status" => "success",
         "message" => "🎉 Enrolled in " . $course['title'] . " successfully! You can start learning right away.",
         "enrollment_id" => $new_enrollment_id,
+        "student_code" => $student_code,
         "course" => $course
     ]);
 

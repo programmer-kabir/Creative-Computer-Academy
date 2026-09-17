@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import {
   FiPlay, FiPause, FiVolume2, FiVolumeX, FiMaximize, FiMinimize,
   FiRotateCcw, FiRotateCw, FiSettings, FiSliders,
@@ -29,7 +29,7 @@ const extractDrivePreviewUrl = (url) => {
 };
 
 // Format seconds into MM:SS or HH:MM:SS
-const formatTime = (secs) => {
+export const formatTime = (secs) => {
   if (isNaN(secs) || secs < 0) return '0:00';
   const h = Math.floor(secs / 3600);
   const m = Math.floor((secs % 3600) / 60);
@@ -40,7 +40,7 @@ const formatTime = (secs) => {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 };
 
-const CustomLMSPlayer = ({
+const CustomLMSPlayer = forwardRef(({
   videoUrl,
   title = '',
   watermarkText = 'student@cca.com',
@@ -51,7 +51,7 @@ const CustomLMSPlayer = ({
   hasNext = false,
   onEnded = null,
   onProgressUpdate = null
-}) => {
+}, ref) => {
   const containerRef = useRef(null);
   const videoElementRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -274,16 +274,29 @@ const CustomLMSPlayer = ({
     }
   }, [ytId, triggerPlayGuard]);
 
+  // Direct Seek to specific seconds (for Timestamp Notes & Q&A clicks)
+  const seekToSeconds = useCallback((seconds) => {
+    const target = Math.max(0, Math.min(duration || 99999, seconds));
+    setCurrentTime(target);
+    triggerPlayGuard();
+    if (ytId && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
+      ytPlayerRef.current.seekTo(target, true);
+    } else if (videoElementRef.current) {
+      videoElementRef.current.currentTime = target;
+    }
+  }, [duration, ytId, triggerPlayGuard]);
+
+  useImperativeHandle(ref, () => ({
+    seekTo: (seconds) => seekToSeconds(seconds),
+    getCurrentTime: () => currentTime,
+    getDuration: () => duration,
+    togglePlay: () => togglePlay()
+  }), [seekToSeconds, currentTime, duration, togglePlay]);
+
   // Seek (Scrubbing timeline)
   const handleSeek = (e) => {
     const seekTo = parseFloat(e.target.value);
-    setCurrentTime(seekTo);
-    triggerPlayGuard();
-    if (ytId && ytPlayerRef.current && typeof ytPlayerRef.current.seekTo === 'function') {
-      ytPlayerRef.current.seekTo(seekTo, true);
-    } else if (videoElementRef.current) {
-      videoElementRef.current.currentTime = seekTo;
-    }
+    seekToSeconds(seekTo);
   };
 
   // Rewind / Fast Forward (Skip 10s)
@@ -406,7 +419,7 @@ const CustomLMSPlayer = ({
       onMouseEnter={handleMouseEnter}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className={`relative rounded-3xl overflow-hidden bg-black select-none group transition-all duration-300 shadow-2xl border border-slate-800 ${
+      className={`relative rounded-3xl overflow-hidden bg-black select-none group transition-all duration-300 shadow-2xl border border-slate-200/80 dark:border-slate-800 ${
         isTheater ? 'w-full aspect-[21/9]' : 'w-full aspect-video'
       }`}
     >
@@ -670,6 +683,6 @@ const CustomLMSPlayer = ({
       </div>
     </div>
   );
-};
+});
 
 export default CustomLMSPlayer;

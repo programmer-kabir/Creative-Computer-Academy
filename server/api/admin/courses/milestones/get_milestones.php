@@ -1,11 +1,16 @@
 <?php
-require_once '../../../config/cors.php';
-require_once '../../../config/database.php';
+require_once '../../../../config/cors.php';
+require_once '../../../../config/database.php';
 
 date_default_timezone_set('Asia/Dhaka');
 
 $database = new Database();
 $db = $database->getConnection();
+
+if (!$db) {
+    echo json_encode(["status" => "error", "message" => "Database connection error."]);
+    exit;
+}
 
 $course_id = isset($_GET['course_id']) ? intval($_GET['course_id']) : 0;
 

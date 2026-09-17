@@ -4,11 +4,12 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import {
   FiLayers, FiPlus, FiEdit2, FiTrash2, FiX, FiCheck, FiBookOpen,
-  FiAward, FiFilter, FiUserCheck, FiChevronRight, FiChevronDown,
+  FiAward, FiFolder, FiUserCheck, FiChevronRight, FiChevronDown,
   FiGrid, FiList, FiPlay, FiClock, FiVideo, FiFileText, FiLink,
   FiExternalLink, FiEye, FiPaperclip
 } from 'react-icons/fi';
 import CustomSelect from '../components/CustomSelect';
+import ConfirmModal from '../components/ConfirmModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
@@ -63,6 +64,44 @@ const EMPTY_LESSON = {
   status: 'active'
 };
 
+const EMPTY_ASSIGNMENT = {
+  id: '',
+  course_id: '',
+  milestone_id: '',
+  module_id: '',
+  assignment_no: 1,
+  title: '',
+  description: '',
+  total_marks: 100,
+  pass_marks: 50,
+  resources_json: '[]',
+  order_index: 99,
+  status: 'active'
+};
+
+const EMPTY_QUIZ = {
+  id: '',
+  course_id: '',
+  milestone_id: '',
+  module_id: '',
+  title: '',
+  description: '',
+  time_limit_minutes: 10,
+  passing_score_percent: 70,
+  order_index: 99,
+  status: 'active'
+};
+
+const EMPTY_QUESTION = {
+  question_text: '',
+  option_a: '',
+  option_b: '',
+  option_c: '',
+  option_d: '',
+  correct_option: 'a',
+  explanation: ''
+};
+
 const CoursesAndCurriculum = () => {
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' | 'curriculum'
 
@@ -102,8 +141,31 @@ const CoursesAndCurriculum = () => {
   const [savingLesson, setSavingLesson] = useState(false);
   const [resourceInputs, setResourceInputs] = useState([{ title: '', url: '' }]);
 
+  // Quiz Modal State
+  const [showQuizModal, setShowQuizModal] = useState(false);
+  const [quizForm, setQuizForm] = useState(EMPTY_QUIZ);
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [savingQuiz, setSavingQuiz] = useState(false);
+
+  // Assignment Modal State
+  const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [assignmentForm, setAssignmentForm] = useState(EMPTY_ASSIGNMENT);
+  const [asgResourceInputs, setAsgResourceInputs] = useState([{ title: '', url: '' }]);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+
   // Video Preview Modal
   const [previewVideoUrl, setPreviewVideoUrl] = useState('');
+
+  // Modern Confirmation Modal State
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Delete',
+    confirmVariant: 'danger',
+    loading: false,
+    onConfirm: null
+  });
 
   // Fetch initial courses list
   const fetchCourses = async () => {
@@ -219,17 +281,32 @@ const CoursesAndCurriculum = () => {
   };
 
   // Delete Milestone
-  const handleDeleteMilestone = async (mId) => {
-    if (!window.confirm('Are you sure you want to delete this milestone? Associated modules will become unassigned.')) return;
-    try {
-      const res = await axios.post(`${API_BASE}api/admin/courses/milestones/delete_milestone.php`, { id: mId });
-      if (res.data.status === 'success') {
-        toast.success('Milestone deleted.');
-        fetchCurriculum(selectedCourseId);
+  const handleDeleteMilestone = (mId, mTitle = '') => {
+    setDeleteConfirm({
+      isOpen: true,
+      title: 'Delete Milestone?',
+      message: `Are you sure you want to delete "${mTitle || 'this milestone'}"? Associated modules will become unassigned.`,
+      confirmText: 'Delete Milestone',
+      confirmVariant: 'danger',
+      loading: false,
+      onConfirm: async () => {
+        try {
+          setDeleteConfirm(prev => ({ ...prev, loading: true }));
+          const res = await axios.post(`${API_BASE}api/admin/courses/milestones/delete_milestone.php`, { id: mId });
+          if (res.data.status === 'success') {
+            toast.success('Milestone deleted successfully.');
+            setDeleteConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
+            fetchCurriculum(selectedCourseId);
+          } else {
+            toast.error(res.data.message || 'Failed to delete milestone.');
+            setDeleteConfirm(prev => ({ ...prev, loading: false }));
+          }
+        } catch (err) {
+          toast.error('Failed to delete milestone.');
+          setDeleteConfirm(prev => ({ ...prev, loading: false }));
+        }
       }
-    } catch (err) {
-      toast.error('Failed to delete milestone.');
-    }
+    });
   };
 
   // Save Module Submit
@@ -295,17 +372,32 @@ const CoursesAndCurriculum = () => {
   };
 
   // Delete Lesson
-  const handleDeleteLesson = async (lId) => {
-    if (!window.confirm('Delete this video lesson?')) return;
-    try {
-      const res = await axios.post(`${API_BASE}api/admin/courses/lessons/delete_lesson.php`, { id: lId });
-      if (res.data.status === 'success') {
-        toast.success('Lesson deleted.');
-        fetchCurriculum(selectedCourseId);
+  const handleDeleteLesson = (lId, lTitle = '') => {
+    setDeleteConfirm({
+      isOpen: true,
+      title: 'Delete Video Lesson?',
+      message: `Are you sure you want to permanently delete "${lTitle || 'this video lesson'}"? This action cannot be undone.`,
+      confirmText: 'Delete Lesson',
+      confirmVariant: 'danger',
+      loading: false,
+      onConfirm: async () => {
+        try {
+          setDeleteConfirm(prev => ({ ...prev, loading: true }));
+          const res = await axios.post(`${API_BASE}api/admin/courses/lessons/delete_lesson.php`, { id: lId });
+          if (res.data.status === 'success') {
+            toast.success('Lesson deleted successfully.');
+            setDeleteConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
+            fetchCurriculum(selectedCourseId);
+          } else {
+            toast.error(res.data.message || 'Failed to delete lesson.');
+            setDeleteConfirm(prev => ({ ...prev, loading: false }));
+          }
+        } catch (err) {
+          toast.error('Failed to delete lesson.');
+          setDeleteConfirm(prev => ({ ...prev, loading: false }));
+        }
       }
-    } catch (err) {
-      toast.error('Failed to delete lesson.');
-    }
+    });
   };
 
   const openAddLessonModal = (mod, ms) => {
@@ -328,6 +420,258 @@ const CoursesAndCurriculum = () => {
     });
     setResourceInputs(les.resources && les.resources.length > 0 ? les.resources : [{ title: '', url: '' }]);
     setShowLessonModal(true);
+  };
+
+  // ── Quiz Assessment Handlers ─────────────────────────────────────────────
+  // ── Quiz Assessment Handlers ─────────────────────────────────────────────
+  const openAddQuizModal = (mod, ms) => {
+    const existingCount = (mod.lessons || []).length;
+    setQuizForm({
+      ...EMPTY_QUIZ,
+      course_id: selectedCourseId,
+      milestone_id: ms?.id || mod.milestone_id || '',
+      module_id: mod.id,
+      title: `${mod.title} - Assessment Quiz`,
+      order_index: existingCount + 1
+    });
+    setQuizQuestions([
+      { question_text: '', question_type: 'single_choice', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', correct_answer_text: '', explanation: '', marks: 1 },
+      { question_text: '', question_type: 'short_answer', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: '', correct_answer_text: '', explanation: '', marks: 1 },
+      { question_text: '', question_type: 'true_false', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'true', correct_answer_text: '', explanation: '', marks: 1 }
+    ]);
+    setShowQuizModal(true);
+  };
+
+  const openEditQuizModal = async (quizItem) => {
+    const qId = quizItem.quiz_id || quizItem.id;
+    try {
+      const res = await axios.get(`${API_BASE}api/admin/courses/quizzes/get_quizzes.php?id=${qId}`);
+      if (res.data.status === 'success' && res.data.data) {
+        const qData = res.data.data;
+        setQuizForm({
+          id: qData.id,
+          course_id: qData.course_id,
+          milestone_id: qData.milestone_id || '',
+          module_id: qData.module_id,
+          title: qData.title || '',
+          description: qData.description || '',
+          time_limit_minutes: qData.time_limit_minutes || 10,
+          passing_score_percent: qData.passing_score_percent || 70,
+          order_index: qData.order_index || 99,
+          status: qData.status || 'active'
+        });
+        setQuizQuestions(
+          (qData.questions && qData.questions.length > 0)
+            ? qData.questions.map(q => ({
+              ...q,
+              question_type: q.question_type || 'single_choice',
+              correct_answer_text: q.correct_answer_text || '',
+              marks: q.marks || 1
+            }))
+            : [{ question_text: '', question_type: 'single_choice', option_a: '', option_b: '', option_c: '', option_d: '', correct_option: 'a', correct_answer_text: '', explanation: '', marks: 1 }]
+        );
+        setShowQuizModal(true);
+      } else {
+        toast.error('Could not load quiz details.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error fetching quiz details.');
+    }
+  };
+
+  const handleSaveQuiz = async (e) => {
+    e.preventDefault();
+    if (!quizForm.title || !quizForm.module_id) {
+      toast.error('Module and Quiz Title are required!');
+      return;
+    }
+
+    const validQuestions = quizQuestions.filter(q => {
+      if (!q.question_text || !q.question_text.trim()) return false;
+      if (q.question_type === 'short_answer') {
+        return !!(q.correct_answer_text && q.correct_answer_text.trim());
+      }
+      if (q.question_type === 'true_false') {
+        return true;
+      }
+      return !!(q.option_a && q.option_a.trim());
+    });
+
+    if (validQuestions.length === 0) {
+      toast.error('Please add at least 1 complete question with question text and correct answer/options.');
+      return;
+    }
+
+    try {
+      setSavingQuiz(true);
+      const res = await axios.post(`${API_BASE}api/admin/courses/quizzes/save_quiz.php`, {
+        ...quizForm,
+        course_id: selectedCourseId,
+        questions: validQuestions
+      });
+
+      if (res.data.status === 'success') {
+        toast.success(res.data.message || 'Quiz Assessment saved successfully!');
+        setShowQuizModal(false);
+        setQuizForm(EMPTY_QUIZ);
+        setQuizQuestions([]);
+        fetchCurriculum(selectedCourseId);
+      } else {
+        toast.error(res.data.message || 'Failed to save quiz.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error saving quiz.');
+    } finally {
+      setSavingQuiz(false);
+    }
+  };
+
+  const handleDeleteQuiz = (qId, qTitle = '') => {
+    setDeleteConfirm({
+      isOpen: true,
+      title: 'Delete Assessment Quiz?',
+      message: `Are you sure you want to delete "${qTitle || 'this Quiz'}" and all of its associated questions? This action cannot be undone.`,
+      confirmText: 'Delete Quiz',
+      confirmVariant: 'danger',
+      loading: false,
+      onConfirm: async () => {
+        try {
+          setDeleteConfirm(prev => ({ ...prev, loading: true }));
+          const res = await axios.post(`${API_BASE}api/admin/courses/quizzes/delete_quiz.php`, { id: qId });
+          if (res.data.status === 'success') {
+            toast.success('Quiz deleted successfully.');
+            setDeleteConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
+            fetchCurriculum(selectedCourseId);
+          } else {
+            toast.error(res.data.message || 'Failed to delete quiz.');
+            setDeleteConfirm(prev => ({ ...prev, loading: false }));
+          }
+        } catch (err) {
+          toast.error('Failed to delete quiz.');
+          setDeleteConfirm(prev => ({ ...prev, loading: false }));
+        }
+      }
+    });
+  };
+
+  const handleAddQuestionRow = (type = 'single_choice') => {
+    setQuizQuestions([
+      ...quizQuestions,
+      {
+        question_text: '',
+        question_type: type,
+        option_a: '',
+        option_b: '',
+        option_c: '',
+        option_d: '',
+        correct_option: type === 'true_false' ? 'true' : 'a',
+        correct_answer_text: '',
+        explanation: '',
+        marks: 1
+      }
+    ]);
+  };
+
+  const handleRemoveQuestionRow = (idx) => {
+    if (quizQuestions.length <= 1) {
+      toast.error('At least one question is required.');
+      return;
+    }
+    setQuizQuestions(quizQuestions.filter((_, i) => i !== idx));
+  };
+
+  const handleQuestionFieldChange = (idx, field, val) => {
+    const copy = [...quizQuestions];
+    copy[idx] = { ...copy[idx], [field]: val };
+    setQuizQuestions(copy);
+  };
+
+  // ── Assignment Handlers ────────────────────────────────────────────────
+  const openAddAssignmentModal = (mod, ms) => {
+    const existingCount = (mod.lessons || []).length;
+    setAssignmentForm({
+      ...EMPTY_ASSIGNMENT,
+      course_id: selectedCourseId,
+      milestone_id: ms?.id || mod.milestone_id || '',
+      module_id: mod.id,
+      assignment_no: existingCount + 1,
+      title: `${mod.title} - Project Assignment`,
+      order_index: existingCount + 1
+    });
+    setAsgResourceInputs([{ title: '', url: '' }]);
+    setShowAssignmentModal(true);
+  };
+
+  const openEditAssignmentModal = (asg) => {
+    setAssignmentForm({
+      ...asg,
+      resources_json: JSON.stringify(asg.resources || [])
+    });
+    setAsgResourceInputs(asg.resources && asg.resources.length > 0 ? asg.resources : [{ title: '', url: '' }]);
+    setShowAssignmentModal(true);
+  };
+
+  const handleSaveAssignment = async (e) => {
+    e.preventDefault();
+    if (!assignmentForm.title || !assignmentForm.module_id || !selectedCourseId) {
+      toast.error('Module and Assignment Title are required!');
+      return;
+    }
+
+    const filteredResources = asgResourceInputs.filter(r => r.title.trim() && r.url.trim());
+
+    try {
+      setSavingAssignment(true);
+      const res = await axios.post(`${API_BASE}api/admin/courses/assignments/save_assignment.php`, {
+        ...assignmentForm,
+        course_id: selectedCourseId,
+        resources_json: JSON.stringify(filteredResources)
+      });
+
+      if (res.data.status === 'success') {
+        toast.success(res.data.message || 'Assignment saved successfully!');
+        setShowAssignmentModal(false);
+        setAssignmentForm(EMPTY_ASSIGNMENT);
+        fetchCurriculum(selectedCourseId);
+      } else {
+        toast.error(res.data.message || 'Failed to save assignment.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Error saving assignment.');
+    } finally {
+      setSavingAssignment(false);
+    }
+  };
+
+  const handleDeleteAssignment = (aId, aTitle = '') => {
+    setDeleteConfirm({
+      isOpen: true,
+      title: 'Delete Practical Assignment?',
+      message: `Are you sure you want to delete "${aTitle || 'this Assignment'}" and all of its student submissions? This action cannot be undone.`,
+      confirmText: 'Delete Assignment',
+      confirmVariant: 'danger',
+      loading: false,
+      onConfirm: async () => {
+        try {
+          setDeleteConfirm(prev => ({ ...prev, loading: true }));
+          const res = await axios.post(`${API_BASE}api/admin/courses/assignments/delete_assignment.php`, { id: aId });
+          if (res.data.status === 'success') {
+            toast.success('Assignment deleted successfully.');
+            setDeleteConfirm(prev => ({ ...prev, isOpen: false, loading: false }));
+            fetchCurriculum(selectedCourseId);
+          } else {
+            toast.error(res.data.message || 'Failed to delete assignment.');
+            setDeleteConfirm(prev => ({ ...prev, loading: false }));
+          }
+        } catch (err) {
+          toast.error('Failed to delete assignment.');
+          setDeleteConfirm(prev => ({ ...prev, loading: false }));
+        }
+      }
+    });
   };
 
   const filteredCourses = courses.filter(c => {
@@ -417,11 +761,10 @@ const CoursesAndCurriculum = () => {
       <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 pb-2">
         <button
           onClick={() => setActiveTab('courses')}
-          className={`px-5 py-2.5 rounded-2xl text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'courses'
+          className={`px-5 py-2.5 rounded-2xl text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'courses'
               ? 'bg-purple-600 text-white shadow-md shadow-purple-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
+            }`}
         >
           <FiBookOpen size={16} />
           <span>Courses Master ({courses.length})</span>
@@ -432,11 +775,10 @@ const CoursesAndCurriculum = () => {
             setActiveTab('curriculum');
             if (selectedCourseId) fetchCurriculum(selectedCourseId);
           }}
-          className={`px-5 py-2.5 rounded-2xl text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${
-            activeTab === 'curriculum'
+          className={`px-5 py-2.5 rounded-2xl text-sm font-black transition-all flex items-center gap-2 cursor-pointer ${activeTab === 'curriculum'
               ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20'
               : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
+            }`}
         >
           <FiLayers size={16} />
           <span>Curriculum Studio (Milestones & Videos)</span>
@@ -461,11 +803,10 @@ const CoursesAndCurriculum = () => {
             <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
               <button
                 onClick={() => setSelectedCategoryFilter('all')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                  selectedCategoryFilter === 'all'
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${selectedCategoryFilter === 'all'
                     ? 'bg-purple-600 text-white'
                     : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
+                  }`}
               >
                 All Categories
               </button>
@@ -473,11 +814,10 @@ const CoursesAndCurriculum = () => {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategoryFilter(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${
-                    selectedCategoryFilter === cat
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors shrink-0 cursor-pointer ${selectedCategoryFilter === cat
                       ? 'bg-purple-600 text-white'
                       : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                  }`}
+                    }`}
                 >
                   {cat}
                 </button>
@@ -532,11 +872,10 @@ const CoursesAndCurriculum = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          c.status === 'active'
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${c.status === 'active'
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                             : 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                        }`}>
+                          }`}>
                           {c.status}
                         </span>
                       </td>
@@ -679,7 +1018,7 @@ const CoursesAndCurriculum = () => {
                           </button>
 
                           <button
-                            onClick={() => handleDeleteMilestone(ms.id)}
+                            onClick={() => handleDeleteMilestone(ms.id, ms.title)}
                             className="p-2 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer"
                             title="Delete Milestone"
                           >
@@ -736,9 +1075,28 @@ const CoursesAndCurriculum = () => {
                                       <button
                                         onClick={() => openAddLessonModal(mod, ms)}
                                         className="px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                        title="Add a video lecture"
                                       >
                                         <FiPlus size={13} />
-                                        <span>Add Video Lesson</span>
+                                        <span>Add Video</span>
+                                      </button>
+
+                                      <button
+                                        onClick={() => openAddAssignmentModal(mod, ms)}
+                                        className="px-3 py-1.5 bg-amber-600/10 hover:bg-amber-600 text-amber-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                        title="Add a hands-on project assignment"
+                                      >
+                                        <FiFolder size={13} />
+                                        <span>Add Assignment</span>
+                                      </button>
+
+                                      <button
+                                        onClick={() => openAddQuizModal(mod, ms)}
+                                        className="px-3 py-1.5 bg-purple-600/10 hover:bg-purple-600 text-purple-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                                        title="Add an MCQ Assessment anywhere in this module"
+                                      >
+                                        <FiAward size={13} />
+                                        <span>Add MCQ Quiz</span>
                                       </button>
 
                                       <button
@@ -761,69 +1119,171 @@ const CoursesAndCurriculum = () => {
                                     </div>
                                   </div>
 
-                                  {/* 5-9 Video Lessons Table */}
+                                  {/* Video Lessons & Quizzes Table */}
                                   {isModOpen && (
                                     <div className="p-3 bg-slate-50/70 dark:bg-slate-900/60">
                                       {lessonsList.length === 0 ? (
                                         <div className="p-6 text-center text-slate-400 text-xs">
-                                          No video classes added yet. Click "+ Add Video Lesson" to add the 5-9 video lectures.
+                                          No content added yet. Click "+ Add Video" or "+ Add MCQ Quiz" to build this module.
                                         </div>
                                       ) : (
                                         <div className="space-y-2">
-                                          {lessonsList.map((les, lIdx) => (
-                                            <div
-                                              key={les.id}
-                                              className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between gap-3 text-xs"
-                                            >
-                                              <div className="flex items-center gap-3 min-w-0">
-                                                <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-black flex items-center justify-center text-[10px] shrink-0">
-                                                  {les.lesson_no || lIdx + 1}
-                                                </span>
-                                                <div className="min-w-0">
-                                                  <p className="font-bold text-slate-900 dark:text-white truncate">
-                                                    {les.title}
-                                                  </p>
-                                                  <p className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                                                    <span className="flex items-center gap-1 font-mono">
-                                                      <FiClock size={11} />
-                                                      {les.duration_minutes}
+                                          {lessonsList.map((les, lIdx) => {
+                                            const isQuiz = les.item_type === 'quiz';
+
+                                            if (les.item_type === 'assignment') {
+                                              return (
+                                                <div
+                                                  key={`assignment-${les.id || les.assignment_id}`}
+                                                  className="p-3 rounded-xl bg-amber-50/80 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-850 flex items-center justify-between gap-3 text-xs transition-all hover:shadow-xs"
+                                                >
+                                                  <div className="flex items-center gap-3 min-w-0">
+                                                    <span className="w-6 h-6 rounded-lg bg-amber-500 text-white font-black flex items-center justify-center text-[10px] shrink-0 shadow-xs">
+                                                      📁
                                                     </span>
-                                                    <span className="uppercase font-bold text-indigo-500">
-                                                      [{les.video_type}]
+                                                    <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 dark:text-amber-100 truncate flex items-center gap-2">
+                                                        <span>{les.title}</span>
+                                                        <span className="px-1.5 py-0.5 bg-amber-200/80 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 font-extrabold text-[9px] rounded-md tracking-wider">
+                                                          ASSIGNMENT
+                                                        </span>
+                                                      </p>
+                                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2.5 mt-0.5 font-medium">
+                                                        <span className="text-amber-600 dark:text-amber-400 font-bold">
+                                                          ⭐ {les.total_marks || 100} Marks (Pass: {les.pass_marks || 50})
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>📎 {(les.resources || []).length} Starter Files</span>
+                                                      </p>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* Assignment Actions */}
+                                                  <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                      onClick={() => openEditAssignmentModal(les)}
+                                                      className="p-1.5 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 rounded-lg cursor-pointer transition-colors"
+                                                      title="Edit Assignment"
+                                                    >
+                                                      <FiEdit2 size={14} />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleDeleteAssignment(les.assignment_id || les.id, les.title)}
+                                                      className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer transition-colors"
+                                                      title="Delete Assignment"
+                                                    >
+                                                      <FiTrash2 size={14} />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+
+                                            if (isQuiz) {
+                                              return (
+                                                <div
+                                                  key={`quiz-${les.id || les.quiz_id}`}
+                                                  className="p-3 rounded-xl bg-purple-50/80 dark:bg-purple-950/30 border border-purple-200/80 dark:border-purple-850 flex items-center justify-between gap-3 text-xs transition-all hover:shadow-xs"
+                                                >
+                                                  <div className="flex items-center gap-3 min-w-0">
+                                                    <span className="w-6 h-6 rounded-lg bg-purple-600 text-white font-black flex items-center justify-center text-[10px] shrink-0 shadow-xs">
+                                                      🧠
                                                     </span>
-                                                    {les.is_free_preview && (
-                                                      <span className="text-amber-500 font-bold">★ Free Preview</span>
-                                                    )}
-                                                  </p>
+                                                    <div className="min-w-0">
+                                                      <p className="font-bold text-slate-900 dark:text-purple-100 truncate flex items-center gap-2">
+                                                        <span>{les.title}</span>
+                                                        <span className="px-1.5 py-0.5 bg-purple-200/80 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 font-extrabold text-[9px] rounded-md tracking-wider">
+                                                          MCQ QUIZ
+                                                        </span>
+                                                      </p>
+                                                      <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2.5 mt-0.5 font-medium">
+                                                        <span className="text-purple-600 dark:text-purple-400 font-bold">
+                                                          {les.question_count || 5} Questions
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>⏱️ {les.time_limit_minutes || 10} Mins</span>
+                                                        <span>•</span>
+                                                        <span>🎯 {les.passing_score_percent || 70}% Pass Criteria</span>
+                                                      </p>
+                                                    </div>
+                                                  </div>
+
+                                                  {/* Quiz Actions */}
+                                                  <div className="flex items-center gap-1.5 shrink-0">
+                                                    <button
+                                                      onClick={() => openEditQuizModal(les)}
+                                                      className="p-1.5 text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200 rounded-lg cursor-pointer transition-colors"
+                                                      title="Edit Quiz & Questions"
+                                                    >
+                                                      <FiEdit2 size={14} />
+                                                    </button>
+                                                    <button
+                                                      onClick={() => handleDeleteQuiz(les.quiz_id || les.id, les.title)}
+                                                      className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer transition-colors"
+                                                      title="Delete Quiz"
+                                                    >
+                                                      <FiTrash2 size={14} />
+                                                    </button>
+                                                  </div>
+                                                </div>
+                                              );
+                                            }
+
+                                            return (
+                                              <div
+                                                key={`lesson-${les.id}`}
+                                                className="p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-between gap-3 text-xs"
+                                              >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                  <span className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300 font-black flex items-center justify-center text-[10px] shrink-0">
+                                                    {les.lesson_no || lIdx + 1}
+                                                  </span>
+                                                  <div className="min-w-0">
+                                                    <p className="font-bold text-slate-900 dark:text-white truncate">
+                                                      {les.title}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                                                      <span className="flex items-center gap-1 font-mono">
+                                                        <FiClock size={11} />
+                                                        {les.duration_minutes}
+                                                      </span>
+                                                      <span className="uppercase font-bold text-indigo-500">
+                                                        [{les.video_type}]
+                                                      </span>
+                                                      {les.is_free_preview && (
+                                                        <span className="text-amber-500 font-bold">★ Free Preview</span>
+                                                      )}
+                                                    </p>
+                                                  </div>
+                                                </div>
+
+                                                {/* Lesson Actions */}
+                                                <div className="flex items-center gap-1.5 shrink-0">
+                                                  <button
+                                                    onClick={() => setPreviewVideoUrl(les.video_url)}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-lg cursor-pointer"
+                                                    title="Preview Video"
+                                                  >
+                                                    <FiEye size={14} />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => openEditLessonModal(les)}
+                                                    className="p-1.5 text-slate-400 hover:text-blue-500 rounded-lg cursor-pointer"
+                                                    title="Edit Lesson"
+                                                  >
+                                                    <FiEdit2 size={14} />
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleDeleteLesson(les.id, les.title)}
+                                                    className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer"
+                                                    title="Delete Lesson"
+                                                  >
+                                                    <FiTrash2 size={14} />
+                                                  </button>
                                                 </div>
                                               </div>
-
-                                              {/* Lesson Actions */}
-                                              <div className="flex items-center gap-1.5 shrink-0">
-                                                <button
-                                                  onClick={() => setPreviewVideoUrl(les.video_url)}
-                                                  className="p-1.5 text-slate-400 hover:text-indigo-500 rounded-lg cursor-pointer"
-                                                  title="Preview Video"
-                                                >
-                                                  <FiEye size={14} />
-                                                </button>
-                                                <button
-                                                  onClick={() => openEditLessonModal(les)}
-                                                  className="p-1.5 text-slate-400 hover:text-blue-500 rounded-lg cursor-pointer"
-                                                  title="Edit Lesson"
-                                                >
-                                                  <FiEdit2 size={14} />
-                                                </button>
-                                                <button
-                                                  onClick={() => handleDeleteLesson(les.id)}
-                                                  className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg cursor-pointer"
-                                                  title="Delete Lesson"
-                                                >
-                                                  <FiTrash2 size={14} />
-                                                </button>
-                                              </div>
-                                            </div>
-                                          ))}
+                                            );
+                                          })}
                                         </div>
                                       )}
                                     </div>
@@ -1092,6 +1552,167 @@ const CoursesAndCurriculum = () => {
         document.body
       )}
 
+      {/* Modal: Assignment Create / Edit */}
+      {showAssignmentModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] flex flex-col border border-slate-100 dark:border-slate-700 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-amber-50 dark:bg-amber-900/40 text-amber-600 rounded-xl">
+                  <FiFolder size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                    {assignmentForm.id ? 'Edit Assignment Task' : 'Add Practical Assignment'}
+                  </h2>
+                  <p className="text-xs text-slate-400">Set project brief, instructions, total marks, and starter assets.</p>
+                </div>
+              </div>
+              <button onClick={() => setShowAssignmentModal(false)} className="p-2 text-slate-400 hover:text-white cursor-pointer">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAssignment} className="p-6 space-y-4 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Project No</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={assignmentForm.assignment_no}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, assignment_no: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Marks</label>
+                  <input
+                    type="number"
+                    min="10"
+                    required
+                    value={assignmentForm.total_marks}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, total_marks: parseInt(e.target.value) || 100 })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pass Marks</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={assignmentForm.pass_marks}
+                    onChange={(e) => setAssignmentForm({ ...assignmentForm, pass_marks: parseInt(e.target.value) || 50 })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Assignment Title *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Photoshop Social Media Poster Design Task"
+                  value={assignmentForm.title}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, title: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                  Project Brief & Requirements (Detailed Instructions) *
+                </label>
+                <textarea
+                  rows="5"
+                  required
+                  placeholder="Explain what the student needs to build, design requirements, image dimensions, guidelines, and what link format to submit..."
+                  value={assignmentForm.description}
+                  onChange={(e) => setAssignmentForm({ ...assignmentForm, description: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm dark:text-white"
+                ></textarea>
+              </div>
+
+              {/* Starter File Downloads */}
+              <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    Downloadable Starter Assets / Demo Files
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setAsgResourceInputs([...asgResourceInputs, { title: '', url: '' }])}
+                    className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer"
+                  >
+                    <FiPlus size={12} />
+                    <span>Add File Link</span>
+                  </button>
+                </div>
+
+                {asgResourceInputs.map((res, rIdx) => (
+                  <div key={rIdx} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Asset Title (e.g. Demo Assets ZIP / Figma Starter)"
+                      value={res.title}
+                      onChange={(e) => {
+                        const copy = [...asgResourceInputs];
+                        copy[rIdx].title = e.target.value;
+                        setAsgResourceInputs(copy);
+                      }}
+                      className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:text-white"
+                    />
+                    <input
+                      type="url"
+                      placeholder="Download URL (https://drive.google.com/...)"
+                      value={res.url}
+                      onChange={(e) => {
+                        const copy = [...asgResourceInputs];
+                        copy[rIdx].url = e.target.value;
+                        setAsgResourceInputs(copy);
+                      }}
+                      className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:text-white"
+                    />
+                    {asgResourceInputs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setAsgResourceInputs(asgResourceInputs.filter((_, i) => i !== rIdx))}
+                        className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer"
+                      >
+                        <FiTrash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignmentModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingAssignment}
+                  className="px-6 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs shadow-md shadow-amber-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  {savingAssignment ? 'Saving Assignment...' : assignmentForm.id ? 'Update Assignment' : 'Publish Assignment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Modal: Video Lesson Create / Edit */}
       {showLessonModal && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
@@ -1257,6 +1878,410 @@ const CoursesAndCurriculum = () => {
         document.body
       )}
 
+      {/* Modal: MCQ Quiz Assessment Builder */}
+      {showQuizModal && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col border border-slate-100 dark:border-slate-700 overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-700 bg-purple-50/50 dark:bg-purple-950/20">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-md">
+                  <FiAward size={22} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>{quizForm.id ? 'Edit Quiz Assessment' : 'Create MCQ Quiz Assessment'}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 font-bold">
+                      🧠 Interactive Exam
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Set passing criteria, countdown timer, and 5-10 multiple choice questions with explanations.
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setShowQuizModal(false)} className="p-2 text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">
+                <FiX size={20} />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSaveQuiz} className="p-6 space-y-6 overflow-y-auto flex-1">
+              {/* Quiz General Settings */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-700 space-y-4">
+                <h4 className="text-xs font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                  <span>⚙️ Quiz Parameters & Timing</span>
+                </h4>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Quiz Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Module 01 Assessment: HTML5 & Modern Semantic Web"
+                    value={quizForm.title}
+                    onChange={(e) => setQuizForm({ ...quizForm, title: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Time Limit (Minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="180"
+                      required
+                      value={quizForm.time_limit_minutes}
+                      onChange={(e) => setQuizForm({ ...quizForm, time_limit_minutes: parseInt(e.target.value) || 10 })}
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Pass Score (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      required
+                      value={quizForm.passing_score_percent}
+                      onChange={(e) => setQuizForm({ ...quizForm, passing_score_percent: parseInt(e.target.value) || 70 })}
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Order / Position Index
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={quizForm.order_index}
+                      onChange={(e) => setQuizForm({ ...quizForm, order_index: parseInt(e.target.value) || 1 })}
+                      className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">
+                    Brief Instructions / Description (Optional)
+                  </label>
+                  <textarea
+                    rows="2"
+                    placeholder="Instructions for students before they start the assessment..."
+                    value={quizForm.description || ''}
+                    onChange={(e) => setQuizForm({ ...quizForm, description: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs dark:text-white"
+                  ></textarea>
+                </div>
+              </div>
+
+              {/* Questions Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Questions Set</span>
+                      <span className="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                        {quizQuestions.length} Questions
+                      </span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Support for MCQs, Direct Question & Answer (Short Answer), and True/False questions.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuestionRow('single_choice')}
+                      className="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <FiPlus size={13} />
+                      <span>+ MCQ</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuestionRow('short_answer')}
+                      className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <FiPlus size={13} />
+                      <span>+ Direct Q&A (Short Ans)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddQuestionRow('true_false')}
+                      className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm cursor-pointer"
+                    >
+                      <FiPlus size={13} />
+                      <span>+ True/False</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {quizQuestions.map((q, qIdx) => {
+                    const qType = q.question_type || 'single_choice';
+
+                    return (
+                      <div
+                        key={qIdx}
+                        className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-900/40 space-y-3.5 shadow-xs"
+                      >
+                        {/* Question Header & Type Selector */}
+                        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-slate-100 dark:border-slate-700/50 pb-2.5">
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/60 text-purple-600 dark:text-purple-400 flex items-center justify-center text-[10px] font-bold">
+                              {qIdx + 1}
+                            </span>
+                            <span className="text-xs font-black text-slate-800 dark:text-white">
+                              Question {qIdx + 1}
+                            </span>
+                          </div>
+
+                          {/* Question Type Switcher */}
+                          <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                            <button
+                              type="button"
+                              onClick={() => handleQuestionFieldChange(qIdx, 'question_type', 'single_choice')}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${qType === 'single_choice'
+                                  ? 'bg-purple-600 text-white shadow-xs'
+                                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                            >
+                              🔘 MCQ (4 Options)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuestionFieldChange(qIdx, 'question_type', 'short_answer')}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${qType === 'short_answer'
+                                  ? 'bg-emerald-600 text-white shadow-xs'
+                                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                            >
+                              ✍️ Direct Q&A (Short Ans)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleQuestionFieldChange(qIdx, 'question_type', 'true_false')}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${qType === 'true_false'
+                                  ? 'bg-blue-600 text-white shadow-xs'
+                                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                                }`}
+                            >
+                              ⚖️ True/False
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveQuestionRow(qIdx)}
+                            className="text-slate-400 hover:text-rose-500 p-1 rounded-lg cursor-pointer"
+                            title="Delete this question"
+                          >
+                            <FiTrash2 size={14} />
+                          </button>
+                        </div>
+
+                        {/* Question Text */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            Question / Prompt Text *
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder={
+                              qType === 'short_answer'
+                                ? "e.g. CPU এর পূর্ণরূপ কী? অথবা What shortcut key saves a document in MS Word?"
+                                : qType === 'true_false'
+                                  ? "e.g. HTML হলো একটি প্রোগ্রামিং ল্যাঙ্গুয়েজ (True / False)"
+                                  : "e.g. Which CSS property is used to create a flex container?"
+                            }
+                            value={q.question_text}
+                            onChange={(e) => handleQuestionFieldChange(qIdx, 'question_text', e.target.value)}
+                            className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold dark:text-white"
+                          />
+                        </div>
+
+                        {/* TYPE 1: DIRECT QUESTION & ANSWER (SHORT ANSWER) */}
+                        {qType === 'short_answer' && (
+                          <div className="p-3.5 rounded-xl bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-black uppercase text-emerald-800 dark:text-emerald-300">
+                                ✍️ Accepted Correct Answer / Keywords *
+                              </label>
+                              <span className="text-[10px] text-slate-400 font-mono">Case-insensitive auto evaluation</span>
+                            </div>
+                            <input
+                              type="text"
+                              required
+                              placeholder="যেমন: Central Processing Unit অথবা একাধিক বিকল্প উত্তর: Ctrl+S, Ctrl + S, Control S"
+                              value={q.correct_answer_text || ''}
+                              onChange={(e) => handleQuestionFieldChange(qIdx, 'correct_answer_text', e.target.value)}
+                              className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs font-bold text-emerald-950 dark:text-emerald-200"
+                            />
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                              💡 শিক্ষার্থী এই উত্তরটি অথবা কমা (,) দিয়ে আলাদা করা যেকোনো বিকল্প কীওয়ার্ড লিখলে সঠিক গণ্য করা হবে।
+                            </p>
+                          </div>
+                        )}
+
+                        {/* TYPE 2: TRUE / FALSE */}
+                        {qType === 'true_false' && (
+                          <div className="p-3.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/60 space-y-2">
+                            <label className="text-[11px] font-black uppercase text-blue-800 dark:text-blue-300 block">
+                              ⚖️ Select the Correct Verdict
+                            </label>
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={() => handleQuestionFieldChange(qIdx, 'correct_option', 'true')}
+                                className={`flex-1 py-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer ${(q.correct_option || 'true') === 'true'
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                                  }`}
+                              >
+                                ✅ True (সত্য)
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleQuestionFieldChange(qIdx, 'correct_option', 'false')}
+                                className={`flex-1 py-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer ${(q.correct_option || 'true') === 'false'
+                                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                                  }`}
+                              >
+                                ❌ False (মিথ্যা)
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* TYPE 3: 4 OPTIONS MCQ */}
+                        {qType === 'single_choice' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            {['a', 'b', 'c', 'd'].map((optKey) => {
+                              const isCorrect = (q.correct_option || 'a').toLowerCase() === optKey;
+                              const fieldName = `option_${optKey}`;
+
+                              return (
+                                <div
+                                  key={optKey}
+                                  className={`p-2 rounded-xl border transition-all ${isCorrect
+                                      ? 'border-emerald-500 bg-emerald-50/40 dark:bg-emerald-950/20'
+                                      : 'border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/30'
+                                    }`}
+                                >
+                                  <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[10px] font-black uppercase text-slate-400">
+                                      Option {optKey.toUpperCase()}
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleQuestionFieldChange(qIdx, 'correct_option', optKey)}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-black cursor-pointer transition-colors ${isCorrect
+                                          ? 'bg-emerald-600 text-white shadow-xs'
+                                          : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-300'
+                                        }`}
+                                    >
+                                      {isCorrect ? '✓ Correct Answer' : 'Set as Correct'}
+                                    </button>
+                                  </div>
+                                  <input
+                                    type="text"
+                                    required={optKey === 'a' || optKey === 'b'}
+                                    placeholder={`Text for option ${optKey.toUpperCase()}...`}
+                                    value={q[fieldName] || ''}
+                                    onChange={(e) => handleQuestionFieldChange(qIdx, fieldName, e.target.value)}
+                                    className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium dark:text-white"
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Explanation */}
+                        <div>
+                          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            💡 Instructor Explanation / Reason (Shown to student on review)
+                          </label>
+                          <textarea
+                            rows="1.5"
+                            placeholder="Explain why this answer is correct and provide learning hints..."
+                            value={q.explanation || ''}
+                            onChange={(e) => handleQuestionFieldChange(qIdx, 'explanation', e.target.value)}
+                            className="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs dark:text-white"
+                          ></textarea>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-2 flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuestionRow('single_choice')}
+                    className="flex-1 py-3 border-2 border-dashed border-purple-300 dark:border-purple-800/80 hover:border-purple-500 dark:hover:border-purple-600 text-purple-600 dark:text-purple-400 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <FiPlus size={16} />
+                    <span>+ Add MCQ Question</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuestionRow('short_answer')}
+                    className="flex-1 py-3 border-2 border-dashed border-emerald-300 dark:border-emerald-800/80 hover:border-emerald-500 dark:hover:border-emerald-600 text-emerald-600 dark:text-emerald-400 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <FiPlus size={16} />
+                    <span>+ Add Direct Q&A Question</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAddQuestionRow('true_false')}
+                    className="flex-1 py-3 border-2 border-dashed border-blue-300 dark:border-blue-800/80 hover:border-blue-500 dark:hover:border-blue-600 text-blue-600 dark:text-blue-400 font-bold rounded-2xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <FiPlus size={16} />
+                    <span>+ Add True/False Question</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-700 sticky bottom-0 bg-white dark:bg-slate-800 py-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuizModal(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingQuiz}
+                  className="px-6 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl text-xs shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-50"
+                >
+                  {savingQuiz ? 'Saving Quiz & Questions...' : quizForm.id ? 'Update Quiz Assessment' : 'Publish MCQ Quiz'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* Video Preview Modal */}
       {previewVideoUrl && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -1279,6 +2304,12 @@ const CoursesAndCurriculum = () => {
         </div>,
         document.body
       )}
+
+      {/* Modern Confirmation Modal */}
+      <ConfirmModal
+        {...deleteConfirm}
+        onCancel={() => setDeleteConfirm(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

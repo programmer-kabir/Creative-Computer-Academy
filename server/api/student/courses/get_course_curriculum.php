@@ -115,7 +115,78 @@ try {
     $lesStmt->execute([':cid' => $course_id]);
     $allLessons = $lesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Organize Lessons by Module ID
+    // 6. Fetch Quizzes for this Course
+    $allQuizzes = [];
+    $quizPassedMap = [];
+    try {
+        $qStmt = $db->prepare("
+            SELECT q.id, q.course_id, q.milestone_id, q.module_id, q.quiz_no, q.title, 
+                   q.description, q.time_limit_minutes, q.passing_score_percent, q.total_marks, 
+                   q.order_index, q.status,
+                   COUNT(qq.id) AS question_count
+            FROM course_quizzes q
+            LEFT JOIN course_quiz_questions qq ON q.id = qq.quiz_id
+            WHERE q.course_id = :cid AND q.status = 'active'
+            GROUP BY q.id
+            ORDER BY q.module_id ASC, q.order_index ASC, q.id ASC
+        ");
+        $qStmt->execute([':cid' => $course_id]);
+        $allQuizzes = $qStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Check if student has passed any of these quizzes
+        if ($user_id > 0 && !empty($allQuizzes)) {
+            $attCheck = $db->prepare("
+                SELECT quiz_id, is_passed, score_percent, correct_answers, total_questions 
+                FROM student_quiz_attempts 
+                WHERE user_id = :uid AND course_id = :cid
+            ");
+            $attCheck->execute([':uid' => $user_id, ':cid' => $course_id]);
+            $attempts = $attCheck->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($attempts as $at) {
+                $qid = intval($at['quiz_id']);
+                if (intval($at['is_passed']) === 1) {
+                    $quizPassedMap[$qid] = true;
+                }
+            }
+        }
+    } catch (Throwable $e) {}
+
+    // 7. Fetch Practical Assignments for this Course
+    $allAssignments = [];
+    $assignmentSubmissionMap = [];
+    try {
+        $asgStmt = $db->prepare("
+            SELECT id, course_id, milestone_id, module_id, assignment_no, title, 
+                   description, total_marks, pass_marks, resources_json, order_index, status
+            FROM course_assignments
+            WHERE course_id = :cid AND status = 'active'
+            ORDER BY module_id ASC, order_index ASC, id ASC
+        ");
+        $asgStmt->execute([':cid' => $course_id]);
+        $allAssignments = $asgStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($user_id > 0 && !empty($allAssignments)) {
+            $subCheck = $db->prepare("
+                SELECT id, assignment_id, submission_link, file_url, file_name, file_size, files_json, notes, marks_obtained, feedback, status, submitted_at, reviewed_at
+                FROM student_submissions
+                WHERE user_id = :uid AND course_id = :cid
+            ");
+            $subCheck->execute([':uid' => $user_id, ':cid' => $course_id]);
+            $subs = $subCheck->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($subs as $s) {
+                $aid = intval($s['assignment_id']);
+                if (!empty($s['files_json'])) {
+                    $decodedF = json_decode($s['files_json'], true);
+                    if (is_array($decodedF)) {
+                        $s['files'] = $decodedF;
+                    }
+                }
+                $assignmentSubmissionMap[$aid] = $s;
+            }
+        }
+    } catch (Throwable $e) {}
+
+    // Organize Lessons, Quizzes and Assignments by Module ID
     $lessonsByModule = [];
     $totalLessonsCount = count($allLessons);
     $completedLessonsCount = 0;
@@ -141,6 +212,7 @@ try {
         $formattedLesson = [
             'id' => $lesId,
             'slug' => slugify($les['title']),
+            'item_type' => 'video',
             'course_id' => intval($les['course_id']),
             'milestone_id' => $les['milestone_id'] ? intval($les['milestone_id']) : null,
             'module_id' => $modId,
@@ -166,6 +238,96 @@ try {
             $lessonsByModule[$modId] = [];
         }
         $lessonsByModule[$modId][] = $formattedLesson;
+    }
+
+    // Merge Quizzes into respective modules
+    foreach ($allQuizzes as $qz) {
+        $qId = intval($qz['id']);
+        $modId = intval($qz['module_id']);
+        $isPassed = isset($quizPassedMap[$qId]);
+        if ($isPassed) {
+            $completedLessonsCount++;
+        }
+        $totalLessonsCount++;
+
+        $formattedQuiz = [
+            'id' => $qId,
+            'quiz_id' => $qId,
+            'slug' => slugify($qz['title']),
+            'item_type' => 'quiz',
+            'course_id' => intval($qz['course_id']),
+            'milestone_id' => $qz['milestone_id'] ? intval($qz['milestone_id']) : null,
+            'module_id' => $modId,
+            'lesson_no' => intval($qz['quiz_no']),
+            'title' => $qz['title'],
+            'description' => $qz['description'],
+            'duration_minutes' => ($qz['time_limit_minutes'] ? $qz['time_limit_minutes'] . ':00' : '10:00'),
+            'time_limit_minutes' => intval($qz['time_limit_minutes']),
+            'passing_score_percent' => intval($qz['passing_score_percent']),
+            'question_count' => intval($qz['question_count']) ?: 5,
+            'order_index' => intval($qz['order_index']) ?: 99,
+            'is_free_preview' => false,
+            'is_completed' => $isPassed,
+            'is_passed' => $isPassed
+        ];
+
+        if (!isset($lessonsByModule[$modId])) {
+            $lessonsByModule[$modId] = [];
+        }
+        $lessonsByModule[$modId][] = $formattedQuiz;
+    }
+
+    // Merge Practical Assignments into respective modules
+    foreach ($allAssignments as $asg) {
+        $aId = intval($asg['id']);
+        $modId = intval($asg['module_id']);
+        $sub = isset($assignmentSubmissionMap[$aId]) ? $assignmentSubmissionMap[$aId] : null;
+        $isSubmitted = !empty($sub && (!empty($sub['submission_link']) || !empty($sub['file_url'])));
+        if ($isSubmitted) {
+            $completedLessonsCount++;
+        }
+        $totalLessonsCount++;
+
+        $asgResources = [];
+        if (!empty($asg['resources_json'])) {
+            $decoded = json_decode($asg['resources_json'], true);
+            if (is_array($decoded)) {
+                $asgResources = $decoded;
+            }
+        }
+
+        $formattedAssignment = [
+            'id' => $aId,
+            'assignment_id' => $aId,
+            'slug' => slugify($asg['title']),
+            'item_type' => 'assignment',
+            'course_id' => intval($asg['course_id']),
+            'milestone_id' => $asg['milestone_id'] ? intval($asg['milestone_id']) : null,
+            'module_id' => $modId,
+            'lesson_no' => intval($asg['assignment_no']),
+            'title' => $asg['title'],
+            'description' => $asg['description'],
+            'total_marks' => intval($asg['total_marks']) ?: 100,
+            'pass_marks' => intval($asg['pass_marks']) ?: 50,
+            'resources' => $asgResources,
+            'order_index' => intval($asg['order_index']) ?: 99,
+            'is_free_preview' => false,
+            'is_completed' => $isSubmitted,
+            'is_submitted' => $isSubmitted,
+            'submission' => $sub
+        ];
+
+        if (!isset($lessonsByModule[$modId])) {
+            $lessonsByModule[$modId] = [];
+        }
+        $lessonsByModule[$modId][] = $formattedAssignment;
+    }
+
+    // Sort all module items (videos, quizzes, assignments) by order_index
+    foreach ($lessonsByModule as $modId => $items) {
+        usort($lessonsByModule[$modId], function($a, $b) {
+            return ($a['order_index'] ?? 0) <=> ($b['order_index'] ?? 0);
+        });
     }
 
     if ($firstUncompletedLesson === null && $totalLessonsCount > 0 && isset($lessonsByModule[array_key_first($lessonsByModule)][0])) {

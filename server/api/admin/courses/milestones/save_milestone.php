@@ -1,13 +1,37 @@
 <?php
-require_once '../../../config/cors.php';
-require_once '../../../config/database.php';
+require_once '../../../../config/cors.php';
+require_once '../../../../config/database.php';
 
 date_default_timezone_set('Asia/Dhaka');
 
 $database = new Database();
 $db = $database->getConnection();
 
-$data = json_decode(file_get_contents("php://input"));
+if (!$db) {
+    echo json_encode(["status" => "error", "message" => "Database connection error."]);
+    exit;
+}
+
+// Auto-create table if not exists
+try {
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS `course_milestones` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `course_id` INT NOT NULL,
+            `milestone_no` INT NOT NULL DEFAULT 1,
+            `title` VARCHAR(255) NOT NULL,
+            `description` TEXT NULL,
+            `order_index` INT NOT NULL DEFAULT 1,
+            `status` ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+            `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX `idx_course_milestones_course` (`course_id`),
+            INDEX `idx_course_milestones_order` (`course_id`, `order_index`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    ");
+} catch (Throwable $e) {}
+
+$rawInput = file_get_contents("php://input");
+$data = json_decode($rawInput);
 
 if (!$data || empty($data->course_id) || empty($data->title)) {
     echo json_encode(["status" => "error", "message" => "Course ID and Title are required."]);

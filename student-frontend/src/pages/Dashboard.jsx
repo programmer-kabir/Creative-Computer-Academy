@@ -20,6 +20,8 @@ const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [checkingIn, setCheckingIn] = useState(false);
 
+  const [todayAttendance, setTodayAttendance] = useState(null);
+
   // Clock timer
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -32,9 +34,31 @@ const Dashboard = () => {
       setLoading(true);
       const courseParam = activeCourse?.course_id ? `&course_id=${activeCourse.course_id}` : '';
       const enrParam = activeCourse?.enrollment_id ? `&enrollment_id=${activeCourse.enrollment_id}` : '';
-      const res = await axios.get(`${API_BASE}api/student/dashboard.php?user_id=${currentUser.id}${courseParam}${enrParam}`);
-      if (res.data.status === 'success') {
-        setDashboardData(res.data.data);
+
+      const [dashRes, attRes] = await Promise.allSettled([
+        axios.get(`${API_BASE}api/student/dashboard.php?user_id=${currentUser.id}${courseParam}${enrParam}`),
+        axios.post(`${API_BASE}api/attendance/get_attendance.php`, { user_id: currentUser.id })
+      ]);
+
+      if (dashRes.status === 'fulfilled' && dashRes.value?.data?.status === 'success') {
+        const data = dashRes.value.data.data;
+        setDashboardData(data);
+        if (data.today_attendance && data.today_attendance.check_in) {
+          setTodayAttendance(data.today_attendance);
+        }
+      }
+
+      if (attRes.status === 'fulfilled' && attRes.value?.data?.status === 'success') {
+        const attData = attRes.value.data;
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (attData.today && attData.today.check_in) {
+          setTodayAttendance(attData.today);
+        } else if (Array.isArray(attData.history)) {
+          const tLog = attData.history.find(l => l.date === todayStr);
+          if (tLog && tLog.check_in) {
+            setTodayAttendance(tLog);
+          }
+        }
       }
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
@@ -91,7 +115,7 @@ const Dashboard = () => {
 
   const student = dashboardData?.student || currentUser;
   const stats = dashboardData?.stats || { attendance_rate: 100, present_days: 0, late_days: 0, total_days: 0 };
-  const todayAtt = dashboardData?.today_attendance;
+  const todayAtt = todayAttendance || dashboardData?.today_attendance;
   const modules = dashboardData?.modules || [];
   const assignmentSummary = dashboardData?.assignment_summary || { total: 0, submitted: 0, pending: 0 };
 

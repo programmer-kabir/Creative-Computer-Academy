@@ -12,6 +12,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "autoprefixer": "^10.5.4",
     "axios": "^1.19.0",
+    "canvas-confetti": "^1.9.4",
     "framer-motion": "^13.1.0",
     "postcss": "^8.5.26",
     "pusher-js": "^8.6.0",
