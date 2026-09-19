@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import {
   FiUser, FiMail, FiPhone, FiBookOpen,
   FiCalendar, FiAward, FiLock, FiCheckCircle, FiShield,
-  FiLayers, FiCheck
+  FiLayers, FiCheck, FiCamera, FiImage
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
@@ -18,6 +18,47 @@ const Profile = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPass, setChangingPass] = useState(false);
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  const handleImageUpload = async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('user_id', currentUser?.id);
+    formData.append('type', type);
+
+    const toastId = toast.loading(`Uploading ${type === 'profile' ? 'profile' : 'cover'} photo...`);
+    if (type === 'profile') setUploadingProfile(true);
+    if (type === 'cover') setUploadingCover(true);
+
+    try {
+      const res = await axios.post(`${API_BASE}api/profile/upload_pictures.php`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (res.data?.status === 'success') {
+        toast.success(res.data.message || `${type === 'profile' ? 'Profile' : 'Cover'} photo updated!`, { id: toastId });
+        updateUser({
+          [type === 'profile' ? 'profile_picture' : 'cover_picture']: res.data.path
+        });
+      } else {
+        toast.error(res.data?.message || 'Failed to upload image.', { id: toastId });
+      }
+    } catch (err) {
+      toast.error('Server error while uploading image.', { id: toastId });
+    } finally {
+      if (type === 'profile') setUploadingProfile(false);
+      if (type === 'cover') setUploadingCover(false);
+    }
+  };
 
   const handlePasswordChange = async (e) => {
     e.preventDefault();
@@ -57,16 +98,89 @@ const Profile = () => {
   const currentStudentCode = activeCourse?.student_code || currentUser?.student_info?.student_code || 'STU-1001';
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs flex items-center justify-between">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 rounded-2xl">
-            <FiUser size={26} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Student Profile & Digital ID</h1>
-            <p className="text-xs sm:text-sm text-slate-400">View your academy credentials, enrollment card, and account settings.</p>
+    <div className="p-4 sm:p-6 md:p-8 space-y-6 mx-auto animate-in fade-in duration-300">
+      {/* ── STAFF-STYLE COVER PHOTO & PROFILE AVATAR BANNER ── */}
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden relative transition-colors">
+        {/* Cover Photo Header */}
+        <div className="relative h-56 sm:h-72 lg:h-80 w-full group overflow-hidden">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
+            style={{
+              backgroundImage: currentUser?.cover_picture
+                ? `url(${API_BASE}${currentUser.cover_picture})`
+                : 'linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4338ca 70%, #6366f1 100%)'
+            }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent" />
+
+          {/* Change Cover Button */}
+          <label className="absolute top-4 right-4 cursor-pointer bg-slate-900/75 hover:bg-slate-900 text-white font-bold text-xs px-3.5 py-2 rounded-xl backdrop-blur-md border border-white/20 shadow-md transition-all flex items-center gap-2 z-20 hover:scale-105">
+            <FiCamera size={15} />
+            <span>{uploadingCover ? 'Uploading Cover...' : 'Change Cover'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploadingCover}
+              className="hidden"
+              onChange={(e) => handleImageUpload(e, 'cover')}
+            />
+          </label>
+        </div>
+
+        {/* Profile Info & Avatar Overlay */}
+        <div className="relative px-6 sm:px-8 lg:px-12 pb-8">
+          <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-20 sm:-mt-24 relative z-10">
+            {/* Avatar with Camera Button */}
+            <div className="relative group">
+              <div className="w-36 h-36 sm:w-40 sm:h-40 rounded-3xl bg-white dark:bg-slate-800 p-2 shadow-2xl ring-1 ring-black/5 dark:ring-white/10 rotate-[-2deg] transition-all group-hover:rotate-0 duration-300 relative overflow-hidden">
+                {currentUser?.profile_picture ? (
+                  <img
+                    src={`${API_BASE}${currentUser.profile_picture}`}
+                    alt={currentUser.name}
+                    className="w-full h-full object-cover rounded-2xl"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 rounded-2xl flex items-center justify-center text-white font-black text-5xl sm:text-6xl uppercase shadow-inner">
+                    {currentUser?.name?.charAt(0) || 'S'}
+                  </div>
+                )}
+              </div>
+
+              {/* Camera Button on Avatar */}
+              <label
+                className="absolute bottom-1 right-1 p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer shadow-lg transition-transform hover:scale-110 border-2 border-white dark:border-slate-800 flex items-center justify-center"
+                title="Upload Profile Picture"
+              >
+                <FiCamera size={16} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={uploadingProfile}
+                  className="hidden"
+                  onChange={(e) => handleImageUpload(e, 'profile')}
+                />
+              </label>
+            </div>
+
+            {/* Name & Role Badge */}
+            <div className="flex-1 mb-2">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight drop-shadow-md mb-2">
+                {currentUser?.name || 'Student Name'}
+              </h1>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <span className="text-slate-800 dark:text-slate-100 font-bold flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 px-3.5 py-1 rounded-full text-xs shadow-sm border border-slate-200 dark:border-slate-700 backdrop-blur-md">
+                  <FiUser className="text-indigo-500" size={14} />
+                  <span>Student</span>
+                </span>
+                <span className="text-slate-800 dark:text-slate-100 font-bold flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 px-3.5 py-1 rounded-full text-xs shadow-sm border border-slate-200 dark:border-slate-700 backdrop-blur-md">
+                  <FiBookOpen className="text-purple-500" size={14} />
+                  <span>{currentCourseName}</span>
+                </span>
+                <span className="text-slate-800 dark:text-slate-100 font-mono font-bold flex items-center gap-1.5 bg-white/90 dark:bg-slate-800/90 px-3.5 py-1 rounded-full text-xs shadow-sm border border-slate-200 dark:border-slate-700 backdrop-blur-md">
+                  <span>ID: {currentStudentCode}</span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -77,7 +191,7 @@ const Profile = () => {
           <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white rounded-3xl shadow-2xl p-6 relative overflow-hidden border border-indigo-500/20 flex flex-col justify-between min-h-[400px]">
             {/* Background Pattern */}
             <div className="absolute top-0 right-0 -mr-8 -mt-8 w-40 h-40 rounded-full bg-white/5 blur-2xl"></div>
-            
+
             {/* Top Bar */}
             <div className="relative z-10 flex items-center justify-between border-b border-white/10 pb-4">
               <div className="flex items-center gap-2">
@@ -94,8 +208,16 @@ const Profile = () => {
 
             {/* Middle: Avatar & Info */}
             <div className="relative z-10 my-6 text-center">
-              <div className="w-24 h-24 rounded-2xl bg-white/10 border-2 border-white/20 mx-auto flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-black/20">
-                {currentUser?.name?.charAt(0)?.toUpperCase() || 'S'}
+              <div className="w-24 h-24 rounded-2xl bg-white/10 border-2 border-white/20 mx-auto flex items-center justify-center text-3xl font-black text-white shadow-xl shadow-black/20 overflow-hidden">
+                {currentUser?.profile_picture ? (
+                  <img
+                    src={`${API_BASE}${currentUser.profile_picture}`}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  currentUser?.name?.charAt(0)?.toUpperCase() || 'S'
+                )}
               </div>
               <h3 className="text-lg font-black mt-3 tracking-tight">{currentUser?.name || 'Student Name'}</h3>
               <p className="text-xs font-bold text-indigo-200 mt-0.5">{currentCourseName}</p>

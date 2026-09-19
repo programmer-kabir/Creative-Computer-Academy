@@ -3,7 +3,8 @@ import axios from 'axios';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import {
-  FiCommand, FiCopy, FiCheck, FiRefreshCw, FiZap, FiAward
+  FiCommand, FiCopy, FiCheck, FiRefreshCw, FiZap, FiAward,
+  FiMaximize2, FiMinimize2
 } from 'react-icons/fi';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -67,12 +68,43 @@ const SHORTCUT_MISSIONS = [
   }
 ];
 
-const ShortcutsTrainer = ({ user, onProgressUpdate }) => {
+const ShortcutsTrainer = ({ user, onProgressUpdate, isMasterFullscreen, toggleMasterFullscreen }) => {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [pressedKeys, setPressedKeys] = useState({});
   const [score, setScore] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+
+  const isCurrentlyFullscreen = isMasterFullscreen || isFullscreen;
+
+  const handleToggleFullscreen = () => {
+    if (toggleMasterFullscreen) {
+      toggleMasterFullscreen();
+    } else {
+      if (!isFullscreen) {
+        setIsFullscreen(true);
+        if (containerRef.current?.requestFullscreen) {
+          containerRef.current.requestFullscreen().catch(() => {});
+        }
+      } else {
+        setIsFullscreen(false);
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   const currMission = SHORTCUT_MISSIONS[currentIdx];
 
@@ -158,9 +190,16 @@ const ShortcutsTrainer = ({ user, onProgressUpdate }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      ref={containerRef}
+      className={`transition-all duration-200 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 p-4 sm:p-8 overflow-y-auto w-screen h-screen space-y-6 flex flex-col justify-center max-w-none'
+          : 'space-y-6'
+      }`}
+    >
       {/* Header */}
-      <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className={`p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-2xl border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isCurrentlyFullscreen ? 'max-w-6xl w-full mx-auto' : ''}`}>
         <div>
           <h3 className="text-base sm:text-lg font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
             <span>⚡ Essential OS & Keyboard Shortcuts Trainer</span>
@@ -170,8 +209,19 @@ const ShortcutsTrainer = ({ user, onProgressUpdate }) => {
           </p>
         </div>
 
-        <div className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs shrink-0 self-start sm:self-auto">
-          Progress: {currentIdx + 1} / {SHORTCUT_MISSIONS.length}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <div className="px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs">
+            Progress: {currentIdx + 1} / {SHORTCUT_MISSIONS.length}
+          </div>
+
+          <button
+            onClick={handleToggleFullscreen}
+            title={isCurrentlyFullscreen ? "Exit Fullscreen (Esc)" : "Full Page / Fullscreen"}
+            className="p-2 bg-indigo-100 hover:bg-indigo-600 text-indigo-800 hover:text-white dark:bg-indigo-950 dark:text-indigo-300 dark:hover:bg-indigo-600 dark:hover:text-white rounded-xl text-xs font-bold border border-indigo-300 dark:border-indigo-800 transition-all cursor-pointer flex items-center gap-1.5"
+          >
+            {isCurrentlyFullscreen ? <FiMinimize2 size={15} /> : <FiMaximize2 size={15} />}
+            <span>{isCurrentlyFullscreen ? 'Exit Full' : 'Full Page'}</span>
+          </button>
         </div>
       </div>
 

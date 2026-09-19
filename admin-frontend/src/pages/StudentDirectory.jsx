@@ -6,7 +6,7 @@ import {
   FiSearch, FiUserPlus, FiEdit2, FiTrash2, FiX, FiCheckCircle,
   FiBookOpen, FiUserCheck, FiClock, FiCalendar, FiAward, FiArrowUpRight,
   FiUser, FiMail, FiPhone, FiBriefcase, FiLock, FiChevronRight, FiFilter,
-  FiRepeat, FiLayers
+  FiRepeat, FiLayers, FiZap
 } from 'react-icons/fi';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
@@ -555,6 +555,15 @@ const StudentDirectory = () => {
 
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {/* Typing Analytics Report button */}
+                          <a
+                            href={`/typing-reports?user_id=${stu.id}`}
+                            title="View Student Touch Typing Analytics Report"
+                            className="p-2 text-slate-400 hover:text-purple-600 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors cursor-pointer"
+                          >
+                            <FiZap size={16} />
+                          </a>
+
                           {/* Transfer Course button */}
                           <button
                             onClick={() => {

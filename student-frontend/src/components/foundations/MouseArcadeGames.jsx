@@ -3,8 +3,13 @@ import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 import {
   FiPlay, FiRefreshCw, FiZap, FiAward, FiActivity,
-  FiTarget, FiGrid, FiCompass, FiShield, FiCrosshair
+  FiTarget, FiGrid, FiCompass, FiShield, FiEdit3,
+  FiMaximize2, FiMinimize2
 } from 'react-icons/fi';
+import SpaceWavesGame from './SpaceWavesGame';
+import PenToolMasterGame from './PenToolMasterGame';
+import CanyonGliderGame from './CanyonGliderGame';
+import MagicPathBuilderGame from './MagicPathBuilderGame';
 
 // Audio Synthesizer
 const playSound = (freq = 440, type = 'sine', duration = 0.1) => {
@@ -25,12 +30,43 @@ const playSound = (freq = 440, type = 'sine', duration = 0.1) => {
   } catch (e) {}
 };
 
-const MouseArcadeGames = ({ user }) => {
-  const [activeGame, setActiveGame] = useState('archery'); // 'archery' | 'combat' | 'balloon' | 'maze' | 'whack' | 'shapes'
+const MouseArcadeGames = ({ user, onProgressUpdate, isMasterFullscreen, toggleMasterFullscreen }) => {
+  const [activeGame, setActiveGame] = useState('spacewaves'); // 'spacewaves' | 'archery' | 'combat' | 'balloon' | 'maze' | 'whack' | 'shapes'
   const [gameState, setGameState] = useState('idle'); // 'idle' | 'playing' | 'gameover'
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(30);
   const [combo, setCombo] = useState(1);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+
+  const isCurrentlyFullscreen = isMasterFullscreen || isFullscreen;
+
+  const handleToggleFullscreen = () => {
+    if (toggleMasterFullscreen) {
+      toggleMasterFullscreen();
+    } else {
+      if (!isFullscreen) {
+        setIsFullscreen(true);
+        if (containerRef.current?.requestFullscreen) {
+          containerRef.current.requestFullscreen().catch(() => {});
+        }
+      } else {
+        setIsFullscreen(false);
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   // ── GAME 1: ARCHERY BOW & ARROW STATE ────────────────────────────────────
   const [bowPos, setBowPos] = useState({ x: 80, y: 220 });
@@ -42,12 +78,6 @@ const MouseArcadeGames = ({ user }) => {
   const archeryAnimRef = useRef(null);
   const archeryTimerRef = useRef(null);
 
-  // ── GAME 2: MONSTER / SPACE FIGHTER COMBAT STATE ─────────────────────────
-  const [monsters, setMonsters] = useState([]);
-  const [lasers, setLasers] = useState([]);
-  const [baseHealth, setBaseHealth] = useState(100);
-  const combatAnimRef = useRef(null);
-  const combatSpawnTimerRef = useRef(null);
 
   // ── GAME 3: BALLOON POP FRENZY STATE ─────────────────────────────────────
   const [balloons, setBalloons] = useState([]);
@@ -81,8 +111,6 @@ const MouseArcadeGames = ({ user }) => {
   const clearAllTimers = () => {
     if (archeryAnimRef.current) cancelAnimationFrame(archeryAnimRef.current);
     if (archeryTimerRef.current) clearInterval(archeryTimerRef.current);
-    if (combatAnimRef.current) cancelAnimationFrame(combatAnimRef.current);
-    if (combatSpawnTimerRef.current) clearInterval(combatSpawnTimerRef.current);
     if (balloonSpawnTimerRef.current) clearInterval(balloonSpawnTimerRef.current);
     if (balloonAnimRef.current) cancelAnimationFrame(balloonAnimRef.current);
     if (moleTimerRef.current) clearInterval(moleTimerRef.current);
@@ -546,103 +574,6 @@ const MouseArcadeGames = ({ user }) => {
     st.power = 0;
   };
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // 2. ⚔️ SPACE & MONSTER FIGHTER COMBAT LOGIC
-  // ─────────────────────────────────────────────────────────────────────────
-  const startCombatGame = () => {
-    setGameState('playing');
-    setScore(0);
-    setTimeLeft(30);
-    setBaseHealth(100);
-    setCombo(1);
-    setMonsters([]);
-    setLasers([]);
-
-    // Spawn Monsters
-    let mId = 0;
-    combatSpawnTimerRef.current = setInterval(() => {
-      const monsterIcons = ['👾', '👹', '🛸', '🤖', '🐲'];
-      const icon = monsterIcons[Math.floor(Math.random() * monsterIcons.length)];
-      const randX = Math.floor(Math.random() * 520) + 60;
-      const speed = 1.2 + Math.random() * 1.5;
-
-      setMonsters(prev => [
-        ...prev,
-        { id: mId++, icon, x: randX, y: 20, speed, hp: 2, maxHp: 2 }
-      ]);
-    }, 800);
-
-    // Combat Animation Loop
-    const animate = () => {
-      // Move Lasers
-      setLasers(prevLasers => {
-        const remainingLasers = [];
-        for (const laser of prevLasers) {
-          const nextY = laser.y - 12;
-          if (nextY > 0) remainingLasers.push({ ...laser, y: nextY });
-        }
-        return remainingLasers;
-      });
-
-      // Move Monsters & Check Laser Collision
-      setMonsters(prevMonsters => {
-        const nextMonsters = [];
-        for (const monster of prevMonsters) {
-          let nextY = monster.y + monster.speed;
-          let currentHp = monster.hp;
-
-          // Check laser hit
-          setLasers(currentLasers => {
-            const remLasers = [];
-            for (const laser of currentLasers) {
-              const hitDist = Math.hypot(laser.x - monster.x, laser.y - nextY);
-              if (hitDist < 30) {
-                currentHp -= 1;
-                playSound(600, 'triangle', 0.08);
-              } else {
-                remLasers.push(laser);
-              }
-            }
-            return remLasers;
-          });
-
-          if (currentHp <= 0) {
-            playSound(300, 'square', 0.15);
-            setScore(s => s + 25 * combo);
-            setCombo(c => Math.min(5, c + 1));
-            continue; // Monster Destroyed!
-          }
-
-          if (nextY >= 380) {
-            // Reached base
-            playSound(100, 'sawtooth', 0.2);
-            setBaseHealth(h => {
-              const remH = Math.max(0, h - 20);
-              if (remH <= 0) finishGame('combat');
-              return remH;
-            });
-            continue;
-          }
-
-          nextMonsters.push({ ...monster, y: nextY, hp: currentHp });
-        }
-        return nextMonsters;
-      });
-
-      combatAnimRef.current = requestAnimationFrame(animate);
-    };
-    combatAnimRef.current = requestAnimationFrame(animate);
-  };
-
-  const handleShootLaser = (e) => {
-    if (gameState !== 'playing' || activeGame !== 'combat') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    playSound(900, 'sine', 0.05); // Laser pew
-    setLasers(prev => [...prev, { x, y: 360 }]);
-  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // 3. BALLOON POP LOGIC
@@ -891,11 +822,14 @@ const MouseArcadeGames = ({ user }) => {
 
   return (
     <div className="space-y-6">
-      {/* 6 Action-Packed Game Selector */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 p-2 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+      {/* 9 Action-Packed Game Selector */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 gap-2 p-2 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
         {[
+          { id: 'pathbuilder', title: '✎ Path Builder', desc: 'Draw Ramps & Bridges' },
+          { id: 'canyon', title: '🚀 Flight Architect', desc: 'Bézier Draw & Fly' },
+          { id: 'pentool', title: '🖋️ Pen Tool Master', desc: 'Bézier Curves & Tracer' },
+          { id: 'spacewaves', title: '🚀 Space Waves', desc: 'Hold/Release Wave 45°' },
           { id: 'archery', title: '🏹 Archery Master', desc: 'Pull & Release Bow' },
-          { id: 'combat', title: '⚔️ Monster Combat', desc: 'Space Laser Shooter' },
           { id: 'balloon', title: '🎈 Balloon Pop', desc: 'Reflex Speed Aim' },
           { id: 'maze', title: '🧀 Laser Maze', desc: 'Steady Hand Run' },
           { id: 'whack', title: '🔨 Whack-A-Bug', desc: 'Quick Grid Tapper' },
@@ -908,9 +842,9 @@ const MouseArcadeGames = ({ user }) => {
               setActiveGame(g.id);
               setGameState('idle');
             }}
-            className={`p-3 rounded-xl text-left transition-all cursor-pointer ${
+            className={`p-2 rounded-xl text-left transition-all cursor-pointer ${
               activeGame === g.id
-                ? 'bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 shadow-md font-black border border-purple-200 dark:border-purple-800'
+                ? 'bg-white dark:bg-slate-800 text-rose-600 dark:text-rose-400 shadow-md font-black border border-rose-200 dark:border-rose-800 scale-102'
                 : 'text-slate-600 dark:text-slate-400 hover:bg-white/60 dark:hover:bg-slate-800/60 font-semibold'
             }`}
           >
@@ -920,15 +854,48 @@ const MouseArcadeGames = ({ user }) => {
         ))}
       </div>
 
-      {/* Main Game Stage Container */}
-      <div className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+      {/* SPECIALIZED ADVANCED ARENAS */}
+      {activeGame === 'pathbuilder' ? (
+        <MagicPathBuilderGame
+          user={user}
+          onProgressUpdate={onProgressUpdate}
+          isMasterFullscreen={isCurrentlyFullscreen}
+          toggleMasterFullscreen={handleToggleFullscreen}
+        />
+      ) : activeGame === 'canyon' ? (
+        <CanyonGliderGame
+          user={user}
+          onProgressUpdate={onProgressUpdate}
+          isMasterFullscreen={isCurrentlyFullscreen}
+          toggleMasterFullscreen={handleToggleFullscreen}
+        />
+      ) : activeGame === 'pentool' ? (
+        <PenToolMasterGame
+          user={user}
+          onProgressUpdate={onProgressUpdate}
+          isMasterFullscreen={isCurrentlyFullscreen}
+          toggleMasterFullscreen={handleToggleFullscreen}
+        />
+      ) : activeGame === 'spacewaves' ? (
+        <SpaceWavesGame
+          user={user}
+          onProgressUpdate={onProgressUpdate}
+          isMasterFullscreen={isCurrentlyFullscreen}
+          toggleMasterFullscreen={handleToggleFullscreen}
+        />
+      ) : (
+      <div
+        ref={containerRef}
+        className={`rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden transition-all duration-200 ${
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none p-4 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 flex flex-col justify-center' : ''
+        }`}
+      >
         {/* Game HUD Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div>
             <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
               <span>
                 {activeGame === 'archery' && '🏹 Archery Master: Pull Bow & Shoot Moving Targets'}
-                {activeGame === 'combat' && '⚔️ Space Monster Combat: Laser Defense'}
                 {activeGame === 'balloon' && '🎈 Balloon Pop Frenzy (Speed Reflex)'}
                 {activeGame === 'maze' && '🧀 Laser Maze Runner (Steady Hand)'}
                 {activeGame === 'whack' && '🔨 Whack-A-Bug Reflex (Grid Tapper)'}
@@ -937,7 +904,6 @@ const MouseArcadeGames = ({ user }) => {
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {activeGame === 'archery' && 'Hold left-click on the bow, drag back to aim and set power, then release to shoot!'}
-              {activeGame === 'combat' && 'Move your mouse cursor to aim and rapid left-click to fire lasers at invading aliens!'}
               {activeGame === 'balloon' && 'Click moving balloons quickly. Catch gold stars, avoid bombs!'}
               {activeGame === 'maze' && 'Move from Green START to Gold GOAL without hitting laser walls.'}
               {activeGame === 'whack' && 'Tap bugs before they retreat into their burrows.'}
@@ -945,43 +911,49 @@ const MouseArcadeGames = ({ user }) => {
             </p>
           </div>
 
-          {gameState === 'playing' && (
-            <div className="flex items-center gap-3">
-              {activeGame === 'combat' && (
-                <span className="px-3 py-1 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 text-xs font-black">
-                  🛡️ Base HP: {baseHealth}%
+          <div className="flex items-center gap-3">
+            {gameState === 'playing' && (
+              <>
+                {activeGame === 'maze' && (
+                  <span className="px-3 py-1 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 text-xs font-black">
+                    ❤️ Lives: {mazeLives}
+                  </span>
+                )}
+                {(activeGame === 'archery' || activeGame === 'balloon' || activeGame === 'whack') && (
+                  <span className="px-3 py-1 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-black">
+                    ⏱️ {timeLeft}s
+                  </span>
+                )}
+                <span className="px-3 py-1 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 text-xs font-black">
+                  Score: {score}
                 </span>
-              )}
-              {activeGame === 'maze' && (
-                <span className="px-3 py-1 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 text-xs font-black">
-                  ❤️ Lives: {mazeLives}
-                </span>
-              )}
-              {(activeGame === 'archery' || activeGame === 'balloon' || activeGame === 'whack') && (
-                <span className="px-3 py-1 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 text-xs font-black">
-                  ⏱️ {timeLeft}s
-                </span>
-              )}
-              <span className="px-3 py-1 rounded-xl bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 text-xs font-black">
-                Score: {score}
-              </span>
-              {combo > 1 && (
-                <span className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-black animate-bounce">
-                  {combo}x Combo!
-                </span>
-              )}
-            </div>
-          )}
+                {combo > 1 && (
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-[10px] font-black animate-bounce">
+                    {combo}x Combo!
+                  </span>
+                )}
+              </>
+            )}
+
+            {/* Corner Full Page Button */}
+            <button
+              onClick={handleToggleFullscreen}
+              title={isCurrentlyFullscreen ? "Exit Fullscreen (Esc)" : "Full Page / Fullscreen"}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-purple-600 text-slate-600 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-purple-600 dark:hover:text-white cursor-pointer transition-all flex items-center gap-1.5"
+            >
+              {isCurrentlyFullscreen ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
+              <span className="text-xs font-bold hidden sm:inline">{isCurrentlyFullscreen ? 'Exit Full' : 'Full Page'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Dynamic Game Arena */}
-        <div className="relative min-h-[440px] max-h-[480px] bg-slate-950 overflow-hidden select-none flex flex-col justify-center items-center">
+        <div className={`relative bg-slate-950 overflow-hidden select-none flex flex-col justify-center items-center ${isFullscreen ? 'min-h-[70vh] flex-1' : 'min-h-[440px] max-h-[480px]'}`}>
           {/* IDLE SCREEN */}
           {gameState === 'idle' && (
             <div className="text-center p-8 space-y-4 max-w-sm">
               <div className="w-16 h-16 mx-auto rounded-3xl bg-purple-600 text-white flex items-center justify-center text-3xl shadow-xl shadow-purple-500/30 animate-pulse">
                 {activeGame === 'archery' && '🏹'}
-                {activeGame === 'combat' && '⚔️'}
                 {activeGame === 'balloon' && '🎈'}
                 {activeGame === 'maze' && '🧀'}
                 {activeGame === 'whack' && '🔨'}
@@ -990,7 +962,6 @@ const MouseArcadeGames = ({ user }) => {
               <div>
                 <h4 className="text-xl font-black text-white">
                   {activeGame === 'archery' && 'Archery Bow & Arrow Shooter'}
-                  {activeGame === 'combat' && 'Space Alien Combat Defense'}
                   {activeGame === 'balloon' && 'Balloon Pop Mania'}
                   {activeGame === 'maze' && 'Laser Maze Runner'}
                   {activeGame === 'whack' && 'Whack-A-Bug Reflex'}
@@ -1004,7 +975,6 @@ const MouseArcadeGames = ({ user }) => {
               <button
                 onClick={() => {
                   if (activeGame === 'archery') startArcheryGame();
-                  if (activeGame === 'combat') startCombatGame();
                   if (activeGame === 'balloon') startBalloonGame();
                   if (activeGame === 'maze') startMazeGame();
                   if (activeGame === 'whack') startWhackGame();
@@ -1035,50 +1005,7 @@ const MouseArcadeGames = ({ user }) => {
             </div>
           )}
 
-          {/* 2. ⚔️ SPACE / MONSTER COMBAT ARENA */}
-          {gameState === 'playing' && activeGame === 'combat' && (
-            <div
-              onClick={handleShootLaser}
-              className="absolute inset-0 w-full h-full cursor-crosshair overflow-hidden"
-            >
-              {/* Descending Monsters */}
-              {monsters.map((m) => (
-                <div
-                  key={m.id}
-                  style={{ left: `${m.x}px`, top: `${m.y}px` }}
-                  className="absolute -translate-x-1/2 text-3xl transition-transform hover:scale-110 flex flex-col items-center"
-                >
-                  <span>{m.icon}</span>
-                  {/* Monster HP Bar */}
-                  <div className="w-8 h-1 bg-slate-800 rounded-full mt-0.5 overflow-hidden">
-                    <div
-                      style={{ width: `${(m.hp / m.maxHp) * 100}%` }}
-                      className="h-full bg-rose-500"
-                    ></div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Laser Bullets */}
-              {lasers.map((l, lIdx) => (
-                <div
-                  key={lIdx}
-                  style={{ left: `${l.x}px`, top: `${l.y}px` }}
-                  className="absolute w-1.5 h-6 bg-cyan-400 rounded-full shadow-md shadow-cyan-400 animate-pulse"
-                ></div>
-              ))}
-
-              {/* Defense Base Cannon at Bottom */}
-              <div className="absolute bottom-2 inset-x-0 flex justify-center pointer-events-none">
-                <div className="px-6 py-2 rounded-2xl bg-indigo-900/80 border border-indigo-500 text-cyan-300 font-bold text-xs flex items-center gap-2">
-                  <FiCrosshair size={16} className="animate-spin" />
-                  <span>Cannon Base Active • Rapid Click Anywhere To Shoot!</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 3. BALLOON POP ARENA */}
+          {/* 2. BALLOON POP ARENA */}
           {gameState === 'playing' && activeGame === 'balloon' && (
             <div className="absolute inset-0">
               {balloons.map((b) => (
@@ -1186,7 +1113,6 @@ const MouseArcadeGames = ({ user }) => {
                 <button
                   onClick={() => {
                     if (activeGame === 'archery') startArcheryGame();
-                    if (activeGame === 'combat') startCombatGame();
                     if (activeGame === 'balloon') startBalloonGame();
                     if (activeGame === 'maze') startMazeGame();
                     if (activeGame === 'whack') startWhackGame();
@@ -1201,6 +1127,7 @@ const MouseArcadeGames = ({ user }) => {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 };

@@ -13,6 +13,7 @@ import TaskOversight from './pages/TaskOversight';
 import Reports from './pages/Reports';
 import MasterReport from './pages/MasterReport';
 import ReviewerReport from './pages/ReviewerReport';
+import TypingReports from './pages/TypingReports';
 import Messages from './pages/Messages';
 import AttendanceDisputes from './pages/AttendanceDisputes';
 import DailyRoster from './pages/DailyRoster';
@@ -106,6 +107,12 @@ function App() {
           <Route path="/reports" element={
             <ProtectedRoute>
               <AdminLayout><Reports /></AdminLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/typing-reports" element={
+            <ProtectedRoute>
+              <AdminLayout><TypingReports /></AdminLayout>
             </ProtectedRoute>
           } />
 

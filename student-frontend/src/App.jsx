@@ -15,6 +15,9 @@ const Profile = React.lazy(() => import('./pages/Profile'));
 const BrowseCourses = React.lazy(() => import('./pages/BrowseCourses'));
 const CoursePlayer = React.lazy(() => import('./pages/CoursePlayer'));
 const FoundationsLab = React.lazy(() => import('./pages/FoundationsLab'));
+const TypingLab = React.lazy(() => import('./pages/TypingLab'));
+const SkillReport = React.lazy(() => import('./pages/SkillReport'));
+const Leaderboard = React.lazy(() => import('./pages/Leaderboard'));
 const NotFound = React.lazy(() => import('./pages/NotFound'));
 
 function App() {
@@ -71,6 +74,30 @@ function App() {
                 <ProtectedRoute>
                   <StudentLayout>
                     <FoundationsLab />
+                  </StudentLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/typing" element={
+                <ProtectedRoute>
+                  <StudentLayout>
+                    <TypingLab />
+                  </StudentLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/skill-report" element={
+                <ProtectedRoute>
+                  <StudentLayout>
+                    <SkillReport />
+                  </StudentLayout>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/leaderboard" element={
+                <ProtectedRoute>
+                  <StudentLayout>
+                    <Leaderboard />
                   </StudentLayout>
                 </ProtectedRoute>
               } />

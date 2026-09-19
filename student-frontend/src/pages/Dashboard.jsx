@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
   FiClock, FiCheckCircle, FiCalendar, FiBookOpen,
   FiAward, FiArrowRight, FiCheckSquare, FiUserCheck,
-  FiLayers, FiChevronRight, FiPlayCircle, FiVideo, FiFolder
+  FiLayers, FiChevronRight, FiPlayCircle, FiVideo, FiFolder, FiStar
 } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import { useCourse } from '../context/CourseContext';
@@ -21,6 +21,34 @@ const Dashboard = () => {
   const [checkingIn, setCheckingIn] = useState(false);
 
   const [todayAttendance, setTodayAttendance] = useState(null);
+
+  // Office / Attendance Leaderboard state (Top 5 worked)
+  const [timeFilter, setTimeFilter] = useState('daily');
+  const [leaderboardTab, setLeaderboardTab] = useState('attendance');
+  const [leaderboard, setLeaderboard] = useState({ attendance: [], completed: [], in_review: [] });
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  // Fetch Attendance Leaderboard (Top 5 worked)
+  useEffect(() => {
+    const fetchAttendanceLeaderboard = async () => {
+      setLeaderboardLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE}api/student/get_leader.php?time_filter=${timeFilter}`);
+        if (res.data?.status === 'success') {
+          setLeaderboard({
+            attendance: res.data.attendance || [],
+            completed: res.data.completed || [],
+            in_review: res.data.in_review || []
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch leaderboard", err);
+      } finally {
+        setLeaderboardLoading(false);
+      }
+    };
+    fetchAttendanceLeaderboard();
+  }, [timeFilter]);
 
   // Clock timer
   useEffect(() => {
@@ -392,106 +420,280 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* Quick Navigation Cards & Recent Attendance Table */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Attendance Logs */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 rounded-xl">
-                <FiCalendar size={18} />
-              </div>
-              <h3 className="font-bold text-slate-900 dark:text-white">Recent Attendance Logs</h3>
-            </div>
-            <Link to="/attendance" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
-              Full History →
-            </Link>
+      {/* Leaderboard & Recent Attendance Section */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Top 5 Office / Attendance Leaderboard Widget */}
+        <div className="xl:col-span-1 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-gradient-to-b from-slate-50/80 to-white dark:from-slate-800/50 dark:to-slate-900">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+              <span className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-500/20 text-amber-500 flex items-center justify-center shadow-xs">
+                <FiAward size={18} />
+              </span>
+              Leaderboard
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+              Top 5 Rank
+            </span>
           </div>
 
-          {loading ? (
-            <div className="py-12 text-center text-slate-400 text-sm">Loading attendance logs...</div>
-          ) : !dashboardData?.recent_logs || dashboardData.recent_logs.length === 0 ? (
-            <div className="py-12 text-center text-slate-400 text-sm">
-              <FiClock size={32} className="mx-auto mb-2 opacity-40" />
-              No attendance logs recorded yet. Check in to get started!
+          {/* Time Filter Pills */}
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+            <div className="flex bg-slate-100/80 dark:bg-slate-800/80 p-1 rounded-2xl shadow-inner">
+              {['daily', 'weekly', 'monthly', 'yearly', 'overall'].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setTimeFilter(f)}
+                  className={`flex-1 py-1.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl transition-all ${
+                    timeFilter === f
+                      ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs ring-1 ring-slate-200/60 dark:ring-slate-600'
+                      : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {f}
+                </button>
+              ))}
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
-                  <tr>
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Check-In</th>
-                    <th className="py-3 px-4">Check-Out</th>
-                    <th className="py-3 px-4">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {dashboardData.recent_logs.slice(0, 6).map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{log.date}</td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">{log.check_in || '—'}</td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">{log.check_out || '—'}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          log.status === 'Present'
-                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
-                        }`}>
-                          {log.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex px-3 pt-3 border-b border-slate-100 dark:border-slate-800 gap-1 bg-slate-50/50 dark:bg-slate-900/50">
+            <button
+              onClick={() => setLeaderboardTab('completed')}
+              className={`flex-1 pb-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1 ${
+                leaderboardTab === 'completed'
+                  ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-t-xl'
+                  : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 rounded-t-xl'
+              }`}
+            >
+              🚀 Completed
+            </button>
+            <button
+              onClick={() => setLeaderboardTab('in_review')}
+              className={`flex-1 pb-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1 ${
+                leaderboardTab === 'in_review'
+                  ? 'text-amber-600 dark:text-amber-400 border-amber-600 dark:border-amber-400 bg-amber-50/50 dark:bg-amber-900/20 rounded-t-xl'
+                  : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 rounded-t-xl'
+              }`}
+            >
+              👀 In Review
+            </button>
+            <button
+              onClick={() => setLeaderboardTab('attendance')}
+              className={`flex-1 pb-2.5 text-[10px] sm:text-xs font-black uppercase tracking-wider transition-all border-b-2 flex items-center justify-center gap-1 ${
+                leaderboardTab === 'attendance'
+                  ? 'text-emerald-600 dark:text-emerald-400 border-emerald-600 dark:border-emerald-400 bg-emerald-50/50 dark:bg-emerald-900/20 rounded-t-xl'
+                  : 'text-slate-400 border-transparent hover:text-slate-600 dark:hover:text-slate-300 rounded-t-xl'
+              }`}
+            >
+              ⏱️ Attend
+            </button>
+          </div>
+
+          {/* List items */}
+          <div className="flex-1 overflow-y-auto p-3 relative bg-slate-50/40 dark:bg-slate-900/40 min-h-[350px]">
+            {leaderboardLoading && (
+              <div className="absolute inset-0 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-10">
+                <div className="w-8 h-8 border-3 border-slate-200 dark:border-slate-700 border-t-indigo-600 rounded-full animate-spin"></div>
+              </div>
+            )}
+            {leaderboard[leaderboardTab]?.length > 0 ? (
+              <div className="space-y-2.5">
+                {leaderboard[leaderboardTab].slice(0, 5).map((user, idx) => (
+                  <div
+                    key={user.id || idx}
+                    className="flex items-center gap-3 p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs hover:shadow-md transition-all hover:-translate-y-0.5 relative overflow-hidden group"
+                  >
+                    {/* Rank Badge */}
+                    <div
+                      className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs ${
+                        idx === 0
+                          ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-amber-500/20 ring-2 ring-amber-200/50 dark:ring-amber-500/30'
+                          : idx === 1
+                          ? 'bg-gradient-to-br from-slate-300 to-slate-400 text-white shadow-slate-500/20 ring-2 ring-slate-200/50 dark:ring-slate-600/30'
+                          : idx === 2
+                          ? 'bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-orange-500/20 ring-2 ring-orange-200/50 dark:ring-orange-500/30'
+                          : 'bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 border border-slate-200/80 dark:border-slate-700'
+                      }`}
+                    >
+                      {idx === 0 || idx === 1 || idx === 2 ? (
+                        <FiAward size={20} />
+                      ) : (
+                        <span>#{idx + 1}</span>
+                      )}
+                    </div>
+
+                    {/* Avatar */}
+                    <div className="relative z-10 w-11 h-11 rounded-full overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-700 border-2 border-white dark:border-slate-800 shadow-xs">
+                      {user.profile_picture ? (
+                        <img
+                          src={`${API_BASE}${user.profile_picture}`}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-sm uppercase">
+                          {user.name ? user.name.charAt(0) : 'U'}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* User Info */}
+                    <div className="relative z-10 flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                          {user.name}
+                        </p>
+                        {user.id === currentUser?.id && (
+                          <span className="text-[9px] font-black uppercase tracking-wider text-white bg-indigo-600 px-1.5 py-0.5 rounded-full shrink-0 shadow-xs">
+                            YOU
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                        {user.role || 'Student'}
+                      </p>
+                    </div>
+
+                    {/* Score / Hours Worked */}
+                    <div className="relative z-10 shrink-0 text-right bg-slate-50 dark:bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <p
+                        className={`text-xs sm:text-sm font-black font-mono leading-none ${
+                          leaderboardTab === 'attendance'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : leaderboardTab === 'in_review'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}
+                      >
+                        {user.score}
+                      </p>
+                      <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                        {leaderboardTab === 'attendance' ? 'WORKED' : 'TASKS'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="py-16 flex flex-col items-center justify-center text-center">
+                <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 text-slate-300 dark:text-slate-600">
+                  <FiStar size={28} />
+                </div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-300">No records yet</p>
+                <p className="text-[11px] text-slate-400 mt-1 max-w-[200px]">Data will update automatically as attendance is logged.</p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Quick Links & Resources Card */}
-        <div className="space-y-4">
-          <Link
-            to="/assignments"
-            className="block p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-2xl group-hover:scale-110 transition-transform">
-                <FiCheckSquare size={22} />
+        {/* Right 2 columns: Attendance Logs & Quick Navigation */}
+        <div className="xl:col-span-2 flex flex-col gap-6">
+          {/* Recent Attendance Logs */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs p-6 flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 rounded-xl">
+                  <FiCalendar size={18} />
+                </div>
+                <h3 className="font-bold text-slate-900 dark:text-white">Recent Attendance Logs</h3>
               </div>
-              <FiArrowRight size={18} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
+              <Link to="/attendance" className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">
+                Full History →
+              </Link>
             </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Course Assignments</h4>
-            <p className="text-xs text-slate-400 mt-1">Submit your practical projects, assignments, and view reviewer feedback.</p>
-          </Link>
 
-          <Link
-            to="/resources"
-            className="block p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-110 transition-transform">
-                <FiBookOpen size={22} />
+            {loading ? (
+              <div className="py-12 text-center text-slate-400 text-sm">Loading attendance logs...</div>
+            ) : !dashboardData?.recent_logs || dashboardData.recent_logs.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 text-sm">
+                <FiClock size={32} className="mx-auto mb-2 opacity-40" />
+                No attendance logs recorded yet. Check in to get started!
               </div>
-              <FiArrowRight size={18} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
-            </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Download Resources</h4>
-            <p className="text-xs text-slate-400 mt-1">Download class materials, design templates, and software tools.</p>
-          </Link>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-bold border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="py-3 px-4">Date</th>
+                      <th className="py-3 px-4">Check-In</th>
+                      <th className="py-3 px-4">Check-Out</th>
+                      <th className="py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {dashboardData.recent_logs.slice(0, 6).map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{log.date}</td>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">{log.check_in || '—'}</td>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">{log.check_out || '—'}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            log.status === 'Present'
+                              ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300'
+                          }`}>
+                            {log.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
 
-          <Link
-            to="/profile"
-            className="block p-5 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group"
-          >
-            <div className="flex items-center justify-between">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-110 transition-transform">
-                <FiAward size={22} />
+          {/* Quick Links & Resources (Horizontal Row of 3 Cards) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Link
+              to="/assignments"
+              className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400 rounded-xl group-hover:scale-110 transition-transform">
+                  <FiCheckSquare size={18} />
+                </div>
+                <FiArrowRight size={16} className="text-slate-400 group-hover:text-purple-600 transition-colors" />
               </div>
-              <FiArrowRight size={18} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
-            </div>
-            <h4 className="font-bold text-slate-900 dark:text-white mt-4">Digital Student ID Card</h4>
-            <p className="text-xs text-slate-400 mt-1">View official academy student card and enrolled courses.</p>
-          </Link>
+              <div className="mt-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs">Assignments</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">Submit practicals & view reviews</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/resources"
+              className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-xl group-hover:scale-110 transition-transform">
+                  <FiBookOpen size={18} />
+                </div>
+                <FiArrowRight size={16} className="text-slate-400 group-hover:text-blue-600 transition-colors" />
+              </div>
+              <div className="mt-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs">Resources</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">Download class materials & files</p>
+              </div>
+            </Link>
+
+            <Link
+              to="/profile"
+              className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 transition-all group flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 rounded-xl group-hover:scale-110 transition-transform">
+                  <FiAward size={18} />
+                </div>
+                <FiArrowRight size={16} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
+              </div>
+              <div className="mt-3">
+                <h4 className="font-bold text-slate-900 dark:text-white text-xs">Student ID Card</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">Digital academy card & details</p>
+              </div>
+            </Link>
+          </div>
         </div>
       </div>
     </div>

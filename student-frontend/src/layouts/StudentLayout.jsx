@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import StudentSidebar from '../components/StudentSidebar';
 import ThemeToggle from '../components/ThemeToggle';
 import CourseSwitcher from '../components/CourseSwitcher';
+import NotificationDropdown from '../components/NotificationDropdown';
 import { useAuth } from '../context/AuthContext';
 import { Toaster } from 'sonner';
 import { FiSidebar } from 'react-icons/fi';
@@ -36,6 +37,9 @@ const StudentLayout = ({ children }) => {
           <div className="flex items-center gap-2.5 sm:gap-3">
             {/* Dynamic Multi-Course Switcher */}
             <CourseSwitcher />
+
+            {/* Real-Time Notifications Center */}
+            <NotificationDropdown />
 
             {/* Theme Toggle */}
             <ThemeToggle />

@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import {
   FiTarget, FiFolder, FiTrash2, FiMousePointer, FiArrowDown,
   FiCheckCircle, FiRefreshCw, FiAward, FiClock, FiZap,
-  FiMaximize2, FiImage, FiFileText, FiMusic
+  FiMaximize2, FiMinimize2, FiImage, FiFileText, FiMusic
 } from 'react-icons/fi';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -31,9 +31,47 @@ const playTone = (freq = 440, type = 'sine', duration = 0.15) => {
   }
 };
 
-const MouseTrainer = ({ user, onProgressUpdate }) => {
+const RIGHT_CLICK_PROMPTS = [
+  { text: 'Right-click on the folder icon below and select "Open Folder".', targetAction: 'open', targetType: 'folder' },
+  { text: 'Right-click anywhere on the blank desk and select "Create New File".', targetAction: 'new_file', targetType: 'blank' },
+  { text: 'Right-click on the photo item and select "Rename File".', targetAction: 'rename', targetType: 'photo' },
+  { text: 'Right-click on the document and select "Properties & Details".', targetAction: 'properties', targetType: 'doc' },
+];
+
+const MouseTrainer = ({ user, onProgressUpdate, isMasterFullscreen, toggleMasterFullscreen }) => {
   const [activeLevel, setActiveLevel] = useState(1); // 1 to 5
   const [gameState, setGameState] = useState('idle'); // 'idle' | 'playing' | 'completed'
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+
+  const isCurrentlyFullscreen = isMasterFullscreen || isFullscreen;
+
+  const handleToggleFullscreen = () => {
+    if (toggleMasterFullscreen) {
+      toggleMasterFullscreen();
+    } else {
+      if (!isFullscreen) {
+        setIsFullscreen(true);
+        if (containerRef.current?.requestFullscreen) {
+          containerRef.current.requestFullscreen().catch(() => {});
+        }
+      } else {
+        setIsFullscreen(false);
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
   
   // Level 1 (Single Click Aim) State
   const [targets, setTargets] = useState([]);
@@ -196,13 +234,6 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
   };
 
   // ── LEVEL 4: RIGHT CLICK CONTEXT MENU ─────────────────────────────────────
-  const prompts = [
-    { text: 'Right-click on the folder icon below and select "Open Folder".', targetAction: 'open', targetType: 'folder' },
-    { text: 'Right-click anywhere on the blank desk and select "Create New File".', targetAction: 'new_file', targetType: 'blank' },
-    { text: 'Right-click on the photo item and select "Rename File".', targetAction: 'rename', targetType: 'photo' },
-    { text: 'Right-click on the document and select "Properties & Details".', targetAction: 'properties', targetType: 'doc' },
-  ];
-
   const startLevel4 = () => {
     setGameState('playing');
     setRightClickPrompt(0);
@@ -222,13 +253,13 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
 
   const handleContextMenuAction = (action) => {
     setShowContextMenu(false);
-    const currPrompt = prompts[rightClickPrompt];
+    const currPrompt = RIGHT_CLICK_PROMPTS[rightClickPrompt];
     if (currPrompt && currPrompt.targetAction === action) {
       playTone(659.25, 'triangle', 0.2);
       const nextPrompt = rightClickPrompt + 1;
       setRightClickPrompt(nextPrompt);
 
-      if (nextPrompt >= prompts.length) {
+      if (nextPrompt >= RIGHT_CLICK_PROMPTS.length) {
         finishLevel(4);
       } else {
         toast.success('Correct action selected! Moving to next challenge...', { duration: 1200 });
@@ -347,9 +378,16 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div
+      ref={containerRef}
+      className={`transition-all duration-200 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 p-4 sm:p-8 overflow-y-auto w-screen h-screen space-y-6 flex flex-col justify-center max-w-none'
+          : 'space-y-6'
+      }`}
+    >
       {/* Level Navigation Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-2 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className={`grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-2 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 ${isCurrentlyFullscreen ? 'max-w-6xl w-full mx-auto' : ''}`}>
         {[
           { num: 1, title: 'Left Click Aim', icon: '🎯', desc: 'Precision & Reflex' },
           { num: 2, title: 'Double Click', icon: '⚡', desc: 'Chests & Vaults' },
@@ -383,7 +421,7 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
       </div>
 
       {/* Main Interactive Arena */}
-      <div className="rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden">
+      <div className={`rounded-3xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl overflow-hidden ${isCurrentlyFullscreen ? 'max-w-6xl w-full mx-auto flex-1 flex flex-col justify-between' : ''}`}>
         {/* Arena Header */}
         <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-900/50">
           <div>
@@ -405,40 +443,52 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
             </p>
           </div>
 
-          {gameState === 'playing' && (
-            <div className="flex items-center gap-4 text-xs font-bold text-slate-700 dark:text-slate-300">
-              {activeLevel === 1 && (
-                <>
-                  <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
-                    Hits: {hits}/10
+          <div className="flex items-center gap-3">
+            {gameState === 'playing' && (
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+                {activeLevel === 1 && (
+                  <>
+                    <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                      Hits: {hits}/10
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
+                      Misses: {misses}
+                    </span>
+                  </>
+                )}
+                {activeLevel === 2 && (
+                  <span className="px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+                    Chests Opened: {chestStage}/5
                   </span>
-                  <span className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400">
-                    Misses: {misses}
+                )}
+                {activeLevel === 3 && (
+                  <span className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
+                    Remaining: {filesToDrag.length} files
                   </span>
-                </>
-              )}
-              {activeLevel === 2 && (
-                <span className="px-3 py-1 rounded-lg bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
-                  Chests Opened: {chestStage}/5
-                </span>
-              )}
-              {activeLevel === 3 && (
-                <span className="px-3 py-1 rounded-lg bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
-                  Remaining: {filesToDrag.length} files
-                </span>
-              )}
-              {activeLevel === 4 && (
-                <span className="px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
-                  Step {rightClickPrompt + 1} of {prompts.length}
-                </span>
-              )}
-              {activeLevel === 5 && (
-                <span className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
-                  Checkpoints: {scrollScore}/5
-                </span>
-              )}
-            </div>
-          )}
+                )}
+                {activeLevel === 4 && (
+                  <span className="px-3 py-1 rounded-lg bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400">
+                    Step {rightClickPrompt + 1} of {RIGHT_CLICK_PROMPTS.length}
+                  </span>
+                )}
+                {activeLevel === 5 && (
+                  <span className="px-3 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                    Checkpoints: {scrollScore}/5
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Corner Full Page Button */}
+            <button
+              onClick={handleToggleFullscreen}
+              title={isCurrentlyFullscreen ? "Exit Fullscreen (Esc)" : "Full Page / Fullscreen"}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-indigo-600 dark:hover:text-white cursor-pointer transition-all flex items-center gap-1.5"
+            >
+              {isCurrentlyFullscreen ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
+              <span className="text-xs font-bold hidden sm:inline">{isCurrentlyFullscreen ? 'Exit Full' : 'Full Page'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Dynamic Game Arena Stage */}
@@ -608,7 +658,7 @@ const MouseTrainer = ({ user, onProgressUpdate }) => {
                   Instruction #{rightClickPrompt + 1}
                 </span>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
-                  {prompts[rightClickPrompt]?.text}
+                  {RIGHT_CLICK_PROMPTS[rightClickPrompt]?.text}
                 </p>
               </div>
 

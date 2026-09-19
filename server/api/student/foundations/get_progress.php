@@ -48,18 +48,28 @@ try {
     $drillStmt->execute([$user_id]);
     $drillStats = $drillStmt->fetch(PDO::FETCH_ASSOC);
 
-    // 2. Recent Typing Sessions (Last 10)
+    // 2. Recent Typing Sessions (Last 50 for complete history & lesson breakdown)
     $recTypingStmt = $db->prepare("
         SELECT id, language, difficulty_level, wpm, cpm, accuracy_percent, mistakes_count, duration_seconds, created_at
         FROM student_typing_sessions
         WHERE user_id = ?
         ORDER BY id DESC
-        LIMIT 10
+        LIMIT 50
     ");
     $recTypingStmt->execute([$user_id]);
     $recentTyping = $recTypingStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 3. Recent Mouse & Shortcuts Drills (Last 10)
+    // 3. Curriculum Progress (Lesson by lesson status & unlocked states)
+    $curricStmt = $db->prepare("
+        SELECT lesson_id, lesson_number, lesson_title, is_completed, is_unlocked, stars, best_wpm, best_accuracy, total_attempts, last_practiced_at
+        FROM student_typing_curriculum_progress
+        WHERE user_id = ?
+        ORDER BY lesson_id ASC
+    ");
+    $curricStmt->execute([$user_id]);
+    $curriculumProgress = $curricStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // 4. Recent Mouse & Shortcuts Drills (Last 10)
     $recDrillStmt = $db->prepare("
         SELECT id, drill_type, level_no, score, accuracy_percent, reaction_time_ms, duration_seconds, completed_at
         FROM student_foundations_drills
@@ -158,6 +168,7 @@ try {
                 "total_badges_count" => count($allBadgesCatalog)
             ],
             "recent_typing" => $recentTyping,
+            "curriculum_progress" => $curriculumProgress,
             "recent_drills" => $recentDrills,
             "weak_keys" => $weakKeysMap,
             "badges" => $finalBadges

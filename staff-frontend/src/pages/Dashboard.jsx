@@ -412,7 +412,6 @@ const Dashboard = () => {
 
       </div>
       
-      {/* Custom Animation for Waving Hand */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes wave {
           0% { transform: rotate(0.0deg) }

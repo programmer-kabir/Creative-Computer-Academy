@@ -1,26 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
 import { useAuth } from '../context/AuthContext';
 import {
   FiMousePointer, FiZap, FiBookOpen, FiCommand,
-  FiAward, FiTrendingUp, FiActivity
+  FiAward, FiTrendingUp, FiActivity, FiMaximize2, FiMinimize2
 } from 'react-icons/fi';
 
 import MouseTrainer from '../components/foundations/MouseTrainer';
 import MouseArcadeGames from '../components/foundations/MouseArcadeGames';
-import TouchTypingMaster from '../components/foundations/TouchTypingMaster';
-import BanglaTypingLab from '../components/foundations/BanglaTypingLab';
 import ShortcutsTrainer from '../components/foundations/ShortcutsTrainer';
-import FoundationsAnalytics from '../components/foundations/FoundationsAnalytics';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const FoundationsLab = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('mouse'); // 'mouse' | 'arcade' | 'typing' | 'bangla' | 'shortcuts' | 'analytics'
+  const [activeTab, setActiveTab] = useState('mouse'); // 'mouse' | 'arcade' | 'shortcuts'
   const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const containerRef = useRef(null);
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      setIsFullscreen(true);
+      if (containerRef.current?.requestFullscreen) {
+        containerRef.current.requestFullscreen().catch(() => {});
+      }
+    } else {
+      setIsFullscreen(false);
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
 
   const fetchProgress = async () => {
     if (!user?.id) return;
@@ -42,86 +64,128 @@ const FoundationsLab = () => {
   }, [user]);
 
   const tabs = [
-    { id: 'mouse', label: '🖱️ মাউস ট্রেনিং (Skill Drills)', desc: 'Aim, Double Click & Drag Drop' },
-    { id: 'arcade', label: '🎮 মাউস আর্কেড (Arcade Games)', desc: 'Balloons, Maze, Whack-A-Bug' },
-    { id: 'typing', label: '⌨️ টাচ টাইপিং (English Typing)', desc: 'Home Row, WPM & Accuracy' },
-    { id: 'bangla', label: '🇧🇩 বাংলা টাইপিং (Bangla Lab)', desc: 'Avro & Bijoy Phonetic' },
-    { id: 'shortcuts', label: '⚡ ওএস শর্টকাটস (Shortcuts)', desc: 'Ctrl+C, Ctrl+V & Pro Keys' },
-    { id: 'analytics', label: '📊 প্রগ্রেস ও সার্টিফিকেট (Stats)', desc: 'Badges, Heatmap & Cert' },
+    {
+      id: 'mouse',
+      label: '🎯 মাউস ট্রেনিং (Skill Drills)',
+      desc: 'Aim, Click, Double Click, Drag & Drop, Scroll',
+      icon: '🎯'
+    },
+    {
+      id: 'arcade',
+      label: '🎮 মাউস আর্কেড (Arcade Games)',
+      desc: 'Space Waves, Pen Tool Master, Canyon Glider & Magic Path',
+      icon: '🎮'
+    },
+    {
+      id: 'shortcuts',
+      label: '⚡ ওএস শর্টকাটস (OS Shortcuts)',
+      desc: 'Ctrl+C, Ctrl+V, Pro Keys & Window Commands',
+      icon: '⚡'
+    }
   ];
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div
+      ref={containerRef}
+      className={`transition-all duration-300 ${
+        isFullscreen
+          ? 'fixed inset-0 z-50 bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 p-3 sm:p-6 overflow-y-auto w-screen h-screen flex flex-col space-y-4'
+          : 'space-y-6 mx-auto pb-12 p-2 sm:p-4'
+      }`}
+    >
       {/* Top Banner */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 text-white shadow-xl relative overflow-hidden">
-        <div className="relative z-10 space-y-2 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-indigo-200 text-xs font-bold">
-            <span>🌱 কম্পিউটার ফাউন্ডেশন ও প্র্যাকটিস ল্যাব</span>
+      <div className={`p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-purple-900 text-white shadow-xl relative overflow-hidden transition-all ${isFullscreen ? 'py-3.5 sm:py-4.5' : ''}`}>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white/10 backdrop-blur-md text-cyan-200 text-xs font-bold">
+              <span>🖱️ মাউস ও ফান্ডামেন্টালস ট্রেনিং ল্যাব</span>
+              {isFullscreen && (
+                <span className="px-2 py-0.5 rounded-md bg-cyan-400 text-slate-950 text-[10px] font-black animate-pulse">
+                  FULLSCREEN MODE
+                </span>
+              )}
+            </div>
+            <h1 className={`${isFullscreen ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-3xl'} font-black tracking-tight`}>
+              Mouse Control & Foundation Games
+            </h1>
+            {!isFullscreen && (
+              <p className="text-xs sm:text-sm text-cyan-100 font-medium">
+                মাউসের গতি, ক্লিকের নির্ভুলতা, ড্র্যাগ-অ্যান্ড-ড্রপ ও ওএস শর্টকাটসের বাস্তবসম্মত ট্রেনিং।
+              </p>
+            )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
-            Computer Foundations & Interactive Speed Lab
-          </h1>
-          <p className="text-xs sm:text-sm text-indigo-200 font-medium">
-            মাউস কন্ট্রোল, দ্রুত টাচ টাইপিং, কিবোর্ড শর্টকাট এবং ফান্ডামেন্টালস শিখে আপনার কম্পিউটারের দক্ষতা বাড়িয়ে নিন।
-          </p>
-        </div>
 
-        {/* Floating Quick Badges Count */}
-        <div className="absolute right-6 bottom-6 hidden sm:flex items-center gap-3 bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/10">
-          <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center text-xl font-bold shadow-md">
-            🏆
-          </div>
-          <div className="text-left">
-            <p className="text-[10px] font-bold text-indigo-200 uppercase">Skill Badges</p>
-            <p className="text-base font-black text-white">
-              {progressData?.stats?.unlocked_badges_count || 0} Unlocked
-            </p>
+          {/* Action Icons */}
+          <div className="flex items-center gap-2.5 self-end md:self-auto shrink-0">
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit Fullscreen (Esc)" : "Full Page / Fullscreen (F11)"}
+              className={`px-4 py-2.5 rounded-2xl font-black text-xs shadow-xl cursor-pointer transition-all hover:scale-105 active:scale-95 flex items-center gap-2 border ${
+                isFullscreen
+                  ? 'bg-cyan-400 hover:bg-cyan-300 text-slate-950 border-cyan-300'
+                  : 'bg-white/20 hover:bg-white text-white hover:text-indigo-950 border-white/30 backdrop-blur-md'
+              }`}
+            >
+              {isFullscreen ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
+              <span>{isFullscreen ? 'স্বাভাবিক স্ক্রিন' : 'ফুল স্ক্রিন ল্যাব'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Tab Navigation Bar */}
-      <div className="flex flex-wrap gap-2 p-1.5 bg-slate-200/70 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 min-w-[150px] py-3 px-3.5 rounded-xl text-left transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-md font-black border border-slate-200/80 dark:border-slate-700'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800/50 font-semibold'
-            }`}
-          >
-            <p className="text-xs truncate">{tab.label}</p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 truncate mt-0.5">{tab.desc}</p>
-          </button>
-        ))}
+      {/* Sub-Tab Navigation */}
+      <div className="flex flex-wrap gap-2 p-1.5 bg-white/85 dark:bg-slate-900/80 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm sticky top-0 z-40">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 min-w-[140px] py-3 px-4 rounded-xl text-left transition-all cursor-pointer ${
+                isActive
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md font-black scale-101'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{tab.icon}</span>
+                <p className="text-xs sm:text-sm font-bold truncate">{tab.label}</p>
+              </div>
+              <p className={`text-[10px] sm:text-xs truncate mt-0.5 ${isActive ? 'text-blue-100' : 'text-slate-400 dark:text-slate-500'}`}>
+                {tab.desc}
+              </p>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Active Tab Content Stage */}
-      <div className="animate-in fade-in duration-200">
+      {/* Active Stage */}
+      <div className="w-full mx-auto flex-1 animate-in fade-in duration-200">
         {activeTab === 'mouse' && (
-          <MouseTrainer user={user} onProgressUpdate={fetchProgress} />
+          <MouseTrainer
+            user={user}
+            onProgressUpdate={fetchProgress}
+            isMasterFullscreen={isFullscreen}
+            toggleMasterFullscreen={toggleFullscreen}
+          />
         )}
 
         {activeTab === 'arcade' && (
-          <MouseArcadeGames user={user} />
-        )}
-
-        {activeTab === 'typing' && (
-          <TouchTypingMaster user={user} onProgressUpdate={fetchProgress} />
-        )}
-
-        {activeTab === 'bangla' && (
-          <BanglaTypingLab user={user} onProgressUpdate={fetchProgress} />
+          <MouseArcadeGames
+            user={user}
+            onProgressUpdate={fetchProgress}
+            isMasterFullscreen={isFullscreen}
+            toggleMasterFullscreen={toggleFullscreen}
+          />
         )}
 
         {activeTab === 'shortcuts' && (
-          <ShortcutsTrainer user={user} onProgressUpdate={fetchProgress} />
-        )}
-
-        {activeTab === 'analytics' && (
-          <FoundationsAnalytics progressData={progressData} user={user} />
+          <ShortcutsTrainer
+            user={user}
+            onProgressUpdate={fetchProgress}
+            isMasterFullscreen={isFullscreen}
+            toggleMasterFullscreen={toggleFullscreen}
+          />
         )}
       </div>
     </div>

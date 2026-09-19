@@ -71,7 +71,8 @@ const AdminSidebar = ({ isOpen = true }) => {
       icon: <FiBookOpen size={18} />,
       subItems: [
         { name: 'Student Directory', path: '/students' },
-        { name: 'Courses & Curriculum', path: '/courses' }
+        { name: 'Courses & Curriculum', path: '/courses' },
+        { name: 'Typing Master Reports', path: '/typing-reports' }
       ]
     },
     { name: 'Task Oversight', path: '/tasks', icon: <FiCheckSquare size={18} /> },
@@ -90,6 +91,7 @@ const AdminSidebar = ({ isOpen = true }) => {
       icon: <FiBarChart2 size={18} />,
       subItems: [
         { name: 'Company Master Report', path: '/master-report' },
+        { name: 'Typing Master Reports', path: '/typing-reports' },
         { name: 'Staff Reports', path: '/reports' },
         { name: 'Reviewer Reports', path: '/reviewer-report' }
       ]

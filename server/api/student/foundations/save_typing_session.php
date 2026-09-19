@@ -22,7 +22,7 @@ if (!$data) {
 
 $user_id = isset($data['user_id']) ? intval($data['user_id']) : 0;
 $language = isset($data['language']) && in_array($data['language'], ['en', 'bn_avro', 'bn_bijoy']) ? $data['language'] : 'en';
-$difficulty_level = isset($data['difficulty_level']) ? trim($data['difficulty_level']) : 'home_row';
+$difficulty_level = !empty($data['difficulty_level']) ? trim($data['difficulty_level']) : 'lesson_1';
 $wpm = isset($data['wpm']) ? max(0, intval($data['wpm'])) : 0;
 $cpm = isset($data['cpm']) ? max(0, intval($data['cpm'])) : 0;
 $accuracy_percent = isset($data['accuracy_percent']) ? max(0, min(100, intval($data['accuracy_percent']))) : 100;
@@ -37,7 +37,7 @@ if ($user_id <= 0) {
 }
 
 try {
-    // Insert Typing Session Record
+    // 1. Insert Typing Session Record
     $stmt = $db->prepare("
         INSERT INTO student_typing_sessions 
         (user_id, language, difficulty_level, wpm, cpm, accuracy_percent, raw_wpm, mistakes_count, error_keys_json, duration_seconds)
@@ -46,6 +46,45 @@ try {
     $stmt->execute([
         $user_id, $language, $difficulty_level, $wpm, $cpm, $accuracy_percent, $raw_wpm, $mistakes_count, $error_keys, $duration_seconds
     ]);
+
+    // 3. Update Curriculum Progress in MySQL ONLY for actual curriculum lessons
+    if (preg_match('/lesson_(\d+)/i', $difficulty_level, $matches)) {
+        $lesson_id = intval($matches[1]);
+        $stars = ($accuracy_percent >= 98 && $wpm >= 15) ? 3 : (($accuracy_percent >= 95) ? 2 : 1);
+        $lesson_title = isset($data['lesson_title']) ? trim($data['lesson_title']) : "Lesson {$lesson_id}";
+
+        $curricStmt = $db->prepare("
+            INSERT INTO student_typing_curriculum_progress
+            (user_id, lesson_id, lesson_number, lesson_title, is_completed, is_unlocked, stars, best_wpm, best_accuracy, total_attempts)
+            VALUES (?, ?, ?, ?, 1, 1, ?, ?, ?, 1)
+            ON DUPLICATE KEY UPDATE
+                is_completed = 1,
+                is_unlocked = 1,
+                stars = GREATEST(stars, VALUES(stars)),
+                best_wpm = GREATEST(best_wpm, VALUES(best_wpm)),
+                best_accuracy = GREATEST(best_accuracy, VALUES(best_accuracy)),
+                total_attempts = total_attempts + 1,
+                last_practiced_at = CURRENT_TIMESTAMP
+        ");
+        $curricStmt->execute([
+            $user_id, $lesson_id, (string)$lesson_id, $lesson_title, $stars, $wpm, $accuracy_percent
+        ]);
+
+        // Auto-unlock next lesson
+        $next_lesson_id = $lesson_id + 1;
+        if ($next_lesson_id <= 14) {
+            $nextStmt = $db->prepare("
+                INSERT INTO student_typing_curriculum_progress
+                (user_id, lesson_id, lesson_number, lesson_title, is_completed, is_unlocked, stars, best_wpm, best_accuracy, total_attempts)
+                VALUES (?, ?, ?, ?, 0, 1, 0, 0, 0, 0)
+                ON DUPLICATE KEY UPDATE
+                    is_unlocked = 1
+            ");
+            $nextStmt->execute([
+                $user_id, $next_lesson_id, (string)$next_lesson_id, "Lesson {$next_lesson_id}"
+            ]);
+        }
+    }
 
     // Badge Evaluation Helper
     $unlockedBadges = [];
